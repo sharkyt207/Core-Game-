@@ -132,7 +132,7 @@ const R_CORE=120, TILE=40, RINGS=26;
 const R_SURF=R_CORE+RINGS*TILE;                 // surface radius
 const SECTORS=Math.round(TAU*R_SURF/TILE);      // angular divisions (~square tiles)
 const DSEC=TAU/SECTORS;
-const CAP_RAD=R_SURF+700;                        // max fly-out altitude
+const CAP_RAD=R_SURF+900;                        // max fly-out altitude (above surface)
 // ring index from radius: <0 = core wall, >=RINGS = space
 function ringOf(r){if(r>=R_SURF)return RINGS;if(r<R_CORE)return -1;return Math.floor((r-R_CORE)/TILE);}
 function sectorOf(a){let s=Math.floor(a/DSEC);return ((s%SECTORS)+SECTORS)%SECTORS;}
@@ -192,25 +192,20 @@ let shake=0,flash=0,hitstop=0,drilling=false,glitch=0;
 
 /* ===================== CAMERA ===================== */
 let W=0,H=0,PIX=3,LW=0,LH=0,DRILL_SY=0;
-let SCALEcur=0.3,pcx=0,pcy=0,pcyCur=0;
-// Camera targets: close-up while digging (drill centered), smoothly pulling back to
-// frame the WHOLE planet as you fly out — so the planet is always fully on screen.
-function camTargets(){
+let SCALEcur=0.62,pcx=0,pcy=0;
+// Same 2D perspective the whole time: drill stays centred, core always straight down.
+// Flying up only zooms out a little, so the planet is seen a bit further away — it never
+// vanishes and never changes viewing angle (like a side-on To-the-Core view).
+function camScaleTarget(){
   const alt=Math.max(0,drill.rad-R_SURF);
-  const t=ease(clamp(alt/400,0,1));
-  const spaceScale=(H*0.30)/R_SURF;          // planet spans ~0.6*H when out in space
-  const scale=1+(spaceScale-1)*t;
-  const pcyClose=DRILL_SY+drill.rad*scale;   // keeps drill at DRILL_SY when close
-  const pcySpace=H*0.60;                      // planet parked lower-centre in space
-  return {scale, pcy:pcyClose+(pcySpace-pcyClose)*t};
+  const t=ease(clamp(alt/520,0,1));
+  return 1+(0.62-1)*t;                        // 1.0 digging -> 0.62 up high (mild)
 }
 function updateCamera(dt){
-  const tg=camTargets();
-  SCALEcur+=(tg.scale-SCALEcur)*Math.min(1,dt*6);
-  pcyCur+=(tg.pcy-pcyCur)*Math.min(1,dt*6);
-  pcx=W/2;pcy=pcyCur;
+  SCALEcur+=(camScaleTarget()-SCALEcur)*Math.min(1,dt*6);
+  pcx=W/2;pcy=DRILL_SY+drill.rad*SCALEcur;    // drill always centred at DRILL_SY
 }
-function snapCamera(){const tg=camTargets();SCALEcur=tg.scale;pcyCur=tg.pcy;}
+function snapCamera(){SCALEcur=camScaleTarget();pcx=W/2;pcy=DRILL_SY+drill.rad*SCALEcur;}
 function w2s(rad,ang){const d=angDiff(ang,drill.ang),f=-Math.PI/2+d;
   return[pcx+rad*SCALEcur*Math.cos(f),pcy+rad*SCALEcur*Math.sin(f)];}
 
@@ -377,39 +372,30 @@ function scene(){
   if(ccx>-cr0&&ccx<LW+cr0&&ccy>-cr0&&ccy<LH+cr0){const pl=0.6+Math.sin(performance.now()/300)*0.4;
     o.fillStyle=T.core;o.globalAlpha=0.9;o.beginPath();o.arc(ccx,ccy,cr0,0,TAU);o.fill();
     o.globalAlpha=0.35*pl;o.beginPath();o.arc(ccx,ccy,cr0*1.5,0,TAU);o.fill();o.globalAlpha=1;}
-  // planet surface
+  // planet surface — always the same 2D tile view; only mild zoom when flying up.
+  // Angular range is computed to reach the screen edges (+margin) so the planet always
+  // continues at the sides (no pop-in) and you always see the individual tiles.
   const curRing=clamp(ringOf(drill.rad),0,RINGS-1),curSec=sectorOf(drill.ang);
-  if(SCALEcur<0.6){
-    // ZOOMED OUT — draw the whole planet as one filled disc + carved tunnels (always fully visible)
-    const dc=w2s(0,drill.ang),dcx=dc[0]*S1,dcy=dc[1]*S1,dr=R_SURF*SCALEcur*S1;
-    o.fillStyle=T.ground[0];o.beginPath();o.arc(dcx,dcy,dr,0,TAU);o.fill();
-    o.fillStyle='rgba(0,0,0,0.20)';o.beginPath();o.arc(dcx,dcy,dr,0,TAU);o.arc(dcx,dcy,dr*0.55,0,TAU,true);o.fill();
-    const csr=Math.max(3,R_CORE*SCALEcur*S1),pl=0.6+Math.sin(performance.now()/300)*0.4;
-    o.fillStyle=T.core;o.globalAlpha=0.5+0.35*pl;o.beginPath();o.arc(dcx,dcy,csr,0,TAU);o.fill();o.globalAlpha=1;
-    const spc=mix(T.space,T.space2,0.5);
-    world.forEach((v,k)=>{if(v!==null)return;const ix=k.indexOf(','),ring=+k.slice(0,ix),sec=+k.slice(ix+1);
-      const rin=R_CORE+ring*TILE,rout=rin+TILE,a0=sec*DSEC,a1=a0+DSEC;
-      const q1=w2s(rout,a0),q2=w2s(rout,a1),q3=w2s(rin,a1),q4=w2s(rin,a0);
-      o.fillStyle=spc;o.beginPath();o.moveTo(q1[0]*S1,q1[1]*S1);o.lineTo(q2[0]*S1,q2[1]*S1);o.lineTo(q3[0]*S1,q3[1]*S1);o.lineTo(q4[0]*S1,q4[1]*S1);o.closePath();o.fill();});
-  }else{
-    // CLOSE — per-tile granular wedges around the drill
-    const ringLo=Math.max(0,curRing-11),ringHi=Math.min(RINGS-1,curRing+11);
-    const half=clamp((W*0.62)/Math.max(1,drill.rad*SCALEcur),DSEC,Math.PI*0.95),range=Math.ceil(half/DSEC);
-    for(let ring=ringLo;ring<=ringHi;ring++){const rin=R_CORE+ring*TILE,rout=rin+TILE;
-      for(let off=-range;off<=range;off++){const sec=((curSec+off)%SECTORS+SECTORS)%SECTORS;
-        const t=tilePolar(ring,sec);if(!t||t.wall)continue;
-        const a0=sec*DSEC,a1=a0+DSEC;
-        const p1=w2s(rout,a0),p2=w2s(rout,a1),p3=w2s(rin,a1),p4=w2s(rin,a0);
-        const minx=Math.min(p1[0],p2[0],p3[0],p4[0]),maxx=Math.max(p1[0],p2[0],p3[0],p4[0]);
-        const miny=Math.min(p1[1],p2[1],p3[1],p4[1]),maxy=Math.max(p1[1],p2[1],p3[1],p4[1]);
-        if(maxx<0||minx>W||maxy<0||miny>H)continue;
-        o.fillStyle=shadeFor(ring,sec);
-        o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);o.lineTo(p3[0]*S1,p3[1]*S1);o.lineTo(p4[0]*S1,p4[1]*S1);o.closePath();o.fill();
-        const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
-        if(t.res){const R=RES[t.res],cx=(p1[0]+p3[0])/2*S1,cy=(p1[1]+p3[1])/2*S1,s=Math.max(2,TILE*0.2*SCALEcur*S1);
-          o.fillStyle=R.color;o.fillRect((cx-s)|0,(cy-s)|0,(s*2)|0,(s*2)|0);
-          o.fillStyle=R.glow;o.fillRect((cx-s*0.5)|0,(cy-s*0.5)|0,Math.max(1,s)|0,Math.max(1,s)|0);}}}
-  }
+  const ringLo=Math.max(0,curRing-18),ringHi=Math.min(RINGS-1,curRing+3);
+  const rRef=Math.min(drill.rad,R_SURF)*SCALEcur;
+  const halfA=Math.asin(clamp((W*0.5+40)/Math.max(1,rRef),0,1))+0.20;
+  const range=Math.min(SECTORS>>1,Math.ceil(halfA/DSEC));
+  for(let ring=ringLo;ring<=ringHi;ring++){const rin=R_CORE+ring*TILE,rout=rin+TILE;
+    for(let off=-range;off<=range;off++){const sec=((curSec+off)%SECTORS+SECTORS)%SECTORS;
+      const t=tilePolar(ring,sec);if(!t||t.wall)continue;
+      const a0=sec*DSEC,a1=a0+DSEC;
+      const p1=w2s(rout,a0),p2=w2s(rout,a1),p3=w2s(rin,a1),p4=w2s(rin,a0);
+      const minx=Math.min(p1[0],p2[0],p3[0],p4[0]),maxx=Math.max(p1[0],p2[0],p3[0],p4[0]);
+      const miny=Math.min(p1[1],p2[1],p3[1],p4[1]),maxy=Math.max(p1[1],p2[1],p3[1],p4[1]);
+      if(maxx<0||minx>W||maxy<0||miny>H)continue;
+      o.fillStyle=shadeFor(ring,sec);
+      o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);o.lineTo(p3[0]*S1,p3[1]*S1);o.lineTo(p4[0]*S1,p4[1]*S1);o.closePath();o.fill();
+      // subtle tile outline so single squares stay readable
+      o.strokeStyle='rgba(0,0,0,0.25)';o.lineWidth=1;o.stroke();
+      const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
+      if(t.res){const R=RES[t.res],cx=(p1[0]+p3[0])/2*S1,cy=(p1[1]+p3[1])/2*S1,s=Math.max(2,TILE*0.2*SCALEcur*S1);
+        o.fillStyle=R.color;o.fillRect((cx-s)|0,(cy-s)|0,(s*2)|0,(s*2)|0);
+        o.fillStyle=R.glow;o.fillRect((cx-s*0.5)|0,(cy-s*0.5)|0,Math.max(1,s)|0,Math.max(1,s)|0);}}}
   // drops
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
