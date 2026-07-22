@@ -366,8 +366,7 @@ function scene(){
   for(const d of dmgnums){const a=1-d.age/d.life;o.globalAlpha=a;o.fillStyle=d.color;
     o.font='bold '+Math.round(9)+'px monospace';
     o.fillText(''+d.v,((d.x-camx)*S1)|0,((d.y-camy)*S1)|0);}o.globalAlpha=1;
-  // HUD (drawn low-res => pixelated + gets CA)
-  hud(o,S1);
+  // NOTE: HUD is drawn crisp at full res in drawHUD() (after post-fx), not here.
 }
 function drawPod(cx,cy){const o=octx,S1=1/PIX,rad=Math.max(6,TILE*0.5*S1);
   // ring
@@ -381,24 +380,33 @@ function drawPod(cx,cy){const o=octx,S1=1/PIX,rad=Math.max(6,TILE*0.5*S1);
   // drill teeth in facing dir when digging
   if(drilling){o.fillStyle=T.fuel;const dx=Math.cos(drill.face),dy=Math.sin(drill.face);
     for(let i=0;i<4;i++){const t=rad+2+i;o.fillRect((cx+dx*t)|0,(cy+dy*t)|0,2,2);}}}
-function hud(o,S1){
-  o.textBaseline='top';
+/* Crisp full-res text with a black outline for readability over any ground. */
+function txt(c,s,x,y,align,fill,size){
+  c.textAlign=align;c.textBaseline='top';
+  c.font='900 '+size+'px ui-monospace,Menlo,Consolas,monospace';
+  if(c.letterSpacing!==undefined)c.letterSpacing='0.5px';
+  c.lineJoin='round';c.miterLimit=2;c.lineWidth=Math.max(3,size*0.3);
+  c.strokeStyle='rgba(0,0,0,0.9)';c.strokeText(s,x,y);
+  c.fillStyle=fill;c.fillText(s,x,y);
+  if(c.letterSpacing!==undefined)c.letterSpacing='0px';
+}
+function drawHUD(){
+  const c=ctx,M=12,top=Math.max(14,H*0.05);
+  c.imageSmoothingEnabled=true;                 // smooth (crisp) HUD text, not pixelated
   // cash top-right
-  o.textAlign='right';o.font='bold 11px monospace';o.fillStyle=T.accent;
-  o.fillText(money(meta.credits+(run.active?run.haul:0)),LW-6,6);
-  // depth / HOME top-left
-  o.textAlign='left';o.fillStyle='#fff';o.font='bold 11px monospace';
-  o.fillText(run.active?('DEPTH '+run.depthMax+'m'):'',6,6);
-  if(run.active&&run.depthMax>3){o.fillStyle='#fff';o.textAlign='center';o.font='bold 12px monospace';
-    o.fillText('HOME[↑'+run.depthMax+']',LW/2,Math.max(14,(-drill.y*0+18)) );}
-  // fuel bar bottom-left
-  const bw=Math.min(LW*0.5,150),bx=6,by=LH-((window.innerHeight*0)+34);
-  o.textAlign='left';o.fillStyle='#fff';o.font='bold 10px monospace';
-  o.fillText('FUEL '+run.energy.toFixed(1)+'/'+S.energyMax.toFixed(0),bx,by-12);
-  o.fillStyle='#000';o.fillRect(bx,by,bw,9);o.strokeStyle='#fff';o.lineWidth=1;o.strokeRect(bx+0.5,by+0.5,bw-1,8);
-  o.fillStyle=T.fuel;o.fillRect(bx+1,by+1,(bw-2)*(run.energy/S.energyMax),7);
-  // heat pips
-  o.fillStyle=run.heat>70?T.dmg:T.ground[1];o.fillText('HEAT '+run.heat.toFixed(0)+'%',bx,by+11);
+  txt(c,money(meta.credits+(run.active?run.haul:0)),W-M,top,'right',T.accent,Math.round(W*0.048));
+  // depth top-left
+  if(run.active)txt(c,'DEPTH '+run.depthMax+'m',M,top,'left','#ffffff',Math.round(W*0.04));
+  // HOME marker (clear of top skin buttons + the pod)
+  if(run.active&&run.depthMax>3)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.30,'center','#ffffff',Math.round(W*0.05));
+  // fuel bar, raised above the bottom buttons
+  const bw=Math.min(W*0.54,230),bx=M,by=H-108;
+  txt(c,'FUEL '+run.energy.toFixed(1)+'/'+S.energyMax.toFixed(0),bx,by-Math.round(W*0.05),'left','#ffffff',Math.round(W*0.038));
+  c.fillStyle='#000';c.fillRect(bx,by,bw,14);
+  c.strokeStyle='#ffffff';c.lineWidth=2;c.strokeRect(bx+1,by+1,bw-2,12);
+  c.fillStyle=T.fuel;c.fillRect(bx+2,by+2,(bw-4)*Math.max(0,run.energy/S.energyMax),10);
+  txt(c,'HEAT '+run.heat.toFixed(0)+'%',bx,by+18,'left',run.heat>70?T.dmg:'#c9cdd4',Math.round(W*0.034));
+  c.imageSmoothingEnabled=false;
 }
 function draw(){
   scene();
@@ -428,6 +436,8 @@ function draw(){
   if(run.heat>70){const v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.65);
     const a=(run.heat-70)/30*0.5;v.addColorStop(0,'rgba(255,50,30,0)');v.addColorStop(1,'rgba(255,40,20,'+a+')');
     ctx.fillStyle=v;ctx.fillRect(0,0,W,H);}
+  // crisp HUD on top of all post-fx
+  drawHUD();
 }
 function money(n){n=Math.round(n);if(n>=1e6)return'$'+(n/1e6).toFixed(3)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n;}
 function mix(a,b,t){const pa=hx(a),pb=hx(b);return'rgb('+Math.round(pa[0]+(pb[0]-pa[0])*t)+','+Math.round(pa[1]+(pb[1]-pa[1])*t)+','+Math.round(pa[2]+(pb[2]-pa[2])*t)+')';}
