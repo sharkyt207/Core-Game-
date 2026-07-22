@@ -409,14 +409,21 @@ function scene(){
   for(const d of dmgnums){const a=1-d.age/d.life;o.globalAlpha=a;o.fillStyle=d.color;o.fillText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}o.globalAlpha=1;
   o.restore();
 }
-function drawPod(cx,cy,S1){const o=octx,rad=Math.max(6,TILE*0.5);
-  o.strokeStyle=T.ring;o.lineWidth=2;o.beginPath();o.arc(cx,cy,rad,0,TAU);o.stroke();
+function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
+  // small pod that scales with the world zoom (much smaller than before)
+  const rad=Math.max(3,TILE*SCALEcur*S1*0.42);
+  o.strokeStyle=T.ring;o.lineWidth=Math.max(1,rad*0.16);o.beginPath();o.arc(cx,cy,rad,0,TAU);o.stroke();
   o.fillStyle=T.space2;o.beginPath();o.arc(cx,cy,rad-1,0,TAU);o.fill();
-  const pulse=0.5+Math.sin(performance.now()/220)*0.5,br=rad*0.42;
-  for(let i=0;i<3;i++){const a=performance.now()/900+i*2.094,bx=cx+Math.cos(a)*rad*0.28,by=cy+Math.sin(a)*rad*0.28;
-    o.fillStyle=T.blob;o.globalAlpha=0.85+pulse*0.15;o.beginPath();o.arc(bx,by,br,0,TAU);o.fill();}o.globalAlpha=1;
+  const pulse=0.5+Math.sin(performance.now()/220)*0.5,br=Math.max(1,rad*0.34);
+  for(let i=0;i<3;i++){const a=performance.now()/900+i*2.094,bx=cx+Math.cos(a)*rad*0.3,by=cy+Math.sin(a)*rad*0.3;
+    o.fillStyle=tier>=5?T.accent:T.blob;o.globalAlpha=0.85+pulse*0.15;o.beginPath();o.arc(bx,by,br,0,TAU);o.fill();}o.globalAlpha=1;
+  // drill teeth in facing direction while digging
   if(drilling){o.fillStyle=T.fuel;const dx=Math.cos(drill.face),dy=Math.sin(drill.face);
-    for(let i=0;i<4;i++){const tt=rad+2+i;o.fillRect((cx+dx*tt)|0,(cy+dy*tt)|0,2,2);}}}
+    for(let i=0;i<3;i++){const tt=rad+1+i;o.fillRect((cx+dx*tt)|0,(cy+dy*tt)|0,2,2);}}
+  // orbiting drones appear at higher machine tiers (visible power growth)
+  if(tier>=4){const n=tier-3;for(let i=0;i<n;i++){const a=performance.now()/500+i*(TAU/n),
+      ox=cx+Math.cos(a)*rad*2.2,oy=cy+Math.sin(a)*rad*2.2;
+    o.fillStyle=T.core;o.beginPath();o.arc(ox,oy,Math.max(1,rad*0.24),0,TAU);o.fill();}}}
 
 function draw(){scene();
   const ca=T.ca*(1+glitch*4);
