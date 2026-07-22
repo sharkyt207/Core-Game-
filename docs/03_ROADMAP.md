@@ -33,14 +33,21 @@ Handy). Nach jeder Phase: kurze Freigabe/Feedback-Runde, bevor es weitergeht.
 - **Offen für Phase 2b:** Migration in die volle Vite+TypeScript+Phaser-Projektstruktur
   (der Slice ist bewusst ein Single-File-Rapid-Prototyp zum schnellen Antesten).
 
-## Phase 3 — Ressourcen, Upgrades, Progression
+## Phase 3 — Ressourcen, Upgrades, Progression ✅
 **Ziel:** der „nur noch ein Upgrade"-Sog.
-- [ ] Ressourcen-System + Inventar + seltene Funde (Fanfare)
-- [ ] Energie/Hitze-System (Spannungsbogen, Extraktion)
-- [ ] Verkauf + Upgrade-Shop (datengetrieben)
-- [ ] Erste Fähigkeiten (Schockwelle, Magnet) + Module (sichtbare Maschinen-Evolution)
-- [ ] Zweiter Planet zum Test der Datengetriebenheit
-- **Meilenstein:** vollständiger Core-Loop (Run → Verkauf → Upgrade → tiefer).
+- [x] Ressourcen-System (common→legendary) + seltene Funde (VFX/SFX/Haptik-Fanfare)
+- [x] Energie(Fuel)/Hitze-System (Spannungsbogen, Extraktion, Drosselung)
+- [x] Verkauf + Upgrade-Shop (datengetrieben, persistenter Save)
+- [x] Fähigkeiten: Schockwelle (Blast) + Boost (Overdrive); sichtbare Maschinen-Evolution
+      (Drohnen/Farbe ab höheren Tiers)
+- [x] Runder Planet (polares Weltmodell), To-the-Core-Steuerung (rein/raus/orbit)
+- [x] Datengetriebenes Planeten-System: 3 Planeten (Terra/Magmar/Cryonis) freischaltbar
+- **Meilenstein erreicht:** vollständiger Core-Loop (Run → Extraktion → Upgrade/Planet → tiefer).
+
+## Phase 3b — Produktions-Fundament ✅
+- [x] `game/`: Vite + TypeScript, Phaser entfernt (schlanke Custom-Engine, 22 KB Bundle)
+- [x] Capacitor-Konfiguration (iOS/Android-verpackbar), Build verifiziert grün
+- **Offen:** schrittweise TS-Extraktion der Systeme (hinter EventBus), native Store-Builds.
 
 ## Phase 4 — UI, Menü, Audio, Haptik
 **Ziel:** aus Prototyp wird Produkt.
