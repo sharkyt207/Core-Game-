@@ -1,0 +1,603 @@
+<style>
+  /* ---- COREBREAKER · Playable Vertical Slice ---- */
+  :root{
+    --space:#0b0e1a; --space2:#070912;
+    --cyan:#2de2e6; --teal:#12d9b0; --violet:#8a5cff;
+    --orange:#ff8a3d; --red:#ff4d4d; --ink:#cfe9ff;
+    --panel:rgba(10,16,32,.62); --line:rgba(45,226,230,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  html,body{margin:0;height:100%;width:100%;overflow:hidden;background:var(--space2);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--ink);
+    touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+  #game{display:block;touch-action:none;}
+  .layer{position:fixed;inset:0;pointer-events:none;}
+
+  /* HUD */
+  #hud{padding:calc(env(safe-area-inset-top) + 10px) 12px 0;}
+  .hudrow{display:flex;gap:8px;align-items:stretch;}
+  .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:7px 9px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+  .stat .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7fb9c9;}
+  .stat .v{font-size:17px;font-weight:700;color:#eaffff;font-variant-numeric:tabular-nums;line-height:1.15;}
+  .stat .v small{font-size:10px;color:#7fb9c9;font-weight:400;}
+  .bars{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+  .bar{position:relative;height:14px;background:rgba(255,255,255,.06);border-radius:8px;
+    border:1px solid rgba(255,255,255,.08);overflow:hidden;}
+  .bar>i{position:absolute;inset:0;transform-origin:left;border-radius:8px;transition:transform .08s linear;}
+  .bar>span{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 8px;
+    font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#dff;}
+  #energyFill{background:linear-gradient(90deg,var(--teal),var(--cyan));box-shadow:0 0 12px rgba(45,226,230,.55);}
+  #heatFill{background:linear-gradient(90deg,var(--orange),var(--red));box-shadow:0 0 12px rgba(255,120,60,.5);}
+
+  /* bottom controls */
+  #controls{bottom:0;padding:0 14px calc(env(safe-area-inset-bottom) + 16px);
+    display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none;}
+  .btn{pointer-events:auto;background:var(--panel);border:1px solid var(--line);color:#eaffff;
+    border-radius:14px;padding:12px 14px;font-family:inherit;font-size:12px;letter-spacing:.06em;
+    text-transform:uppercase;font-weight:700;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    display:flex;flex-direction:column;align-items:center;gap:3px;min-width:76px;transition:transform .06s,filter .1s;}
+  .btn:active{transform:scale(.94);}
+  .btn small{font-size:8px;font-weight:400;color:#7fb9c9;letter-spacing:.1em;}
+  .btn.ability{border-color:rgba(138,92,255,.6);box-shadow:0 0 18px rgba(138,92,255,.25);position:relative;overflow:hidden;}
+  .btn.ability .cd{position:absolute;inset:0;background:rgba(4,6,14,.72);transform-origin:bottom;pointer-events:none;}
+  .btn.ico{font-size:20px;padding:12px;min-width:0;}
+  .hint{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:rgba(210,240,255,.5);text-align:center;transition:opacity .5s;}
+
+  /* overlays */
+  .over{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:26px;background:radial-gradient(120% 90% at 50% 10%,rgba(18,40,64,.85),rgba(5,7,16,.96));
+    z-index:20;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+  .over.show{display:flex;}
+  .logo{font-size:min(15vw,64px);font-weight:800;letter-spacing:.04em;line-height:.95;
+    background:linear-gradient(180deg,#eaffff,var(--cyan) 55%,var(--violet));-webkit-background-clip:text;
+    background-clip:text;color:transparent;text-shadow:0 0 32px rgba(45,226,230,.35);text-wrap:balance;}
+  .tag{margin-top:10px;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--teal);}
+  .sub{margin:18px 0 4px;max-width:340px;font-size:13px;line-height:1.6;color:#9fc4d6;}
+  .big{margin-top:26px;pointer-events:auto;background:linear-gradient(90deg,var(--teal),var(--cyan));
+    color:#04121a;border:none;border-radius:16px;padding:16px 40px;font-family:inherit;font-weight:800;
+    font-size:15px;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 8px 34px rgba(45,226,230,.4);}
+  .big:active{transform:scale(.96);}
+  .shopgrid{display:flex;flex-direction:column;gap:10px;width:100%;max-width:330px;margin-top:20px;}
+  .up{pointer-events:auto;display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:13px 15px;text-align:left;color:#eaffff;
+    font-family:inherit;transition:transform .06s,filter .1s;}
+  .up:active{transform:scale(.98);}
+  .up:disabled{opacity:.4;filter:grayscale(.6);}
+  .up .ic{font-size:22px;width:30px;text-align:center;}
+  .up .t{flex:1;}
+  .up .t b{display:block;font-size:13px;letter-spacing:.04em;}
+  .up .t span{font-size:10px;color:#8fb3c6;letter-spacing:.03em;}
+  .up .c{font-size:12px;font-weight:700;color:var(--orange);white-space:nowrap;}
+  .result{display:flex;gap:22px;margin-top:6px;}
+  .result div{display:flex;flex-direction:column;}
+  .result b{font-size:26px;color:#eaffff;font-variant-numeric:tabular-nums;}
+  .result span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7fb9c9;}
+  .toast{position:fixed;left:50%;top:32%;transform:translate(-50%,0);z-index:15;pointer-events:none;
+    font-weight:800;letter-spacing:.06em;text-align:center;opacity:0;text-transform:uppercase;}
+  #foot{position:fixed;left:0;right:0;bottom:2px;text-align:center;font-size:8px;letter-spacing:.2em;
+    color:rgba(150,190,210,.28);text-transform:uppercase;z-index:5;pointer-events:none;}
+</style>
+
+<div id="wrap"><canvas id="game"></canvas></div>
+
+<div class="layer" id="hud">
+  <div class="hudrow">
+    <div class="stat"><div class="k">Tiefe</div><div class="v" id="depth">0<small>m</small></div></div>
+    <div class="stat"><div class="k">Credits</div><div class="v" id="credits">0</div></div>
+    <div class="stat"><div class="k">Run-Ertrag</div><div class="v" id="haul">0</div></div>
+  </div>
+  <div class="bars">
+    <div class="bar"><i id="energyFill"></i><span>Energie</span></div>
+    <div class="bar"><i id="heatFill"></i><span>Hitze</span></div>
+  </div>
+</div>
+
+<div class="layer" id="controls">
+  <button class="btn ico" id="btnExtract" title="Extraktion">⏏<small>Raus</small></button>
+  <button class="btn ico" id="btnSound">🔊</button>
+  <button class="btn ability" id="btnShock">Schock<small>welle</small><i class="cd" id="shockCd"></i></button>
+</div>
+<div class="hint" id="hint">Finger unten aufsetzen · ziehen zum Steuern</div>
+
+<div class="toast" id="toast"></div>
+<div id="foot">Corebreaker · Prototype v0.1</div>
+
+<!-- TITLE -->
+<div class="over show" id="titleOver">
+  <div class="logo">CORE<br>BREAKER</div>
+  <div class="tag">Deep Core Mining</div>
+  <div class="sub">Bohr dich durch den Planeten. Sammle Ressourcen, verwalte Energie &amp; Hitze,
+    kehr zurück und rüste deine Maschine auf. Nur noch ein Meter tiefer…</div>
+  <button class="big" id="btnStart">Abstieg starten</button>
+</div>
+
+<!-- SHOP / RESULT -->
+<div class="over" id="shopOver">
+  <div class="tag" style="color:var(--orange)">Extraktion abgeschlossen</div>
+  <div class="result">
+    <div><b id="rDepth">0</b><span>Meter</span></div>
+    <div><b id="rHaul">0</b><span>Verdient</span></div>
+    <div><b id="rCredits">0</b><span>Credits</span></div>
+  </div>
+  <div class="sub" style="margin-top:16px">Rüste deine Maschine auf — dann tiefer als je zuvor.</div>
+  <div class="shopgrid" id="shopGrid"></div>
+  <button class="big" id="btnDescend" style="margin-top:20px">Erneut abtauchen</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- viewport meta (works as standalone file + artifact) ---------- */
+(function(){var m=document.querySelector('meta[name=viewport]');
+ if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}
+ m.content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';
+ if(!document.title)document.title='COREBREAKER';})();
+
+/* ===================== CORE: state, rng, events ===================== */
+const TILE=46;                 // logical px per tile
+const COLS=9;                  // shaft width in tiles
+const PAL={space:'#0b0e1a',cyan:'#2de2e6',teal:'#12d9b0',violet:'#8a5cff',orange:'#ff8a3d',red:'#ff4d4d'};
+
+function rngSeed(s){return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+let rnd=rngSeed(Date.now()>>>0);
+
+// persistent meta state (localStorage)
+const SAVE_KEY='corebreaker_v1';
+const meta=loadMeta();
+function loadMeta(){
+  try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===1)return j;}catch(e){}
+  return {v:1,credits:0,up:{power:0,speed:0,energy:0,cool:0,magnet:0}};
+}
+function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
+
+/* ---- upgrade definitions (data-driven) ---- */
+const UPGRADES=[
+  {id:'power', ic:'⛏️', name:'Bohrkraft',   desc:'Zerstört härteres Gestein schneller', base:120, mult:1.7},
+  {id:'speed', ic:'💨', name:'Geschwindigkeit', desc:'Schnellere Bewegung & Bohren',     base:100, mult:1.6},
+  {id:'energy',ic:'🔋', name:'Energiezelle', desc:'Größerer Tank & mehr Regeneration',   base:110, mult:1.65},
+  {id:'cool',  ic:'❄️', name:'Kühlung',      desc:'Weniger Hitze, schnellere Abkühlung', base:100, mult:1.6},
+  {id:'magnet',ic:'🧲', name:'Magnetfeld',   desc:'Zieht Ressourcen aus größerer Distanz',base:90, mult:1.7},
+];
+function upCost(u){return Math.round(u.base*Math.pow(u.mult,meta.up[u.id]));}
+
+/* ---- derived machine stats from upgrades ---- */
+function stats(){
+  const u=meta.up;
+  return {
+    power: 34 + u.power*20,          // mining dmg / sec
+    speed: 250 + u.speed*42,         // px / sec
+    energyMax: 100 + u.energy*45,
+    energyRegen: 9 + u.energy*3.2,
+    coolRate: 16 + u.cool*7,
+    heatGen: Math.max(3, 11 - u.cool*1.4),
+    magnet: 70 + u.magnet*46,
+    tier: Math.min(6, 1+Math.floor((u.power+u.speed+u.energy+u.cool+u.magnet)/3)),
+  };
+}
+
+/* ===================== RESOURCES & BLOCKS (data-driven) ===================== */
+const RES={
+  ferrite:  {name:'Ferrit',     color:'#c9d4e0', glow:'#eef4ff', value:6,   rar:'common'},
+  cuprite:  {name:'Cuprit',     color:'#ff9d5c', glow:'#ffd9b0', value:16,  rar:'common'},
+  crystal:  {name:'Kristall',   color:'#5cf0d8', glow:'#b6fff2', value:44,  rar:'uncommon'},
+  core:     {name:'Energiekern',color:'#2de2e6', glow:'#c8ffff', value:130, rar:'rare'},
+  artifact: {name:'Artefakt',   color:'#8a5cff', glow:'#e6d8ff', value:520, rar:'legendary'},
+};
+// block hardness (relative). higher = tougher.
+const HARD={dirt:16, stone:34, hard:64, dark:96};
+
+// choose a tile for a given depth (returns {rock, res?})
+function genTile(depthM){
+  const r=rnd();
+  let rock='dirt';
+  if(depthM>60) rock='dark'; else if(depthM>32) rock='hard'; else if(depthM>10) rock='stone';
+  // ore chance rises slightly with depth
+  let res=null;
+  const oreRoll=rnd();
+  if(oreRoll<0.15){
+    if(depthM>70 && rnd()<0.05) res='artifact';
+    else if(depthM>45 && rnd()<0.16) res='core';
+    else if(depthM>22 && rnd()<0.30) res='crystal';
+    else if(depthM>8  && rnd()<0.5)  res='cuprite';
+    else res='ferrite';
+  }
+  return {rock, res, hp:HARD[rock], maxhp:HARD[rock]};
+}
+
+/* ===================== WORLD (sparse grid, streamed by row) ===================== */
+const world=new Map();               // "col,row" -> tile | null(empty)
+const key=(c,r)=>c+','+r;
+function tileAt(c,r){
+  if(c<0||c>=COLS) return {wall:true};
+  if(r<0) return null;                // sky above surface
+  const k=key(c,r);
+  if(world.has(k)) return world.get(k);
+  const depthM=r; // 1 tile ~ 1 m
+  const t = r===0 ? {rock:'dirt',res:null,hp:HARD.dirt*0.4,maxhp:HARD.dirt*0.4} : genTile(depthM);
+  world.set(k,t);
+  return t;
+}
+function clearWorld(){world.clear();}
+
+/* ===================== GAME STATE ===================== */
+let S=stats();
+const run={active:false, depthMax:0, haul:0, energy:S.energyMax, heat:0, shockCd:0};
+const drill={x:(COLS/2)*TILE, y:-TILE*0.5, vx:0, vy:0, rot:0, mining:0, face:0};
+const drops=[];    // floating resources
+const parts=[];    // particles
+let shake=0, flash=0, hitstop=0, drilling=false;
+
+/* ===================== INPUT: invisible anchor stick ===================== */
+const input={active:false, ax:0, ay:0, dx:0, dy:0, mag:0};
+const MAXR=92, DEAD=11;
+function setInput(px,py){
+  let dx=px-input.ax, dy=py-input.ay;
+  const d=Math.hypot(dx,dy);
+  if(d>MAXR){dx*=MAXR/d;dy*=MAXR/d;}
+  input.dx=dx;input.dy=dy;input.mag=Math.min(1,Math.max(0,(Math.hypot(dx,dy)-DEAD)/(MAXR-DEAD)));
+}
+const cv=document.getElementById('game');
+function onDown(e){
+  if(!run.active)return;
+  const t=point(e); input.active=true; input.ax=t.x; input.ay=t.y; setInput(t.x,t.y);
+  hideHint();
+}
+function onMove(e){ if(input.active){const t=point(e);setInput(t.x,t.y);e.preventDefault();} }
+function onUp(){ input.active=false; input.mag=0; input.dx=input.dy=0; }
+function point(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
+cv.addEventListener('touchstart',onDown,{passive:false});
+cv.addEventListener('touchmove',onMove,{passive:false});
+cv.addEventListener('touchend',onUp);cv.addEventListener('touchcancel',onUp);
+cv.addEventListener('mousedown',onDown);
+window.addEventListener('mousemove',e=>{if(input.active)onMove(e);});
+window.addEventListener('mouseup',onUp);
+// keyboard fallback (desktop testing)
+const kb={};
+window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;if(e.key===' ')shockwave();});
+window.addEventListener('keyup',e=>{kb[e.key.toLowerCase()]=false;});
+function kbVec(){
+  let x=0,y=0;
+  if(kb['arrowleft']||kb['a'])x-=1; if(kb['arrowright']||kb['d'])x+=1;
+  if(kb['arrowup']||kb['w'])y-=1; if(kb['arrowdown']||kb['s'])y+=1;
+  if(x||y){const m=Math.hypot(x,y);return{dx:x/m,dy:y/m,mag:1};}
+  return null;
+}
+
+/* ===================== AUDIO (procedural, self-contained) ===================== */
+let AC=null,muted=false,ambient=null;
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function blip(freq,dur,type,vol,slideTo){
+  if(muted)return;const a=audio();if(!a)return;
+  const o=a.createOscillator(),g=a.createGain();o.type=type||'square';
+  o.frequency.setValueAtTime(freq,a.currentTime);
+  if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,a.currentTime+dur);
+  g.gain.setValueAtTime((vol||0.15),a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur);
+  o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur);
+}
+function noise(dur,vol){
+  if(muted)return;const a=audio();if(!a)return;
+  const n=a.createBuffer(1,a.sampleRate*dur,a.sampleRate),d=n.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=a.createBufferSource(),g=a.createGain();s.buffer=n;
+  g.gain.value=vol||0.08;s.connect(g);g.connect(a.destination);s.start();
+}
+const sfx={
+  tick:()=>noise(0.03,0.05),
+  break:()=>blip(180+rnd()*60,0.12,'square',0.12,90),
+  rare:()=>{blip(520,0.1,'triangle',0.18);setTimeout(()=>blip(720,0.1,'triangle',0.18),90);setTimeout(()=>blip(980,0.16,'triangle',0.2),180);},
+  legendary:()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>blip(f,0.2,'sawtooth',0.16),i*110));},
+  shock:()=>{blip(90,0.4,'sawtooth',0.22,1200);noise(0.3,0.12);},
+  ui:()=>blip(660,0.06,'square',0.12),
+  buy:()=>{blip(520,0.08,'square',0.14);setTimeout(()=>blip(780,0.1,'square',0.14),70);},
+};
+
+/* ===================== HAPTICS ===================== */
+function vibe(p){if(!muted&&navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
+
+/* ===================== FX helpers ===================== */
+function burst(wx,wy,color,n,spd){
+  for(let i=0;i<n;i++){const a=rnd()*6.283,s=(spd||1)*(40+rnd()*160);
+    parts.push({x:wx,y:wy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,life:0.5+rnd()*0.5,age:0,color,size:2+rnd()*3});}
+}
+function toast(txt,color){
+  const el=document.getElementById('toast');el.textContent=txt;el.style.color=color||PAL.cyan;
+  el.style.transition='none';el.style.opacity='1';el.style.transform='translate(-50%,-6px) scale(1.1)';el.style.fontSize='clamp(16px,6vw,28px)';
+  requestAnimationFrame(()=>{el.style.transition='all .9s ease-out';el.style.opacity='0';el.style.transform='translate(-50%,-46px) scale(1)';});
+}
+
+/* ===================== MINING ===================== */
+function collectRes(id,wx,wy){
+  const r=RES[id];
+  drops.push({x:wx,y:wy,id,got:false,t:0});
+  if(r.rar==='rare'){sfx.rare();vibe([12,30,12,30,40]);flash=Math.max(flash,0.5);shake=Math.max(shake,10);toast('★ '+r.name+' ★',r.glow);}
+  else if(r.rar==='legendary'){sfx.legendary();vibe([20,40,20,40,20,60,120]);flash=Math.max(flash,0.9);shake=Math.max(shake,18);toast('✦ '+r.name+' ✦',r.glow);}
+  else if(r.rar==='uncommon'){sfx.rare();vibe([8,20,25]);toast(r.name,r.glow);}
+  else{vibe(6);}
+}
+function mineTile(c,r,dmg){
+  const t=tileAt(c,r); if(!t||t.wall)return false;
+  t.hp-=dmg;
+  const wx=c*TILE+TILE/2, wy=r*TILE+TILE/2;
+  if(rnd()<0.3){burst(wx,wy,t.rock==='dirt'?'#6b5136':t.rock==='stone'?'#59647a':t.rock==='hard'?'#43506b':'#2a2140',1,0.5);}
+  if(t.hp<=0){
+    world.set(key(c,r),null);              // becomes empty
+    burst(wx,wy,PAL.cyan,10,1); shake=Math.max(shake,3.5); hitstop=0.02;
+    sfx.break(); vibe(4);
+    if(t.res){ collectRes(t.res,wx,wy); }
+    return true;
+  }
+  return false;
+}
+
+/* ===================== SHOCKWAVE ability ===================== */
+function shockwave(){
+  if(!run.active||run.shockCd>0)return;
+  if(run.energy<22){toast('Zu wenig Energie',PAL.red);sfx.ui();return;}
+  run.energy-=22; run.shockCd=5;
+  const cc=Math.round((drill.x-TILE/2)/TILE), cr=Math.round((drill.y-TILE/2)/TILE), R=2;
+  for(let dc=-R;dc<=R;dc++)for(let dr=-R;dr<=R;dr++){
+    if(dc*dc+dr*dr<=R*R+1)mineTile(cc+dc,cr+dr,9999);
+  }
+  shake=Math.max(shake,16);flash=Math.max(flash,0.55);hitstop=0.05;
+  sfx.shock();vibe([18,25,60]);burst(drill.x,drill.y,PAL.violet,26,1.6);
+}
+
+/* ===================== RUN control ===================== */
+function startRun(){
+  S=stats(); clearWorld(); rnd=rngSeed(Date.now()>>>0);
+  run.active=true; run.depthMax=0; run.haul=0; run.energy=S.energyMax; run.heat=0; run.shockCd=0;
+  drill.x=(COLS/2)*TILE+TILE/2; drill.y=-TILE*0.4; drill.vx=drill.vy=0; drill.rot=0;
+  drops.length=0; parts.length=0; shake=flash=hitstop=0;
+  hide('titleOver'); hide('shopOver'); showHint();
+  if(audio()&&AC.state==='suspended')AC.resume();
+}
+function extract(){
+  if(!run.active)return; run.active=false;
+  meta.credits+=Math.round(run.haul); saveMeta();
+  document.getElementById('rDepth').textContent=run.depthMax;
+  document.getElementById('rHaul').textContent=Math.round(run.haul);
+  document.getElementById('rCredits').textContent=meta.credits;
+  buildShop(); show('shopOver'); sfx.ui(); vibe([10,20,40]);
+}
+function buildShop(){
+  const g=document.getElementById('shopGrid'); g.innerHTML='';
+  UPGRADES.forEach(u=>{
+    const lvl=meta.up[u.id], cost=upCost(u), can=meta.credits>=cost;
+    const b=document.createElement('button'); b.className='up'; b.disabled=!can;
+    b.innerHTML='<span class="ic">'+u.ic+'</span><span class="t"><b>'+u.name+' · Lv '+lvl+'</b><span>'+u.desc+'</span></span><span class="c">'+cost+' ⬢</span>';
+    b.onclick=()=>{ if(meta.credits>=upCost(u)){ meta.credits-=upCost(u); meta.up[u.id]++; saveMeta(); sfx.buy(); vibe(12); buildShop();
+      document.getElementById('rCredits').textContent=meta.credits; } };
+    g.appendChild(b);
+  });
+}
+
+/* ===================== UPDATE ===================== */
+let curDt=0.016;
+function update(dt){
+  curDt=dt;
+  // HUD credits always
+  if(!run.active){return;}
+  // input vector
+  let vx=0,vy=0,mag=0;
+  const kv=kbVec();
+  if(input.active&&input.mag>0){vx=input.dx;vy=input.dy;mag=input.mag;const d=Math.hypot(vx,vy)||1;vx/=d;vy/=d;}
+  else if(kv){vx=kv.dx;vy=kv.dy;mag=1;}
+  // heat throttle
+  const throttled=run.heat>=95;
+  const spd=S.speed*(throttled?0.35:1);
+  drill.vx=vx*mag*spd; drill.vy=vy*mag*spd;
+
+  drilling=false;
+  moveAxis('x',drill.vx*dt);
+  moveAxis('y',drill.vy*dt);
+  if(mag>0.05){drill.rot+=dt*(8+mag*14);drill.face=Math.atan2(vy,vx);}
+
+  // energy & heat
+  if(drilling){
+    run.energy-=(9+ (S.power/12))*dt;
+    run.heat=Math.min(100,run.heat+S.heatGen*dt);
+    if(rnd()<0.5)sfx.tick();
+  }else{
+    run.energy=Math.min(S.energyMax,run.energy+S.energyRegen*dt);
+    run.heat=Math.max(0,run.heat-S.coolRate*dt);
+  }
+  if(run.energy<0)run.energy=0;
+
+  // depth
+  const dm=Math.max(0,Math.floor(drill.y/TILE));
+  if(dm>run.depthMax)run.depthMax=dm;
+
+  // cooldown
+  if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
+
+  // drops magnet + collect
+  for(let i=drops.length-1;i>=0;i--){
+    const dp=drops[i]; dp.t+=dt;
+    const dx=drill.x-dp.x, dy=drill.y-dp.y, dist=Math.hypot(dx,dy);
+    if(dist<S.magnet||dp.got){dp.got=true; dp.x+=dx*Math.min(1,dt*14); dp.y+=dy*Math.min(1,dt*14);}
+    if(dist<18){ run.haul+=RES[dp.id].value*(1+ (meta.up.magnet*0.05)); burst(drill.x,drill.y,RES[dp.id].glow,7,1.1); drops.splice(i,1);}
+  }
+  // particles
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){parts.splice(i,1);continue;}
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
+
+  // decay fx
+  if(shake>0)shake=Math.max(0,shake-dt*26);
+  if(flash>0)flash=Math.max(0,flash-dt*1.6);
+}
+// per-axis move with mining collision
+function moveAxis(axis,amt){
+  if(amt===0)return;
+  const rad=TILE*0.4;
+  let nx=drill.x+(axis==='x'?amt:0), ny=drill.y+(axis==='y'?amt:0);
+  // clamp to shaft horizontally
+  if(axis==='x'){nx=Math.max(TILE*0.42,Math.min(COLS*TILE-TILE*0.42,nx));}
+  if(axis==='y'&&ny<-TILE*0.4)ny=-TILE*0.4;
+  // tile in the direction of movement
+  const dir=Math.sign(amt);
+  const probeX=nx+(axis==='x'?dir*rad:0), probeY=ny+(axis==='y'?dir*rad:0);
+  const c=Math.floor(probeX/TILE), r=Math.floor(probeY/TILE);
+  const t=tileAt(c,r);
+  if(t&&!t.wall){ // solid -> mine, block movement
+    drilling=true;
+    const energyF=run.energy>0?1:0.3;
+    mineTile(c,r, S.power*energyF*curDt);
+    return;
+  }
+  if(t&&t.wall)return; // shaft wall
+  // empty -> move
+  drill.x=nx; drill.y=ny;
+}
+
+/* ===================== RENDER ===================== */
+const ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize',resize);resize();
+
+const ROCKCOL={dirt:['#3a2c1c','#4a3826'],stone:['#2f3646','#3d4658'],hard:['#242c3e','#333d54'],dark:['#171525','#241f38']};
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // camera: drill centered, slight look-ahead. shake offset.
+  const sx=(Math.random()-0.5)*shake, sy=(Math.random()-0.5)*shake;
+  const camx=drill.x - W/2 + sx, camy=drill.y - H*0.44 + sy;
+
+  // background gradient by depth
+  const depthT=Math.min(1,run.depthMax/90);
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, mix('#0b0e1a','#05060d',depthT));
+  g.addColorStop(1, mix('#111a2e','#0a0716',depthT));
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // faint stars near surface
+  if(run.depthMax<14){ctx.globalAlpha=0.5-run.depthMax/28;ctx.fillStyle='#2de2e6';
+    for(let i=0;i<26;i++){const px=(i*97%W),py=((i*53)%Math.max(1,H*0.4))-camy*0.2;if(py>0&&py<H)ctx.fillRect(px,py,2,2);}ctx.globalAlpha=1;}
+
+  // visible tile range
+  const c0=Math.max(0,Math.floor(camx/TILE)), c1=Math.min(COLS-1,Math.floor((camx+W)/TILE));
+  const r0=Math.max(0,Math.floor(camy/TILE)), r1=Math.floor((camy+H)/TILE);
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){
+    const t=tileAt(c,r); if(!t||t.wall)continue;
+    const x=c*TILE-camx, y=r*TILE-camy;
+    const col=ROCKCOL[t.rock]||ROCKCOL.stone;
+    const dmgT=1-t.hp/t.maxhp;
+    ctx.fillStyle=col[0];ctx.fillRect(x,y,TILE,TILE);
+    ctx.fillStyle=col[1];ctx.fillRect(x+2,y+2,TILE-4,TILE-6);
+    // top neon edge
+    ctx.fillStyle='rgba(255,255,255,'+(0.05)+')';ctx.fillRect(x+2,y+2,TILE-4,2);
+    if(dmgT>0.05){ctx.fillStyle='rgba(0,0,0,'+(dmgT*0.4)+')';ctx.fillRect(x+2,y+2,TILE-4,TILE-6);
+      ctx.strokeStyle='rgba(45,226,230,'+(dmgT*0.5)+')';ctx.lineWidth=1;ctx.strokeRect(x+5,y+5,TILE-10,TILE-10);}
+    // ore gem
+    if(t.res){const R=RES[t.res];const cx=x+TILE/2,cy=y+TILE/2,s=TILE*0.19;
+      ctx.save();ctx.shadowColor=R.glow;ctx.shadowBlur=12;ctx.fillStyle=R.color;
+      ctx.beginPath();ctx.moveTo(cx,cy-s);ctx.lineTo(cx+s,cy);ctx.lineTo(cx,cy+s);ctx.lineTo(cx-s,cy);ctx.closePath();ctx.fill();
+      ctx.shadowBlur=0;ctx.fillStyle=R.glow;ctx.globalAlpha=0.85;
+      ctx.beginPath();ctx.moveTo(cx,cy-s*0.5);ctx.lineTo(cx+s*0.4,cy-s*0.1);ctx.lineTo(cx-s*0.2,cy+s*0.2);ctx.closePath();ctx.fill();ctx.globalAlpha=1;ctx.restore();}
+  }
+  // shaft walls glow
+  ctx.fillStyle='rgba(45,226,230,0.06)';
+  const wl=0-camx, wr=COLS*TILE-camx;
+  if(wl>-20)ctx.fillRect(wl-40,0,40,H);
+  if(wr<W+20)ctx.fillRect(wr,0,40,H);
+
+  // drops
+  for(const dp of drops){const R=RES[dp.id];const x=dp.x-camx,y=dp.y-camy;const s=7+Math.sin(dp.t*8)*1.5;
+    ctx.save();ctx.shadowColor=R.glow;ctx.shadowBlur=14;ctx.fillStyle=R.color;
+    ctx.beginPath();ctx.arc(x,y,s,0,6.283);ctx.fill();ctx.restore();}
+
+  // particles
+  for(const p of parts){const a=1-p.age/p.life;ctx.globalAlpha=a;ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-camx-p.size/2,p.y-camy-p.size/2,p.size,p.size);}
+  ctx.globalAlpha=1;
+
+  // ---- DRILL (center) ----
+  drawDrill(W/2+sx*0.3, drill.y-camy);
+
+  // flash
+  if(flash>0){ctx.fillStyle='rgba(200,255,255,'+(flash*0.5)+')';ctx.fillRect(0,0,W,H);}
+  // heat vignette
+  if(run.heat>70){ctx.save();const v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.65);
+    const a=(run.heat-70)/30*0.5;v.addColorStop(0,'rgba(255,60,40,0)');v.addColorStop(1,'rgba(255,50,30,'+a+')');
+    ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.restore();}
+}
+function drawDrill(cx,cy){
+  const tier=S.tier;
+  ctx.save();ctx.translate(cx,cy);
+  // aura scales with tier
+  ctx.shadowColor=PAL.cyan;ctx.shadowBlur=14+tier*3;
+  // body
+  const bodyCol=['#1a3a4a','#215566','#2b6f80','#39909e','#4bb6c4','#63e2ea'][tier-1]||'#2b6f80';
+  ctx.fillStyle=bodyCol;
+  roundRect(-16,-20,32,30,7);ctx.fill();
+  // cockpit core (pulsing)
+  const pulse=0.6+Math.sin(performance.now()/240)*0.4;
+  ctx.shadowBlur=18;ctx.shadowColor=PAL.teal;ctx.fillStyle='rgba(45,226,230,'+pulse+')';
+  ctx.beginPath();ctx.arc(0,-6,5,0,6.283);ctx.fill();
+  // drill bit (rotating) points down toward face
+  ctx.rotate(drill.face+Math.PI/2);
+  ctx.shadowBlur=drilling?20:8;ctx.shadowColor=drilling?PAL.orange:PAL.cyan;
+  ctx.fillStyle=drilling?PAL.orange:'#9fecff';
+  const spin=drill.rot;
+  for(let i=0;i<3;i++){ctx.save();ctx.rotate(spin+i*2.094);
+    ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(5,24);ctx.lineTo(-5,24);ctx.closePath();ctx.fill();ctx.restore();}
+  ctx.beginPath();ctx.moveTo(-7,10);ctx.lineTo(7,10);ctx.lineTo(0,30);ctx.closePath();
+  ctx.fillStyle=drilling?'#ffd18a':'#c8f6ff';ctx.fill();
+  // orbiting drones at higher tiers
+  ctx.restore();
+  if(tier>=4){const n=tier-3;for(let i=0;i<n;i++){const a=performance.now()/500+i*(6.283/n);
+    const ox=cx+Math.cos(a)*30,oy=cy+Math.sin(a)*30;
+    ctx.save();ctx.shadowColor=PAL.violet;ctx.shadowBlur=10;ctx.fillStyle=PAL.violet;
+    ctx.beginPath();ctx.arc(ox,oy,3.5,0,6.283);ctx.fill();ctx.restore();}}
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function mix(a,b,t){const pa=hx(a),pb=hx(b);return'rgb('+Math.round(pa[0]+(pb[0]-pa[0])*t)+','+Math.round(pa[1]+(pb[1]-pa[1])*t)+','+Math.round(pa[2]+(pb[2]-pa[2])*t)+')';}
+function hx(h){h=h.replace('#','');return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
+
+/* ===================== HUD sync ===================== */
+const el={depth:document.getElementById('depth'),credits:document.getElementById('credits'),
+  haul:document.getElementById('haul'),ef:document.getElementById('energyFill'),
+  hf:document.getElementById('heatFill'),cd:document.getElementById('shockCd')};
+function syncHUD(){
+  el.depth.innerHTML=run.depthMax+'<small>m</small>';
+  el.credits.textContent=meta.credits;
+  el.haul.textContent=Math.round(run.haul);
+  el.ef.style.transform='scaleX('+(run.energy/S.energyMax)+')';
+  el.hf.style.transform='scaleX('+(run.heat/100)+')';
+  el.cd.style.transform='scaleY('+(run.shockCd/5)+')';
+}
+
+/* ===================== LOOP ===================== */
+let last=performance.now();
+function frame(now){
+  let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05;
+  if(hitstop>0){hitstop-=dt;} else { update(dt); }
+  draw(); syncHUD();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ===================== UI wiring ===================== */
+function show(id){document.getElementById(id).classList.add('show');}
+function hide(id){document.getElementById(id).classList.remove('show');}
+let hintTimer;
+function showHint(){const h=document.getElementById('hint');h.style.opacity='1';clearTimeout(hintTimer);hintTimer=setTimeout(hideHint,4000);}
+function hideHint(){document.getElementById('hint').style.opacity='0';}
+document.getElementById('btnStart').onclick=()=>{sfx.ui();startRun();};
+document.getElementById('btnDescend').onclick=()=>{sfx.ui();startRun();};
+document.getElementById('btnExtract').onclick=extract;
+document.getElementById('btnShock').onclick=shockwave;
+document.getElementById('btnSound').onclick=function(){muted=!muted;this.textContent=muted?'🔇':'🔊';if(!muted){audio();if(AC&&AC.state==='suspended')AC.resume();}};
+// init HUD
+syncHUD();
+})();
+</script>

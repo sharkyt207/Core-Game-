@@ -16,15 +16,22 @@ Handy). Nach jeder Phase: kurze Freigabe/Feedback-Runde, bevor es weitergeht.
 - [ ] Art-Direction & visuelle Identität (3 Konzept-Varianten zur Auswahl)
 - **Meilenstein:** Freigegebenes Konzept + gewählte Art-Richtung.
 
-## Phase 2 — Spielbarer Kern
+## Phase 2 — Spielbarer Kern ✅ (Vertical Slice)
 **Ziel:** der Core-Loop bewegt sich und macht Spaß.
-- [ ] Projekt-Setup (Vite + TypeScript + Phaser, Portrait-Canvas)
-- [ ] Core Layer: EventBus, GameState/RunState, Registry, RNG
-- [ ] Anker-Wisch-Steuerung + Bewegung (Bohrer zentriert, Welt bewegt sich)
-- [ ] Smooth-Follow-Kamera + Screen Shake
-- [ ] WorldGen (Chunks) + Mining-System + erste Testwelt (Terra Prime)
-- [ ] Basis-VFX/Juice bei Blockzerstörung
-- **Meilenstein:** man kann sich durch einen Planeten bohren — testbar am Handy.
+- [x] Spielbarer Prototyp (`prototype/index.html`, selbst-enthalten, Handy-Browser-testbar)
+- [x] Anker-Wisch-Steuerung + Bewegung (Bohrer zentriert, Welt bewegt sich)
+- [x] Smooth-Follow-Kamera + Screen Shake + Hit-Stop
+- [x] Prozedurale Welt (tiefenbasierte Materialien) + Mining-System
+- [x] VFX/Juice: Partikel, Flash, Neon-Glow, pulsierender Kern
+- [x] Energie/Hitze-Spannungsbogen + Extraktion
+- [x] Ressourcen (common→legendary) mit Fanfare (VFX/SFX/Haptik)
+- [x] Schockwellen-Fähigkeit (Cooldown, Energiekosten)
+- [x] Upgrade-Shop-Loop (datengetrieben) + persistenter Save
+- [x] Prozedurale Audio-SFX + Vibration
+- **Meilenstein erreicht:** man kann sich durch den Planeten bohren, sammeln,
+  extrahieren, aufrüsten — testbar am Handy.
+- **Offen für Phase 2b:** Migration in die volle Vite+TypeScript+Phaser-Projektstruktur
+  (der Slice ist bewusst ein Single-File-Rapid-Prototyp zum schnellen Antesten).
 
 ## Phase 3 — Ressourcen, Upgrades, Progression
 **Ziel:** der „nur noch ein Upgrade"-Sog.
