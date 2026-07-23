@@ -59,8 +59,14 @@ function sectorOf(a){let s=Math.floor(a/DSEC);return ((s%SECTORS)+SECTORS)%SECTO
 const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
-  if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra'};}
+  if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};return j;}}catch(e){}
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0}};}
+// Prestige ("Core Overload"): cores grow with the sqrt of lifetime earnings.
+function totalCores(){return Math.floor(Math.sqrt(meta.lifetime/300));}
+function prestigeGain(){return Math.max(0,totalCores()-meta.prestige.cores);}
+function doPrestige(){const g=prestigeGain();if(g<=0)return false;
+  meta.prestige.cores=totalCores();meta.skills=[];meta.credits=0;saveMeta();S=stats();return true;}
 function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
 
 // Skill tree — starts with ONE unlockable skill; buying a node reveals its children.
@@ -81,6 +87,8 @@ const SKILLS=[
  {id:'auto',    name:'Auto-Sammler',   ic:'🧲', cost:640,  req:['magnet1'],pos:[-2.7,3], eff:{auto:1,dm:40}},
  {id:'reactor', name:'Reaktor',        ic:'🔋', cost:720,  req:['fuel2'],  pos:[1.4,3],  eff:{de:80,dr:6}},
  {id:'cool2',   name:'Kühlung II',     ic:'❄️', cost:560,  req:['cool1'],  pos:[2.7,3],  eff:{dh:4,dc:8}},
+ {id:'magpulse',name:'Magnet-Puls',    ic:'🧲', cost:700,  req:['auto'],   pos:[-3.9,3], eff:{ability:'magpulse',dm:40}},
+ {id:'teleport',name:'Teleport',       ic:'🌀', cost:800,  req:['reactor'],pos:[1.9,4],  eff:{ability:'teleport',de:40}},
  {id:'boost',   name:'Boost',          ic:'🚀', cost:900,  req:['drill3'], pos:[-0.6,4], eff:{ability:'boost'}},
  {id:'overload',name:'Overload',       ic:'💥', cost:1100, req:['crit1'],  pos:[0.6,4],  eff:{dp:44,crit:0.4}},
  {id:'drone1',  name:'Drohne',         ic:'🛸', cost:1200, req:['auto'],   pos:[-2.7,4], eff:{drone:1,dv:0.3}},
@@ -109,8 +117,9 @@ function stats(){
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
     heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;chain+=e.chain||0;
     if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
+  const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
   return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,abilities,
-    tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
+    prestigeMult:1+cores*0.12, tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
 const RES={
@@ -142,7 +151,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[];
 let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0;
@@ -184,7 +193,7 @@ cv.addEventListener('mousedown',onDown);
 window.addEventListener('mousemove',e=>{if(input.active)onMove(e);});
 window.addEventListener('mouseup',onUp);
 const kb={};
-window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();});
+window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();if(k==='m')magpulse();if(k==='t')teleport();});
 window.addEventListener('keyup',e=>{kb[e.key.toLowerCase()]=false;});
 function kbVec(){let x=0,y=0;if(kb['arrowleft']||kb['a'])x-=1;if(kb['arrowright']||kb['d'])x+=1;
   if(kb['arrowup']||kb['w'])y-=1;if(kb['arrowdown']||kb['s'])y+=1;
@@ -252,15 +261,22 @@ function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run
   for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,cs,9999);            // burns a shaft toward the core
   shake=Math.max(shake,14);flash=Math.max(flash,0.5);glitch=0.3;sfx.shock();vibe([15,30,15]);
   laserFx=0.18;}
+function magpulse(){if(!run.active||!S.abilities.magpulse||run.magCd>0)return;if(run.energy<18){sfx.ui();return;}
+  run.energy-=18;run.magCd=10;for(const dp of drops)dp.got=true;    // yank all loot to the drill
+  shake=Math.max(shake,6);sfx.rare();vibe([10,20]);burst(W/2,DRILL_SY,'#12d9b0',20,1.4);}
+function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(run.energy<20){sfx.ui();return;}
+  run.energy-=20;run.tpCd=14;drill.rad=R_SURF+320;snapCamera();       // warp back to orbit (escape heat/danger)
+  flash=Math.max(flash,0.6);shake=Math.max(shake,10);glitch=0.4;sfx.shock();vibe([20,30,20]);}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');showHint();if(audio()&&AC.state==='suspended')AC.resume();}
-function extract(){if(!run.active)return;run.active=false;meta.credits+=Math.round(run.haul);saveMeta();
+function extract(){if(!run.active)return;run.active=false;const g=Math.round(run.haul);
+  meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;saveMeta();
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
@@ -270,7 +286,9 @@ function extract(){if(!run.active)return;run.active=false;meta.credits+=Math.rou
 function updateAbilityButtons(){const a=stats().abilities;
   document.getElementById('btnShock').style.display=a.blast?'flex':'none';
   document.getElementById('btnBoost').style.display=a.boost?'flex':'none';
-  document.getElementById('btnLaser').style.display=a.laser?'flex':'none';}
+  document.getElementById('btnLaser').style.display=a.laser?'flex':'none';
+  document.getElementById('btnMag').style.display=a.magpulse?'flex':'none';
+  document.getElementById('btnTp').style.display=a.teleport?'flex':'none';}
 
 /* ---------- SKILL TREE (graphical, pannable, hidden until reachable) ---------- */
 const COLW=96,ROWH=104;
@@ -278,6 +296,8 @@ function treeExtent(){let minx=0,maxx=0,maxy=0;for(const s of SKILLS){minx=Math.
   return{minx,maxx,maxy};}
 function buildTree(){
   document.getElementById('treeCash').textContent='$'+meta.credits;
+  const pg=prestigeGain(),pb=document.getElementById('btnPrestige');
+  pb.style.display=pg>0?'inline-flex':'none';pb.textContent='⚛ +'+pg;
   const ex=treeExtent(),cw=(ex.maxx-ex.minx)*COLW+140,ch=(ex.maxy)*ROWH+150;
   const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
   const cx=(-ex.minx)*COLW+70, ox=(x)=>cx+x*COLW, oy=(y)=>60+y*ROWH;
@@ -341,6 +361,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
   if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
+  if(run.magCd>0)run.magCd=Math.max(0,run.magCd-dt);
+  if(run.tpCd>0)run.tpCd=Math.max(0,run.tpCd-dt);
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // combat drones: periodically auto-mine a nearby tile
   if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
@@ -352,7 +374,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
     if(dist<S.magnet||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
-    if(dist<22){run.haul+=RES[dp.id].value*S.valueMul*P.valueMul;burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
+    if(dist<22){run.haul+=RES[dp.id].value*S.valueMul*P.valueMul*S.prestigeMult;burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
   // particles / dmg numbers (screen space)
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){parts.splice(i,1);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
@@ -513,13 +535,16 @@ function mix(a,b,t){const pa=hx(a),pb=hx(b);return'rgb('+Math.round(pa[0]+(pb[0]
 function hx(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
 
 /* ===================== LOOP ===================== */
-const shockCdEl=document.getElementById('shockCd'),boostCdEl=document.getElementById('boostCd'),laserCdEl=document.getElementById('laserCd');
+const gid=(x)=>document.getElementById(x);
+const shockCdEl=gid('shockCd'),boostCdEl=gid('boostCd'),laserCdEl=gid('laserCd'),magCdEl=gid('magCd'),tpCdEl=gid('tpCd');
 let last=performance.now();
 function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   if(hitstop>0)hitstop-=dt;else update(dt);draw();
   shockCdEl.style.transform='scaleY('+(run.shockCd/5)+')';
   boostCdEl.style.transform='scaleY('+(run.boostCd/12)+')';
-  laserCdEl.style.transform='scaleY('+(run.laserCd/8)+')';requestAnimationFrame(frame);}
+  laserCdEl.style.transform='scaleY('+(run.laserCd/8)+')';
+  magCdEl.style.transform='scaleY('+(run.magCd/10)+')';
+  tpCdEl.style.transform='scaleY('+(run.tpCd/14)+')';requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 
 /* ===================== UI ===================== */
@@ -533,6 +558,8 @@ document.getElementById('btnExtract').onclick=extract;
 document.getElementById('btnShock').onclick=shockwave;
 document.getElementById('btnBoost').onclick=boost;
 document.getElementById('btnLaser').onclick=laser;
+document.getElementById('btnMag').onclick=magpulse;
+document.getElementById('btnTp').onclick=teleport;
 document.getElementById('btnSound').onclick=function(){muted=!muted;this.textContent=muted?'🔇':'🔊';if(!muted){audio();if(AC&&AC.state==='suspended')AC.resume();}};
 document.querySelectorAll('.skin').forEach(b=>b.onclick=function(){TK=this.dataset.s;T=THEMES[TK];
   document.querySelectorAll('.skin').forEach(x=>x.classList.remove('on'));this.classList.add('on');sfx.ui();});
@@ -543,6 +570,12 @@ document.getElementById('btnTree2').onclick=()=>{sfx.ui();openTree('shopOver');}
 document.getElementById('btnPlanets2').onclick=()=>{sfx.ui();openPlanets('shopOver');};
 document.getElementById('btnTreeDone').onclick=()=>{sfx.ui();hide('treeOver');show(backTo);};
 document.getElementById('btnPlanetsDone').onclick=()=>{sfx.ui();hide('planetOver');show(backTo);};
+document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGain(),nc=meta.prestige.cores+g;
+  document.getElementById('prestigeTxt').innerHTML='Setzt Skill-Baum &amp; Credits zurück.<br>Kerne: <b>'+meta.prestige.cores+'</b> → <b style="color:#8a5cff">'+nc+'</b> (+'+g+')<br>Permanent: +'+Math.round(nc*12)+'% Loot · +'+(nc*4)+' Bohrkraft.';
+  hide('treeOver');show('prestigeOver');};
+document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
+document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();}
+  hide('prestigeOver');show('treeOver');buildTree();};
 updateAbilityButtons();
 })();
 

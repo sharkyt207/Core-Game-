@@ -29,6 +29,9 @@
     display:flex;align-items:flex-end;justify-content:space-between;}
   .cluster{display:flex;gap:8px;align-items:flex-end;}
   .cluster.col{flex-direction:column;align-items:flex-start;}
+  .cluster.abil{flex-wrap:wrap-reverse;align-content:flex-end;justify-content:flex-end;max-width:74vw;}
+  .cluster.abil .btn.ability{min-width:52px;padding:9px 7px;font-size:11px;}
+  .cluster.abil .btn.ability small{font-size:7px;}
   .btn{pointer-events:auto;background:#000;border:3px solid #fff;color:#fff;font-family:inherit;
     font-weight:900;font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:11px 13px;
     box-shadow:4px 4px 0 rgba(255,255,255,.2);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:66px;}
@@ -124,9 +127,11 @@
     <button class="btn ico" id="btnSound">🔊</button>
     <button class="btn ico" id="btnExtract">⏏<small>Home</small></button>
   </div>
-  <div class="cluster">
-    <button class="btn ability" id="btnLaser" style="display:none;border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.25);">Laser<small>Shaft</small><i class="cd" id="laserCd"></i></button>
-    <button class="btn ability" id="btnBoost" style="display:none;border-color:#2de2e6;color:#2de2e6;box-shadow:4px 4px 0 rgba(45,226,230,.25);">Boost<small>Overdrive</small><i class="cd" id="boostCd"></i></button>
+  <div class="cluster abil" id="abilBar">
+    <button class="btn ability" id="btnTp" style="display:none;border-color:#8a5cff;color:#8a5cff;box-shadow:3px 3px 0 rgba(138,92,255,.25);">TP<small>orbit</small><i class="cd" id="tpCd"></i></button>
+    <button class="btn ability" id="btnMag" style="display:none;border-color:#12d9b0;color:#12d9b0;box-shadow:3px 3px 0 rgba(18,217,176,.25);">Puls<small>magnet</small><i class="cd" id="magCd"></i></button>
+    <button class="btn ability" id="btnLaser" style="display:none;border-color:#ff4de0;color:#ff4de0;box-shadow:3px 3px 0 rgba(255,77,224,.25);">Laser<small>shaft</small><i class="cd" id="laserCd"></i></button>
+    <button class="btn ability" id="btnBoost" style="display:none;border-color:#2de2e6;color:#2de2e6;box-shadow:3px 3px 0 rgba(45,226,230,.25);">Boost<small>×2.6</small><i class="cd" id="boostCd"></i></button>
     <button class="btn ability" id="btnShock" style="display:none;">Blast<small>[space]</small><i class="cd" id="shockCd"></i></button>
   </div>
 </div>
@@ -162,7 +167,18 @@
 <div class="over" id="treeOver">
   <div class="treetop"><b>SKILL TREE</b><span class="cr" id="treeCash">$0</span></div>
   <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
-  <div class="treebottom"><button class="big" id="btnTreeDone">Fertig</button></div>
+  <div class="treebottom">
+    <button class="big" id="btnPrestige" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">⚛ Prestige</button>
+    <button class="big" id="btnTreeDone">Fertig</button>
+  </div>
+</div>
+
+<!-- PRESTIGE CONFIRM -->
+<div class="over" id="prestigeOver">
+  <div class="logo" style="font-size:min(13vw,52px);text-shadow:5px 5px 0 #8a5cff,-3px -3px 0 #2de2e6;">Core<br>Overload</div>
+  <div class="sub" id="prestigeTxt"></div>
+  <button class="big" id="btnPrestigeGo" style="background:#8a5cff;color:#fff;">Überladen</button>
+  <div class="menubtns"><button class="mbtn" id="btnPrestigeCancel">Abbrechen</button></div>
 </div>
 
 <!-- PLANET MENU -->
