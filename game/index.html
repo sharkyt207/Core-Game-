@@ -187,6 +187,19 @@
   <div class="pcards" id="planetCards"></div>
   <button class="big" id="btnPlanetsDone" style="margin-top:18px">Fertig</button>
 </div>
+
+<!-- GAME OVER -->
+<div class="over" id="gameoverOver">
+  <div class="logo" style="font-size:min(16vw,66px);text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #ff8a3d;">Game<br>Over</div>
+  <div class="tag" id="goReason" style="color:#ff4d4d">ÜBERHITZT</div>
+  <div class="result">
+    <div><b id="goDepth">0</b><span>Tiefe</span></div>
+    <div><b id="goLost" style="color:#ff4d4d">0</b><span>Loot verloren</span></div>
+  </div>
+  <div class="sub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
+  <button class="big" id="btnRetry">Nochmal</button>
+  <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
+</div>
   <script type="module" src="/src/game.js"></script>
 </body>
 </html>

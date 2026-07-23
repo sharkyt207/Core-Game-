@@ -178,6 +178,19 @@
   <button class="big" id="btnPlanetsDone" style="margin-top:18px">Fertig</button>
 </div>
 
+<!-- GAME OVER -->
+<div class="over" id="gameoverOver">
+  <div class="logo" style="font-size:min(16vw,66px);text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #ff8a3d;">Game<br>Over</div>
+  <div class="tag" id="goReason" style="color:#ff4d4d">ÜBERHITZT</div>
+  <div class="result">
+    <div><b id="goDepth">0</b><span>Tiefe</span></div>
+    <div><b id="goLost" style="color:#ff4d4d">0</b><span>Loot verloren</span></div>
+  </div>
+  <div class="sub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
+  <button class="big" id="btnRetry">Nochmal</button>
+  <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
+</div>
+
 <script>
 (function(){
 "use strict";
@@ -208,7 +221,7 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:26, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.9, valueMul:1.7,
+ {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.9, valueMul:1.7, gasChance:0.06,
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
@@ -290,7 +303,7 @@ function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
   meta.credits-=s.cost;meta.skills.push(id);saveMeta();return true;}
 
 function stats(){
-  let power=30,speed=230,energyMax=100,energyRegen=9,coolRate=16,heatGen=11,magnet=68,valueMul=1,crit=0,drones=0;
+  let power=30,speed=230,energyMax=130,energyRegen=0,coolRate=0,heatGen=7,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
@@ -317,7 +330,8 @@ function genTile(depthM){let rock='dirt';
     else if(depthM>13&&rnd()<0.16)res='core';
     else if(depthM>7&&rnd()<0.30)res='crystal';
     else if(depthM>3&&rnd()<0.5)res='cuprite'; else res='ferrite';}
-  const hp=HARD[rock]*P.hardMul;return{rock,res,hp,maxhp:hp};}
+  const gas=depthM>3&&rnd()<(P.gasChance||0.018);
+  const hp=HARD[rock]*P.hardMul;return{rock,res,gas,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
 function tilePolar(ring,sec){
   if(ring<0)return{wall:true};           // core
@@ -397,6 +411,16 @@ const sfx={tick:()=>noise(0.03,0.05),brk:()=>blip(170+rnd()*70,0.11,'square',0.1
   shock:()=>{blip(90,0.4,'sawtooth',0.22,1200);noise(0.3,0.12);},
   ui:()=>blip(640,0.06,'square',0.12),buy:()=>{blip(520,0.08,'square',0.14);setTimeout(()=>blip(780,0.1,'square',0.14),70);}};
 function vibe(p){if(!muted&&navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
+// procedural background music — intensifies with depth
+let musicTimer=null,beat=0;
+function startMusic(){if(musicTimer)return;beat=0;musicTimer=setInterval(()=>{if(muted||!run.active)return;
+  const dT=Math.min(1,run.depthMax/40),root=[110,110,146.83,130.81][beat&3];
+  blip(root,0.5,'triangle',0.05);
+  if((beat&1)===0)blip(root*2,0.3,'sine',0.03);
+  if(dT>0.3&&(beat&3)===2)blip(root*3,0.22,'sawtooth',0.02+dT*0.03);
+  if(dT>0.6&&(beat&1))blip(root*4,0.12,'square',0.015+dT*0.02);
+  beat++;},430);}
+function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
 
 /* ===================== FX ===================== */
 function burst(x,y,color,n,spd){for(let i=0;i<n;i++){const a=rnd()*TAU,s=(spd||1)*(40+rnd()*160);
@@ -415,6 +439,12 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
+    // gas pocket: detonates, spikes heat and blows out neighbours
+    if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
+      shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
+      if(chainGuard<2){chainGuard++;
+        const gn=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]];
+        for(const nn of gn)mineTile(nn[0],nn[1],9999);chainGuard--;}}
     // chain reaction: destroyed blocks detonate neighbours (depth = chain level)
     if(S.chain>0&&chainGuard<S.chain){chainGuard++;
       const nb=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]];
@@ -453,8 +483,15 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
-  hide('titleOver');hide('shopOver');showHint();if(audio()&&AC.state==='suspended')AC.resume();}
-function extract(){if(!run.active)return;run.active=false;const g=Math.round(run.haul);
+  hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
+  if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
+function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
+  shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
+  document.getElementById('goReason').textContent=reason;
+  document.getElementById('goDepth').textContent=run.depthMax;
+  document.getElementById('goLost').textContent=Math.round(run.haul);
+  setTimeout(()=>show('gameoverOver'),480);}
+function extract(){if(!run.active)return;run.active=false;stopMusic();const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;saveMeta();
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
@@ -533,9 +570,10 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   const dAng=inSpace? (vx*mag*1.5*dt) : (vx*mag*spd*dt/Math.max(R_CORE,drill.rad));
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
-  if(drilling){run.energy-=(9+S.power/12)*dt;run.heat=Math.min(100,run.heat+S.heatGen*P.heatMul*dt);if(rnd()<0.5)sfx.tick();}
-  else{run.energy=Math.min(S.energyMax,run.energy+S.energyRegen*dt);run.heat=Math.max(0,run.heat-S.coolRate*dt);}
-  if(run.energy<0)run.energy=0;
+  // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
+  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt;if(rnd()<0.5)sfx.tick();}
+  if(run.energy<=0){run.energy=0;gameOver('SPRIT LEER');return;}
+  if(run.heat>=100){run.heat=100;gameOver('ÜBERHITZT');return;}
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax)run.depthMax=dm;
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
@@ -633,7 +671,9 @@ function scene(){
       const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
       if(t.res){const R=RES[t.res],cx=(p1[0]+p3[0])/2*S1,cy=(p1[1]+p3[1])/2*S1,s=Math.max(2,TILE*0.2*SCALEcur*S1);
         o.fillStyle=R.color;o.fillRect((cx-s)|0,(cy-s)|0,(s*2)|0,(s*2)|0);
-        o.fillStyle=R.glow;o.fillRect((cx-s*0.5)|0,(cy-s*0.5)|0,Math.max(1,s)|0,Math.max(1,s)|0);}}}
+        o.fillStyle=R.glow;o.fillRect((cx-s*0.5)|0,(cy-s*0.5)|0,Math.max(1,s)|0,Math.max(1,s)|0);}
+      if(t.gas){const gx=(p1[0]+p3[0])/2*S1,gy=(p1[1]+p3[1])/2*S1,gp=0.5+Math.sin(performance.now()/160+ring)*0.5;
+        o.globalAlpha=0.55+gp*0.45;o.fillStyle=T.fuel;o.fillRect((gx-1)|0,(gy-1)|0,3,3);o.globalAlpha=1;}}}
   // drops
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
@@ -706,7 +746,7 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
   const bw=Math.min(W*0.54,230),bx=M,by=H-108;
   txt(c,'FUEL '+run.energy.toFixed(1)+'/'+S.energyMax.toFixed(0),bx,by-Math.round(W*0.05),'left','#ffffff',Math.round(W*0.038));
   c.fillStyle='#000';c.fillRect(bx,by,bw,14);c.strokeStyle='#fff';c.lineWidth=2;c.strokeRect(bx+1,by+1,bw-2,12);
-  c.fillStyle=T.fuel;c.fillRect(bx+2,by+2,(bw-4)*Math.max(0,run.energy/S.energyMax),10);
+  c.fillStyle=(run.energy/S.energyMax<0.2)?'#ff4d4d':T.fuel;c.fillRect(bx+2,by+2,(bw-4)*Math.max(0,run.energy/S.energyMax),10);
   txt(c,'HEAT '+run.heat.toFixed(0)+'%',bx,by+18,'left',run.heat>70?T.dmg:'#c9cdd4',Math.round(W*0.034));
   c.imageSmoothingEnabled=false;}
 function money(n){n=Math.round(n);if(n>=1e6)return'$'+(n/1e6).toFixed(3)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n;}
@@ -752,6 +792,8 @@ document.getElementById('btnPlanetsDone').onclick=()=>{sfx.ui();hide('planetOver
 document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGain(),nc=meta.prestige.cores+g;
   document.getElementById('prestigeTxt').innerHTML='Setzt Skill-Baum &amp; Credits zurück.<br>Kerne: <b>'+meta.prestige.cores+'</b> → <b style="color:#8a5cff">'+nc+'</b> (+'+g+')<br>Permanent: +'+Math.round(nc*12)+'% Loot · +'+(nc*4)+' Bohrkraft.';
   hide('treeOver');show('prestigeOver');};
+document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
+document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
 document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();}
   hide('prestigeOver');show('treeOver');buildTree();};
