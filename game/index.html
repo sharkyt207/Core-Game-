@@ -67,6 +67,47 @@
   .hint{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);font-size:10px;letter-spacing:.12em;
     text-transform:uppercase;color:rgba(255,255,255,.55);text-align:center;transition:opacity .5s;pointer-events:none;line-height:1.5;}
 
+  /* menu buttons */
+  .menubtns{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:100%;max-width:300px;}
+  .mbtn{pointer-events:auto;background:#000;border:3px solid #fff;color:#fff;font-family:inherit;font-weight:900;
+    font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px;box-shadow:4px 4px 0 rgba(255,255,255,.2);
+    display:flex;align-items:center;justify-content:center;gap:8px;}
+  .mbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(255,255,255,.2);}
+
+  /* skill tree */
+  #treeOver{padding:0;justify-content:flex-start;}
+  .treetop{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:0;right:0;z-index:3;display:flex;
+    justify-content:space-between;align-items:center;padding:0 14px;pointer-events:none;}
+  .treetop b{font-weight:900;letter-spacing:.2em;font-size:14px;}
+  .treetop .cr{font-weight:900;color:#ffd23f;font-size:15px;}
+  #treeScroll{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
+  #treeCanvas{position:relative;margin:0 auto;}
+  #treeSvg{position:absolute;left:0;top:0;pointer-events:none;}
+  .node{position:absolute;width:76px;transform:translate(-50%,-50%);pointer-events:auto;background:#0a0713;
+    border:3px solid #444;color:#fff;font-family:inherit;padding:7px 3px;display:flex;flex-direction:column;
+    align-items:center;gap:2px;text-align:center;}
+  .node .ni{font-size:20px;line-height:1;}
+  .node .nn{font-size:8px;font-weight:900;letter-spacing:.02em;line-height:1.05;text-transform:uppercase;}
+  .node .nc{font-size:9px;font-weight:900;color:#ffd23f;}
+  .node.owned{border-color:#2de2e6;box-shadow:0 0 16px rgba(45,226,230,.45);}
+  .node.owned .nc{display:none;}
+  .node.avail{border-color:#ffd23f;box-shadow:3px 3px 0 rgba(255,210,63,.3);}
+  .node.avail.no{opacity:.45;}
+  .node:active{transform:translate(-50%,-50%) scale(.93);}
+  .treebottom{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 14px);left:0;right:0;display:flex;justify-content:center;z-index:3;}
+
+  /* planet menu */
+  .pcards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:6px;}
+  .pcard{pointer-events:auto;display:flex;align-items:center;gap:14px;background:#000;border:3px solid #333;
+    padding:12px;color:#fff;font-family:inherit;text-align:left;}
+  .pcard.sel{border-color:#2de2e6;box-shadow:0 0 16px rgba(45,226,230,.35);}
+  .pcard:active{transform:translate(2px,2px);}
+  .pcard .globe{width:54px;height:54px;border-radius:50%;flex:0 0 auto;box-shadow:inset -7px -7px 12px rgba(0,0,0,.65);}
+  .pcard .pt{flex:1;}
+  .pcard .pt b{display:block;font-size:15px;font-weight:900;letter-spacing:.08em;}
+  .pcard .pt span{font-size:10px;color:#9a90ad;}
+  .pcard .ps{font-size:11px;font-weight:900;white-space:nowrap;}
+
   </style>
 </head>
 <body>
@@ -84,8 +125,9 @@
     <button class="btn ico" id="btnExtract">⏏<small>Home</small></button>
   </div>
   <div class="cluster">
-    <button class="btn ability" id="btnBoost" style="border-color:#2de2e6;color:#2de2e6;box-shadow:4px 4px 0 rgba(45,226,230,.25);">Boost<small>Overdrive</small><i class="cd" id="boostCd"></i></button>
-    <button class="btn ability" id="btnShock">Blast<small>[space]</small><i class="cd" id="shockCd"></i></button>
+    <button class="btn ability" id="btnLaser" style="display:none;border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.25);">Laser<small>Shaft</small><i class="cd" id="laserCd"></i></button>
+    <button class="btn ability" id="btnBoost" style="display:none;border-color:#2de2e6;color:#2de2e6;box-shadow:4px 4px 0 rgba(45,226,230,.25);">Boost<small>Overdrive</small><i class="cd" id="boostCd"></i></button>
+    <button class="btn ability" id="btnShock" style="display:none;">Blast<small>[space]</small><i class="cd" id="shockCd"></i></button>
   </div>
 </div>
 <div class="hint" id="hint">runter = rein · hoch = raus ins All<br>seitlich = um den Planeten</div>
@@ -96,6 +138,10 @@
   <div class="sub">Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen.
     Sammle Zeug, pass auf FUEL auf, fahr HOME und rüste auf.</div>
   <button class="big" id="btnStart">Drop In</button>
+  <div class="menubtns">
+    <button class="mbtn" id="btnTree">🌳 Skill Tree</button>
+    <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
+  </div>
 </div>
 
 <div class="over" id="shopOver">
@@ -105,9 +151,25 @@
     <div><b id="rHaul">0</b><span>Loot</span></div>
     <div><b id="rCredits">0</b><span>Cash</span></div>
   </div>
-  <div class="sub" style="margin-top:14px">Upgrade die Rostlaube. Dann tiefer.</div>
-  <div class="shopgrid" id="shopGrid"></div>
-  <button class="big" id="btnDescend" style="margin-top:18px">Drop In</button>
+  <div class="menubtns">
+    <button class="mbtn" id="btnTree2">🌳 Skill Tree</button>
+    <button class="mbtn" id="btnPlanets2">🪐 Planeten</button>
+  </div>
+  <button class="big" id="btnDescend" style="margin-top:16px">Drop In</button>
+</div>
+
+<!-- SKILL TREE -->
+<div class="over" id="treeOver">
+  <div class="treetop"><b>SKILL TREE</b><span class="cr" id="treeCash">$0</span></div>
+  <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
+  <div class="treebottom"><button class="big" id="btnTreeDone">Fertig</button></div>
+</div>
+
+<!-- PLANET MENU -->
+<div class="over" id="planetOver">
+  <div class="tag" style="color:#2de2e6">// planeten //</div>
+  <div class="pcards" id="planetCards"></div>
+  <button class="big" id="btnPlanetsDone" style="margin-top:18px">Fertig</button>
 </div>
   <script type="module" src="/src/game.js"></script>
 </body>

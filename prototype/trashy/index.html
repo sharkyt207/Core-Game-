@@ -58,6 +58,47 @@
   .up .c{font-size:12px;font-weight:900;color:#ffd23f;white-space:nowrap;}
   .hint{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);font-size:10px;letter-spacing:.12em;
     text-transform:uppercase;color:rgba(255,255,255,.55);text-align:center;transition:opacity .5s;pointer-events:none;line-height:1.5;}
+
+  /* menu buttons */
+  .menubtns{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:100%;max-width:300px;}
+  .mbtn{pointer-events:auto;background:#000;border:3px solid #fff;color:#fff;font-family:inherit;font-weight:900;
+    font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px;box-shadow:4px 4px 0 rgba(255,255,255,.2);
+    display:flex;align-items:center;justify-content:center;gap:8px;}
+  .mbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(255,255,255,.2);}
+
+  /* skill tree */
+  #treeOver{padding:0;justify-content:flex-start;}
+  .treetop{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:0;right:0;z-index:3;display:flex;
+    justify-content:space-between;align-items:center;padding:0 14px;pointer-events:none;}
+  .treetop b{font-weight:900;letter-spacing:.2em;font-size:14px;}
+  .treetop .cr{font-weight:900;color:#ffd23f;font-size:15px;}
+  #treeScroll{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
+  #treeCanvas{position:relative;margin:0 auto;}
+  #treeSvg{position:absolute;left:0;top:0;pointer-events:none;}
+  .node{position:absolute;width:76px;transform:translate(-50%,-50%);pointer-events:auto;background:#0a0713;
+    border:3px solid #444;color:#fff;font-family:inherit;padding:7px 3px;display:flex;flex-direction:column;
+    align-items:center;gap:2px;text-align:center;}
+  .node .ni{font-size:20px;line-height:1;}
+  .node .nn{font-size:8px;font-weight:900;letter-spacing:.02em;line-height:1.05;text-transform:uppercase;}
+  .node .nc{font-size:9px;font-weight:900;color:#ffd23f;}
+  .node.owned{border-color:#2de2e6;box-shadow:0 0 16px rgba(45,226,230,.45);}
+  .node.owned .nc{display:none;}
+  .node.avail{border-color:#ffd23f;box-shadow:3px 3px 0 rgba(255,210,63,.3);}
+  .node.avail.no{opacity:.45;}
+  .node:active{transform:translate(-50%,-50%) scale(.93);}
+  .treebottom{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 14px);left:0;right:0;display:flex;justify-content:center;z-index:3;}
+
+  /* planet menu */
+  .pcards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:6px;}
+  .pcard{pointer-events:auto;display:flex;align-items:center;gap:14px;background:#000;border:3px solid #333;
+    padding:12px;color:#fff;font-family:inherit;text-align:left;}
+  .pcard.sel{border-color:#2de2e6;box-shadow:0 0 16px rgba(45,226,230,.35);}
+  .pcard:active{transform:translate(2px,2px);}
+  .pcard .globe{width:54px;height:54px;border-radius:50%;flex:0 0 auto;box-shadow:inset -7px -7px 12px rgba(0,0,0,.65);}
+  .pcard .pt{flex:1;}
+  .pcard .pt b{display:block;font-size:15px;font-weight:900;letter-spacing:.08em;}
+  .pcard .pt span{font-size:10px;color:#9a90ad;}
+  .pcard .ps{font-size:11px;font-weight:900;white-space:nowrap;}
 </style>
 
 <div id="wrap"><canvas id="game"></canvas></div>
@@ -74,8 +115,9 @@
     <button class="btn ico" id="btnExtract">⏏<small>Home</small></button>
   </div>
   <div class="cluster">
-    <button class="btn ability" id="btnBoost" style="border-color:#2de2e6;color:#2de2e6;box-shadow:4px 4px 0 rgba(45,226,230,.25);">Boost<small>Overdrive</small><i class="cd" id="boostCd"></i></button>
-    <button class="btn ability" id="btnShock">Blast<small>[space]</small><i class="cd" id="shockCd"></i></button>
+    <button class="btn ability" id="btnLaser" style="display:none;border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.25);">Laser<small>Shaft</small><i class="cd" id="laserCd"></i></button>
+    <button class="btn ability" id="btnBoost" style="display:none;border-color:#2de2e6;color:#2de2e6;box-shadow:4px 4px 0 rgba(45,226,230,.25);">Boost<small>Overdrive</small><i class="cd" id="boostCd"></i></button>
+    <button class="btn ability" id="btnShock" style="display:none;">Blast<small>[space]</small><i class="cd" id="shockCd"></i></button>
   </div>
 </div>
 <div class="hint" id="hint">runter = rein · hoch = raus ins All<br>seitlich = um den Planeten</div>
@@ -86,6 +128,10 @@
   <div class="sub">Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen.
     Sammle Zeug, pass auf FUEL auf, fahr HOME und rüste auf.</div>
   <button class="big" id="btnStart">Drop In</button>
+  <div class="menubtns">
+    <button class="mbtn" id="btnTree">🌳 Skill Tree</button>
+    <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
+  </div>
 </div>
 
 <div class="over" id="shopOver">
@@ -95,9 +141,25 @@
     <div><b id="rHaul">0</b><span>Loot</span></div>
     <div><b id="rCredits">0</b><span>Cash</span></div>
   </div>
-  <div class="sub" style="margin-top:14px">Upgrade die Rostlaube. Dann tiefer.</div>
-  <div class="shopgrid" id="shopGrid"></div>
-  <button class="big" id="btnDescend" style="margin-top:18px">Drop In</button>
+  <div class="menubtns">
+    <button class="mbtn" id="btnTree2">🌳 Skill Tree</button>
+    <button class="mbtn" id="btnPlanets2">🪐 Planeten</button>
+  </div>
+  <button class="big" id="btnDescend" style="margin-top:16px">Drop In</button>
+</div>
+
+<!-- SKILL TREE -->
+<div class="over" id="treeOver">
+  <div class="treetop"><b>SKILL TREE</b><span class="cr" id="treeCash">$0</span></div>
+  <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
+  <div class="treebottom"><button class="big" id="btnTreeDone">Fertig</button></div>
+</div>
+
+<!-- PLANET MENU -->
+<div class="over" id="planetOver">
+  <div class="tag" style="color:#2de2e6">// planeten //</div>
+  <div class="pcards" id="planetCards"></div>
+  <button class="big" id="btnPlanetsDone" style="margin-top:18px">Fertig</button>
 </div>
 
 <script>
@@ -156,25 +218,54 @@ function setPlanet(id){P=PLANETS.find(p=>p.id===id)||PLANETS[0];RINGS=P.rings;ap
 function ringOf(r){if(r>=R_SURF)return RINGS;if(r<R_CORE)return -1;return Math.floor((r-R_CORE)/TILE);}
 function sectorOf(a){let s=Math.floor(a/DSEC);return ((s%SECTORS)+SECTORS)%SECTORS;}
 
-/* ===================== SAVE / UPGRADES ===================== */
-const SAVE_KEY='corebreaker_round_v1';
+/* ===================== SAVE / SKILL TREE ===================== */
+const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
-function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===1){
-  if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';return j;}}catch(e){}
-  return{v:1,credits:0,up:{power:0,speed:0,energy:0,cool:0,magnet:0},unlockedPlanets:['terra'],planet:'terra'};}
+function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
+  if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';return j;}}catch(e){}
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra'};}
 function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
-const UPGRADES=[
-  {id:'power', ic:'⛏️', name:'Bohrkraft', desc:'Härteres Gestein schneller', base:120,mult:1.7},
-  {id:'speed', ic:'💨', name:'Speed',     desc:'Schneller bewegen & bohren',  base:100,mult:1.6},
-  {id:'energy',ic:'🛢️', name:'Fuel-Tank', desc:'Mehr Sprit & Regen',          base:110,mult:1.65},
-  {id:'cool',  ic:'❄️', name:'Kühlung',    desc:'Weniger Hitze',              base:100,mult:1.6},
-  {id:'magnet',ic:'🧲', name:'Magnet',     desc:'Loot aus mehr Distanz',      base:90, mult:1.7},
+
+// Skill tree — starts with ONE unlockable skill; buying a node reveals its children.
+// A node is only VISIBLE once all its prerequisites are owned (hidden otherwise),
+// so the tree grows and gets more complex as you progress. pos=[x,y] grid coords.
+const SKILLS=[
+ {id:'drill1',  name:'Bohrkraft I',    ic:'⛏️', cost:80,   req:[],         pos:[0,0],    eff:{dp:14}},
+ {id:'drill2',  name:'Bohrkraft II',   ic:'⛏️', cost:180,  req:['drill1'], pos:[0,1],    eff:{dp:20}},
+ {id:'speed1',  name:'Speed I',        ic:'💨', cost:140,  req:['drill1'], pos:[-1.4,1], eff:{ds:36}},
+ {id:'fuel1',   name:'Tank I',         ic:'🛢️', cost:140,  req:['drill1'], pos:[1.4,1],  eff:{de:40,dr:3}},
+ {id:'blast',   name:'Blast',          ic:'⚡', cost:320,  req:['drill2'], pos:[0,2],    eff:{ability:'blast'}},
+ {id:'speed2',  name:'Speed II',       ic:'💨', cost:320,  req:['speed1'], pos:[-1.4,2], eff:{ds:48}},
+ {id:'magnet1', name:'Magnet I',       ic:'🧲', cost:260,  req:['speed1'], pos:[-2.7,2], eff:{dm:60}},
+ {id:'fuel2',   name:'Tank II',        ic:'🛢️', cost:320,  req:['fuel1'],  pos:[1.4,2],  eff:{de:55,dr:4}},
+ {id:'cool1',   name:'Kühlung I',      ic:'❄️', cost:260,  req:['fuel1'],  pos:[2.7,2],  eff:{dh:3,dc:6}},
+ {id:'drill3',  name:'Bohrkraft III',  ic:'⛏️', cost:520,  req:['blast'],  pos:[-0.6,3], eff:{dp:30}},
+ {id:'crit1',   name:'Kritisch',       ic:'🎯', cost:560,  req:['blast'],  pos:[0.6,3],  eff:{crit:0.5}},
+ {id:'auto',    name:'Auto-Sammler',   ic:'🧲', cost:640,  req:['magnet1'],pos:[-2.7,3], eff:{auto:1,dm:40}},
+ {id:'reactor', name:'Reaktor',        ic:'🔋', cost:720,  req:['fuel2'],  pos:[1.4,3],  eff:{de:80,dr:6}},
+ {id:'cool2',   name:'Kühlung II',     ic:'❄️', cost:560,  req:['cool1'],  pos:[2.7,3],  eff:{dh:4,dc:8}},
+ {id:'boost',   name:'Boost',          ic:'🚀', cost:900,  req:['drill3'], pos:[-0.6,4], eff:{ability:'boost'}},
+ {id:'overload',name:'Overload',       ic:'💥', cost:1100, req:['crit1'],  pos:[0.6,4],  eff:{dp:44,crit:0.4}},
+ {id:'drone1',  name:'Drohne',         ic:'🛸', cost:1200, req:['auto'],   pos:[-2.7,4], eff:{drone:1,dv:0.3}},
+ {id:'laser',   name:'Laser',          ic:'☄️', cost:1800, req:['boost'],  pos:[-0.6,5], eff:{ability:'laser',dp:20}},
+ {id:'droneswarm',name:'Drohnen-Schwarm',ic:'🛸',cost:2000,req:['drone1'], pos:[-2.7,5], eff:{drone:1,dv:0.4,dm:60}},
 ];
-function upCost(u){return Math.round(u.base*Math.pow(u.mult,meta.up[u.id]));}
-function stats(){const u=meta.up;return{
-  power:34+u.power*20, speed:240+u.speed*40, energyMax:100+u.energy*45, energyRegen:9+u.energy*3.2,
-  coolRate:16+u.cool*7, heatGen:Math.max(3,11-u.cool*1.4), magnet:70+u.magnet*46,
-  tier:Math.min(6,1+Math.floor((u.power+u.speed+u.energy+u.cool+u.magnet)/3))};}
+const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
+function owned(id){return meta.skills.includes(id);}
+function visibleSkill(s){return owned(s.id)||s.req.every(owned);}          // hidden until reachable
+function canBuy(s){return !owned(s.id)&&s.req.every(owned)&&meta.credits>=s.cost;}
+function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
+  meta.credits-=s.cost;meta.skills.push(id);saveMeta();return true;}
+
+function stats(){
+  let power=30,speed=230,energyMax=100,energyRegen=9,coolRate=16,heatGen=11,magnet=68,valueMul=1,crit=0,drones=0;
+  const abilities={};
+  for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
+    power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
+    heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;
+    if(e.auto)magnet+=120;if(e.drone)drones++;if(e.ability)abilities[e.ability]=1;}
+  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,abilities,
+    tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
 const RES={
@@ -206,10 +297,10 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[];
-let shake=0,flash=0,hitstop=0,drilling=false,glitch=0;
+let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0;
 
 /* ===================== CAMERA ===================== */
 let W=0,H=0,PIX=3,LW=0,LH=0,DRILL_SY=0;
@@ -248,7 +339,7 @@ cv.addEventListener('mousedown',onDown);
 window.addEventListener('mousemove',e=>{if(input.active)onMove(e);});
 window.addEventListener('mouseup',onUp);
 const kb={};
-window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;if(e.key===' ')shockwave();if(e.key.toLowerCase()==='b')boost();});
+window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();});
 window.addEventListener('keyup',e=>{kb[e.key.toLowerCase()]=false;});
 function kbVec(){let x=0,y=0;if(kb['arrowleft']||kb['a'])x-=1;if(kb['arrowright']||kb['d'])x+=1;
   if(kb['arrowup']||kb['w'])y-=1;if(kb['arrowdown']||kb['s'])y+=1;
@@ -293,19 +384,25 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);return true;}
   return false;}
 
-function shockwave(){if(!run.active||run.shockCd>0)return;if(run.energy<22){sfx.ui();return;}
+function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if(run.energy<22){sfx.ui();return;}
   run.energy-=22;run.shockCd=5;const cr=clamp(ringOf(drill.rad),0,RINGS-1),cs=sectorOf(drill.ang),R=2;
   for(let dr=-R;dr<=R;dr++)for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+1){
     const rg=cr+dr,se=((cs+ds)%SECTORS+SECTORS)%SECTORS;if(rg>=0&&rg<RINGS)mineTile(rg,se,9999);}
   shake=Math.max(shake,16);flash=Math.max(flash,0.55);hitstop=0.05;glitch=0.3;
   sfx.shock();vibe([18,25,60]);burst(W/2,DRILL_SY,T.blob,26,1.6);}
-function boost(){if(!run.active||run.boostCd>0||run.boostT>0)return;if(run.energy<28){sfx.ui();return;}
+function boost(){if(!run.active||!S.abilities.boost||run.boostCd>0||run.boostT>0)return;if(run.energy<28){sfx.ui();return;}
   run.energy-=28;run.boostT=4;run.boostCd=12;flash=Math.max(flash,0.3);shake=Math.max(shake,6);
   sfx.rare();vibe([10,20,10]);burst(W/2,DRILL_SY,T.accent,18,1.3);}
+function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run.energy<30){sfx.ui();return;}
+  run.energy-=30;run.laserCd=8;const cs=sectorOf(drill.ang),cr=clamp(ringOf(drill.rad),0,RINGS-1);
+  for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,cs,9999);            // burns a shaft toward the core
+  shake=Math.max(shake,14);flash=Math.max(flash,0.5);glitch=0.3;sfx.shock();vibe([15,30,15]);
+  laserFx=0.18;}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;
+  updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');showHint();if(audio()&&AC.state==='suspended')AC.resume();}
@@ -313,26 +410,58 @@ function extract(){if(!run.active)return;run.active=false;meta.credits+=Math.rou
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
-  buildShop();show('shopOver');sfx.ui();vibe([10,20,40]);}
-function buildShop(){const g=document.getElementById('shopGrid');g.innerHTML='';
-  // planet selector
-  const ph=document.createElement('div');ph.style.cssText='display:flex;gap:6px;width:100%;margin-bottom:6px;';
-  PLANETS.forEach(p=>{const owned=meta.unlockedPlanets.includes(p.id),sel=meta.planet===p.id;
-    const b=document.createElement('button');b.className='up';
-    b.style.cssText='flex:1;justify-content:center;text-align:center;padding:9px 3px;'+(sel?'border-color:'+T.accent+';':'');
-    b.innerHTML='<span class="t" style="text-align:center"><b>'+p.name+'</b><span>'+(owned?(sel?'★ aktiv':'wählen'):p.unlock+'$ 🔒')+'</span></span>';
-    b.disabled=!owned&&meta.credits<p.unlock;
-    b.onclick=()=>{if(meta.unlockedPlanets.includes(p.id)){meta.planet=p.id;}
-      else if(meta.credits>=p.unlock){meta.credits-=p.unlock;meta.unlockedPlanets.push(p.id);meta.planet=p.id;
-        document.getElementById('rCredits').textContent=meta.credits;}else return;
-      saveMeta();sfx.buy();vibe(12);buildShop();};
-    ph.appendChild(b);});
-  g.appendChild(ph);
-  UPGRADES.forEach(u=>{const lvl=meta.up[u.id],cost=upCost(u),can=meta.credits>=cost;
-    const b=document.createElement('button');b.className='up';b.disabled=!can;
-    b.innerHTML='<span class="ic">'+u.ic+'</span><span class="t"><b>'+u.name+' · Lv '+lvl+'</b><span>'+u.desc+'</span></span><span class="c">'+cost+'$</span>';
-    b.onclick=()=>{if(meta.credits>=upCost(u)){meta.credits-=upCost(u);meta.up[u.id]++;saveMeta();sfx.buy();vibe(12);buildShop();
-      document.getElementById('rCredits').textContent=meta.credits;}};g.appendChild(b);});}
+  show('shopOver');sfx.ui();vibe([10,20,40]);}
+
+/* ability buttons appear only once the matching skill is unlocked */
+function updateAbilityButtons(){const a=stats().abilities;
+  document.getElementById('btnShock').style.display=a.blast?'flex':'none';
+  document.getElementById('btnBoost').style.display=a.boost?'flex':'none';
+  document.getElementById('btnLaser').style.display=a.laser?'flex':'none';}
+
+/* ---------- SKILL TREE (graphical, pannable, hidden until reachable) ---------- */
+const COLW=96,ROWH=104;
+function treeExtent(){let minx=0,maxx=0,maxy=0;for(const s of SKILLS){minx=Math.min(minx,s.pos[0]);maxx=Math.max(maxx,s.pos[0]);maxy=Math.max(maxy,s.pos[1]);}
+  return{minx,maxx,maxy};}
+function buildTree(){
+  document.getElementById('treeCash').textContent='$'+meta.credits;
+  const ex=treeExtent(),cw=(ex.maxx-ex.minx)*COLW+140,ch=(ex.maxy)*ROWH+150;
+  const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
+  const cx=(-ex.minx)*COLW+70, ox=(x)=>cx+x*COLW, oy=(y)=>60+y*ROWH;
+  // connectors (SVG) — only between visible nodes
+  let lines='';for(const s of SKILLS){if(!visibleSkill(s))continue;for(const r of s.req){const p=SKILLMAP[r];if(!p||!visibleSkill(p))continue;
+    const col=owned(s.id)?'#2de2e6':(owned(r)?'#ffd23f':'#444');
+    lines+='<line x1="'+ox(p.pos[0])+'" y1="'+oy(p.pos[1])+'" x2="'+ox(s.pos[0])+'" y2="'+oy(s.pos[1])+'" stroke="'+col+'" stroke-width="3"/>';}}
+  const svg=document.getElementById('treeSvg');svg.setAttribute('width',cw);svg.setAttribute('height',ch);svg.innerHTML=lines;
+  // nodes
+  [...cvs.querySelectorAll('.node')].forEach(n=>n.remove());
+  for(const s of SKILLS){if(!visibleSkill(s))continue;const own=owned(s.id),buy=canBuy(s);
+    const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
+    n.style.left=ox(s.pos[0])+'px';n.style.top=oy(s.pos[1])+'px';
+    n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
+    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree();}else{sfx.ui();}};
+    cvs.appendChild(n);}
+  // centre the scroll on the frontier (first buyable, else root)
+  requestAnimationFrame(()=>{const sc=document.getElementById('treeScroll');
+    const target=SKILLS.find(s=>canBuy(s))||SKILLS.find(s=>visibleSkill(s)&&!owned(s.id))||SKILLS[0];
+    sc.scrollLeft=ox(target.pos[0])-sc.clientWidth/2;sc.scrollTop=Math.max(0,oy(target.pos[1])-sc.clientHeight/2);});
+}
+let backTo='titleOver';
+function openTree(from){backTo=from;hide(from);show('treeOver');buildTree();}
+function openPlanets(from){backTo=from;hide(from);show('planetOver');buildPlanets();}
+
+/* ---------- PLANET MENU (graphical select/unlock) ---------- */
+function buildPlanets(){const g=document.getElementById('planetCards');g.innerHTML='';
+  PLANETS.forEach(p=>{const own=meta.unlockedPlanets.includes(p.id),sel=meta.planet===p.id;
+    const card=document.createElement('button');card.className='pcard'+(sel?' sel':'')+(own?'':' lock');
+    const globe='radial-gradient(circle at 34% 30%, '+p.ground[1]+', '+p.ground[0]+' 55%, '+p.ground[2]+' 100%)';
+    card.innerHTML='<span class="globe" style="background:'+globe+';border:2px solid '+p.core+';"></span>'+
+      '<span class="pt"><b>'+p.name+'</b><span>Härte ×'+p.hardMul.toFixed(1)+' · Loot ×'+p.valueMul.toFixed(1)+' · Tiefe '+p.rings+'</span></span>'+
+      '<span class="ps" style="color:'+(sel?'#2de2e6':own?'#12d9b0':'#ffd23f')+'">'+(sel?'★ AKTIV':own?'WÄHLEN':p.unlock+'$ 🔒')+'</span>';
+    card.disabled=!own&&meta.credits<p.unlock;
+    card.onclick=()=>{if(own){meta.planet=p.id;}
+      else if(meta.credits>=p.unlock){meta.credits-=p.unlock;meta.unlockedPlanets.push(p.id);meta.planet=p.id;}else{sfx.ui();return;}
+      saveMeta();sfx.buy();vibe(12);buildPlanets();};
+    g.appendChild(card);});}
 
 /* ===================== UPDATE ===================== */
 let curDt=0.016;
@@ -341,7 +470,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(input.active&&input.mag>0){vx=input.dx;vy=input.dy;mag=input.mag;const d=Math.hypot(vx,vy)||1;vx/=d;vy/=d;}
   else if(kv){vx=kv.dx;vy=kv.dy;mag=1;}
   run.boostT=Math.max(0,run.boostT-dt);
-  const boosting=run.boostT>0;POW=S.power*(boosting?2.6:1);
+  const boosting=run.boostT>0;POW=S.power*(1+S.crit)*(boosting?2.6:1);
   const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1)*(boosting?1.4:1);
   drilling=false;
   // radial: screen-down (vy>0) digs inward (rad decreases); up flies out
@@ -357,12 +486,14 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax)run.depthMax=dm;
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
+  if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
+  if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // drops: magnet + collect (polar)
   const drwx=drill.rad*Math.cos(drill.ang),drwy=drill.rad*Math.sin(drill.ang);
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
     if(dist<S.magnet||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
-    if(dist<22){run.haul+=RES[dp.id].value*(1+meta.up.magnet*0.05)*P.valueMul;burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
+    if(dist<22){run.haul+=RES[dp.id].value*S.valueMul*P.valueMul;burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
   // particles / dmg numbers (screen space)
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){parts.splice(i,1);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
@@ -449,6 +580,10 @@ function scene(){
   // particles
   for(const p of parts){const a=1-p.age/p.life;o.globalAlpha=a;o.fillStyle=p.color;
     o.fillRect((p.x*S1)|0,(p.y*S1)|0,p.size,p.size);}o.globalAlpha=1;
+  // laser beam (toward core = straight down from the centred drill)
+  if(laserFx>0){const bx=W/2*S1,by=DRILL_SY*S1;o.globalAlpha=Math.min(1,laserFx/0.12);
+    o.strokeStyle=T.accent;o.lineWidth=3;o.beginPath();o.moveTo(bx,by);o.lineTo(bx,by+TILE*8*SCALEcur*S1);o.stroke();
+    o.strokeStyle='#ffffff';o.lineWidth=1;o.beginPath();o.moveTo(bx,by);o.lineTo(bx,by+TILE*8*SCALEcur*S1);o.stroke();o.globalAlpha=1;}
   // drill pod
   drawPod(W/2*S1,DRILL_SY*S1,S1);
   // dmg numbers
@@ -517,12 +652,13 @@ function mix(a,b,t){const pa=hx(a),pb=hx(b);return'rgb('+Math.round(pa[0]+(pb[0]
 function hx(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
 
 /* ===================== LOOP ===================== */
-const shockCdEl=document.getElementById('shockCd'),boostCdEl=document.getElementById('boostCd');
+const shockCdEl=document.getElementById('shockCd'),boostCdEl=document.getElementById('boostCd'),laserCdEl=document.getElementById('laserCd');
 let last=performance.now();
 function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   if(hitstop>0)hitstop-=dt;else update(dt);draw();
   shockCdEl.style.transform='scaleY('+(run.shockCd/5)+')';
-  boostCdEl.style.transform='scaleY('+(run.boostCd/12)+')';requestAnimationFrame(frame);}
+  boostCdEl.style.transform='scaleY('+(run.boostCd/12)+')';
+  laserCdEl.style.transform='scaleY('+(run.laserCd/8)+')';requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 
 /* ===================== UI ===================== */
@@ -535,8 +671,17 @@ document.getElementById('btnDescend').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnExtract').onclick=extract;
 document.getElementById('btnShock').onclick=shockwave;
 document.getElementById('btnBoost').onclick=boost;
+document.getElementById('btnLaser').onclick=laser;
 document.getElementById('btnSound').onclick=function(){muted=!muted;this.textContent=muted?'🔇':'🔊';if(!muted){audio();if(AC&&AC.state==='suspended')AC.resume();}};
 document.querySelectorAll('.skin').forEach(b=>b.onclick=function(){TK=this.dataset.s;T=THEMES[TK];
   document.querySelectorAll('.skin').forEach(x=>x.classList.remove('on'));this.classList.add('on');sfx.ui();});
+// menu navigation
+document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');};
+document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};
+document.getElementById('btnTree2').onclick=()=>{sfx.ui();openTree('shopOver');};
+document.getElementById('btnPlanets2').onclick=()=>{sfx.ui();openPlanets('shopOver');};
+document.getElementById('btnTreeDone').onclick=()=>{sfx.ui();hide('treeOver');show(backTo);};
+document.getElementById('btnPlanetsDone').onclick=()=>{sfx.ui();hide('planetOver');show(backTo);};
+updateAbilityButtons();
 })();
 </script>
