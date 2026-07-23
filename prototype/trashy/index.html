@@ -219,6 +219,10 @@ const PLANETS=[
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
+ {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04,
+   ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
+ {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05,
+   ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
 ];
 let P=PLANETS[0];
 
@@ -316,7 +320,7 @@ const RES={
   artifact:{name:'Relic',color:'#8a5cff',glow:'#e6d8ff',value:520,rar:'legendary'},
 };
 const HARD={dirt:16,stone:34,hard:64,dark:96};
-function genTile(depthM){let rock='dirt';
+function genTile(depthM,ring,sec){let rock='dirt';
   if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
   let res=null;const roll=rnd();
   if(roll<0.15){
@@ -324,6 +328,9 @@ function genTile(depthM){let rock='dirt';
     else if(depthM>13&&rnd()<0.16)res='core';
     else if(depthM>7&&rnd()<0.30)res='crystal';
     else if(depthM>3&&rnd()<0.5)res='cuprite'; else res='ferrite';}
+  // rich veins: coarse hashed clusters of better ore -> juicy pockets
+  if(!res&&depthM>5&&hash((ring/2)|0,(sec/3)|0)%1000<55){
+    res=depthM>16&&rnd()<0.25?'core':depthM>9&&rnd()<0.6?'crystal':'cuprite';}
   const gas=depthM>3&&rnd()<(P.gasChance||0.018);
   const hp=HARD[rock]*P.hardMul;return{rock,res,gas,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
@@ -332,7 +339,7 @@ function tilePolar(ring,sec){
   if(ring>=RINGS)return null;             // space
   const k=key(ring,sec);if(world.has(k))return world.get(k);
   const depthM=(RINGS-1-ring);
-  const t=depthM===0?{rock:'dirt',res:null,hp:HARD.dirt*0.4*P.hardMul,maxhp:HARD.dirt*0.4*P.hardMul}:genTile(depthM);
+  const t=depthM===0?{rock:'dirt',res:null,hp:HARD.dirt*0.4*P.hardMul,maxhp:HARD.dirt*0.4*P.hardMul}:genTile(depthM,ring,sec);
   world.set(k,t);return t;}
 
 /* ===================== STATE ===================== */
