@@ -249,6 +249,14 @@ const SKILLS=[
  {id:'drone1',  name:'Drohne',         ic:'🛸', cost:1200, req:['auto'],   pos:[-2.7,4], eff:{drone:1,dv:0.3}},
  {id:'laser',   name:'Laser',          ic:'☄️', cost:1800, req:['boost'],  pos:[-0.6,5], eff:{ability:'laser',dp:20}},
  {id:'droneswarm',name:'Drohnen-Schwarm',ic:'🛸',cost:2000,req:['drone1'], pos:[-2.7,5], eff:{drone:1,dv:0.4,dm:60}},
+ // --- endgame tiers (visible power) ---
+ {id:'chain1',  name:'Kettenreaktion',  ic:'💢', cost:1800, req:['overload'],pos:[0.9,5],  eff:{chain:1}},
+ {id:'wide',    name:'Breitbohrer',     ic:'↔️', cost:1500, req:['overload'],pos:[1.9,5],  eff:{wide:1,dp:20}},
+ {id:'plasma',  name:'Plasma-Kern',     ic:'🔥', cost:3000, req:['laser'],  pos:[-0.6,6], eff:{dp:60,wide:1,crit:0.6}},
+ {id:'chain2',  name:'Kettenreaktion II',ic:'💥',cost:3200, req:['chain1'], pos:[0.9,6],  eff:{chain:1}},
+ {id:'dronemine',name:'Kampfdrohnen',   ic:'🛸', cost:2600, req:['droneswarm'],pos:[-2.7,6],eff:{drone:1,dronemine:1,dv:0.4}},
+ {id:'apex',    name:'APEX-Reaktor',    ic:'☢️', cost:6000, req:['plasma','chain2','dronemine'], pos:[-0.9,7.3],
+   eff:{dp:120,ds:80,de:150,dr:8,dv:1.0,crit:0.8,drone:2}},
 ];
 const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
 function owned(id){return meta.skills.includes(id);}
@@ -259,12 +267,12 @@ function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
 
 function stats(){
   let power=30,speed=230,energyMax=100,energyRegen=9,coolRate=16,heatGen=11,magnet=68,valueMul=1,crit=0,drones=0;
-  const abilities={};
+  let chain=0,wide=0,dronemine=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
-    heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;
-    if(e.auto)magnet+=120;if(e.drone)drones++;if(e.ability)abilities[e.ability]=1;}
-  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,abilities,
+    heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;chain+=e.chain||0;
+    if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
+  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,abilities,
     tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
@@ -375,14 +383,23 @@ function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false
   if(r.rar==='rare'){sfx.rare();vibe([12,30,12,30,40]);flash=Math.max(flash,0.5);shake=Math.max(shake,10);glitch=0.25;}
   else if(r.rar==='legendary'){sfx.leg();vibe([20,40,20,40,20,60,120]);flash=Math.max(flash,0.9);shake=Math.max(shake,18);glitch=0.5;}
   else if(r.rar==='uncommon'){sfx.rare();vibe([8,20,25]);}else vibe(6);}
-let tickAcc=0;
+let tickAcc=0,chainGuard=0;
 function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return false;t.hp-=dmg;
   const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*DSEC,ps=w2s(rad_c,ang_c);
   tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,T.dmg);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
-    sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);return true;}
+    sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
+    // chain reaction: destroyed blocks detonate neighbours (depth = chain level)
+    if(S.chain>0&&chainGuard<S.chain){chainGuard++;
+      const nb=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]];
+      for(const nn of nb)if(rnd()<0.6)mineTile(nn[0],nn[1],9999);
+      chainGuard--;}
+    return true;}
   return false;}
+// drilling into a tile; Breitbohrer (wide) also carves the two side tiles
+function drillTile(ring,sec,dmg){mineTile(ring,sec,dmg);
+  if(S.wide){mineTile(ring,(sec+1)%SECTORS,dmg*0.7);mineTile(ring,(sec-1+SECTORS)%SECTORS,dmg*0.7);}}
 
 function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if(run.energy<22){sfx.ui();return;}
   run.energy-=22;run.shockCd=5;const cr=clamp(ringOf(drill.rad),0,RINGS-1),cs=sectorOf(drill.ang),R=2;
@@ -488,6 +505,11 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
   if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
+  // combat drones: periodically auto-mine a nearby tile
+  if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
+    const cr=clamp(ringOf(drill.rad),0,RINGS-1),cs=sectorOf(drill.ang);
+    const dr=cr+(Math.floor(rnd()*5)-2),ds=((cs+Math.floor(rnd()*5)-2)%SECTORS+SECTORS)%SECTORS;
+    if(dr>=0&&dr<RINGS)mineTile(dr,ds,S.power*0.9);}}
   // drops: magnet + collect (polar)
   const drwx=drill.rad*Math.cos(drill.ang),drwy=drill.rad*Math.sin(drill.ang);
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
@@ -505,13 +527,13 @@ function moveRadial(dRad){if(dRad===0)return;const dir=Math.sign(dRad);
   const target=drill.rad+dRad,probe=target+dir*(TILE*0.4),ring=ringOf(probe),sec=sectorOf(drill.ang);
   const t=tilePolar(ring,sec);
   if(t&&t.wall){drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad);return;}   // core: block
-  if(t){drilling=true;mineTile(ring,sec,POW*(run.energy>0?1:0.3)*curDt);return;} // rock: mine+block
+  if(t){drilling=true;drillTile(ring,sec,POW*(run.energy>0?1:0.3)*curDt);return;} // rock: mine+block
   drill.rad=clamp(target,R_CORE+TILE*0.4,CAP_RAD);}                       // empty/space: move
 function moveAngular(dAng){if(dAng===0)return;const dir=Math.sign(dAng);
   const curRing=ringOf(drill.rad);
   if(curRing>=RINGS||curRing<0){drill.ang+=dAng;return;}                  // space/core edge: free
   const sec=sectorOf(drill.ang+dir*(DSEC*0.6)+dAng),t=tilePolar(curRing,sec);
-  if(t&&!t.wall){drilling=true;mineTile(curRing,sec,POW*(run.energy>0?1:0.3)*curDt);return;}
+  if(t&&!t.wall){drilling=true;drillTile(curRing,sec,POW*(run.energy>0?1:0.3)*curDt);return;}
   drill.ang+=dAng;}
 
 /* ===================== RENDER ===================== */
@@ -604,10 +626,12 @@ function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
     for(let i=0;i<3;i++){const tt=rad+1+i;o.fillRect((cx+dx*tt)|0,(cy+dy*tt)|0,2,2);}}
   // overdrive aura while boosting
   if(run.boostT>0){o.strokeStyle=T.accent;o.lineWidth=1;o.beginPath();o.arc(cx,cy,rad*1.7,0,TAU);o.stroke();}
-  // orbiting drones appear at higher machine tiers (visible power growth)
-  if(tier>=4){const n=tier-3;for(let i=0;i<n;i++){const a=performance.now()/500+i*(TAU/n),
-      ox=cx+Math.cos(a)*rad*2.2,oy=cy+Math.sin(a)*rad*2.2;
-    o.fillStyle=T.core;o.beginPath();o.arc(ox,oy,Math.max(1,rad*0.24),0,TAU);o.fill();}}}
+  // orbiting drones — count scales with unlocked drone skills (visible swarm)
+  const nd=Math.min(6,S.drones);
+  if(nd>0){for(let i=0;i<nd;i++){const a=performance.now()/500+i*(TAU/nd),
+      ox=cx+Math.cos(a)*rad*2.3,oy=cy+Math.sin(a)*rad*2.3;
+    o.fillStyle=T.core;o.beginPath();o.arc(ox,oy,Math.max(1,rad*0.26),0,TAU);o.fill();
+    if(S.dronemine){o.strokeStyle=T.dmg;o.globalAlpha=0.5;o.lineWidth=1;o.beginPath();o.moveTo(cx,cy);o.lineTo(ox,oy);o.stroke();o.globalAlpha=1;}}}}
 
 function draw(){scene();
   const ca=T.ca*(1+glitch*4);
