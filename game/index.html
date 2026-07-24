@@ -1,11 +1,10 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0713" />
-  <title>COREBREAKER</title>
-  <style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>COREBREAKER</title>
+<style>
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   html,body{margin:0;height:100%;width:100%;overflow:hidden;background:#000;
@@ -42,9 +41,12 @@
   .btn.ico{min-width:0;font-size:18px;}
 
   /* overlays */
-  .over{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:24px;background:rgba(8,6,16,.9);z-index:20;}
-  .over.show{display:flex;}
+  .over{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:24px;background:rgba(8,6,16,.9);z-index:20;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .26s ease,visibility .26s;}
+  .over>*{transform:translateY(16px) scale(.985);transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .28s ease;opacity:.4;}
+  .over.show{opacity:1;visibility:visible;pointer-events:auto;}
+  .over.show>*{transform:none;opacity:1;}
   .logo{font-size:min(17vw,74px);font-weight:900;letter-spacing:-.02em;line-height:.9;color:#fff;
     text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #2de2e6;text-transform:uppercase;text-wrap:balance;}
   .tag{margin-top:14px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#ffd23f;}
@@ -125,7 +127,7 @@
   .pcard .pt span{font-size:10px;color:#9a90ad;}
   .pcard .ps{font-size:11px;font-weight:900;white-space:nowrap;}
 
-  </style>
+</style>
 </head>
 <body>
 <div id="wrap"><canvas id="game"></canvas></div>
@@ -183,6 +185,7 @@
   <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
   <div class="treebottom">
     <button class="big" id="btnPrestige" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">⚛ Prestige</button>
+    <button class="big" id="btnAscend" style="display:none;background:#ff4de0;color:#fff;margin-right:10px;padding:15px 22px;">✦ Aszension</button>
     <button class="big" id="btnTreeDone">Fertig</button>
   </div>
 </div>
@@ -193,6 +196,14 @@
   <div class="sub" id="prestigeTxt"></div>
   <button class="big" id="btnPrestigeGo" style="background:#8a5cff;color:#fff;">Überladen</button>
   <div class="menubtns"><button class="mbtn" id="btnPrestigeCancel">Abbrechen</button></div>
+</div>
+
+<!-- ASCENSION CONFIRM -->
+<div class="over" id="ascendOver">
+  <div class="logo" style="font-size:min(13vw,52px);text-shadow:5px 5px 0 #ff4de0,-3px -3px 0 #2de2e6;">Singu<br>larität</div>
+  <div class="sub" id="ascendTxt"></div>
+  <button class="big" id="btnAscendGo" style="background:#ff4de0;color:#fff;">Aufsteigen</button>
+  <div class="menubtns"><button class="mbtn" id="btnAscendCancel">Abbrechen</button></div>
 </div>
 
 <!-- PLANET MENU -->
@@ -257,6 +268,6 @@
   <div class="pcards" id="achList" style="max-height:66vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
   <button class="big" id="btnAchDone" style="margin-top:16px">Fertig</button>
 </div>
-  <script type="module" src="/src/main.ts"></script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>

@@ -60,8 +60,12 @@ Handy). Nach jeder Phase: kurze Freigabe/Feedback-Runde, bevor es weitergeht.
 
 ## Phase 5 — Endgame, Polish, Performance & Store
 **Ziel:** Power-Fantasy, Feinschliff, Veröffentlichungsreife.
-- [ ] Höhere Maschinen-Tiers, Drohnen, Kettenreaktionen, Automatisierung
-- [ ] Prestige/„Core Reactor"-Loop
+- [x] Höhere Maschinen-Tiers, Drohnen, Kettenreaktionen, Automatisierung
+- [x] Prestige/„Core Overload"-Loop (Kerne: +12% Loot & +4 Bohrkraft je Kern)
+- [x] Zweite Prestige-Ebene „Singularität"/Aszension (Kerne → Splitter: +25% Loot & +8 Bohrkraft je Splitter, multiplikativ)
+- [x] Boss-Schichten mit Wächter + Angriffsmustern (Puls/Hitze, Sog zum Kern, rotierender Laser-Sweep in Phase 2)
+- [x] Gegner-Kreaturen in tiefen Schichten (jagen den Bohrer; beißen = Hitze, oder sterben & droppen beim Bohren/Boost)
+- [x] Menü-/Overlay-Animationen (Fade + Slide-Einblendung)
 - [ ] Weitere Planeten & Fähigkeiten (Content-Ausbau über Daten)
 - [ ] Balancing-Pass (Playtesting)
 - [ ] Performance-Optimierung (Pooling, Partikel-Caps, 60 FPS)

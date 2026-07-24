@@ -34,9 +34,12 @@
   .btn.ico{min-width:0;font-size:18px;}
 
   /* overlays */
-  .over{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:24px;background:rgba(8,6,16,.9);z-index:20;}
-  .over.show{display:flex;}
+  .over{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:24px;background:rgba(8,6,16,.9);z-index:20;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .26s ease,visibility .26s;}
+  .over>*{transform:translateY(16px) scale(.985);transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .28s ease;opacity:.4;}
+  .over.show{opacity:1;visibility:visible;pointer-events:auto;}
+  .over.show>*{transform:none;opacity:1;}
   .logo{font-size:min(17vw,74px);font-weight:900;letter-spacing:-.02em;line-height:.9;color:#fff;
     text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #2de2e6;text-transform:uppercase;text-wrap:balance;}
   .tag{margin-top:14px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#ffd23f;}
@@ -173,6 +176,7 @@
   <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
   <div class="treebottom">
     <button class="big" id="btnPrestige" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">⚛ Prestige</button>
+    <button class="big" id="btnAscend" style="display:none;background:#ff4de0;color:#fff;margin-right:10px;padding:15px 22px;">✦ Aszension</button>
     <button class="big" id="btnTreeDone">Fertig</button>
   </div>
 </div>
@@ -183,6 +187,14 @@
   <div class="sub" id="prestigeTxt"></div>
   <button class="big" id="btnPrestigeGo" style="background:#8a5cff;color:#fff;">Überladen</button>
   <div class="menubtns"><button class="mbtn" id="btnPrestigeCancel">Abbrechen</button></div>
+</div>
+
+<!-- ASCENSION CONFIRM -->
+<div class="over" id="ascendOver">
+  <div class="logo" style="font-size:min(13vw,52px);text-shadow:5px 5px 0 #ff4de0,-3px -3px 0 #2de2e6;">Singu<br>larität</div>
+  <div class="sub" id="ascendTxt"></div>
+  <button class="big" id="btnAscendGo" style="background:#ff4de0;color:#fff;">Aufsteigen</button>
+  <div class="menubtns"><button class="mbtn" id="btnAscendCancel">Abbrechen</button></div>
 </div>
 
 <!-- PLANET MENU -->
@@ -323,12 +335,12 @@ const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
   if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
   if(!j.records)j.records={};return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
     cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
 const SKINS=[
@@ -386,6 +398,7 @@ const ACH=[
  {id:'core1',  ic:'⚛️', de:['Core Overload','Prestige zum ersten Mal'],      en:['Core Overload','Prestige for the first time'],cond:()=>meta.prestige.cores>=1},
  {id:'veteran',ic:'🎖️', de:['Veteran','Spiele 25 Runs'],                     en:['Veteran','Play 25 runs'],                   cond:()=>meta.stats.runs>=25},
  {id:'guardian',ic:'💠',de:['Kern-Wächter','Durchbrich eine Boss-Schicht'],   en:['Core Guardian','Break through a boss layer'],cond:()=>!!meta.stats.guardian},
+ {id:'singular',ic:'✦', de:['Singularität','Steige zum ersten Mal auf'],       en:['Singularity','Ascend for the first time'],  cond:()=>(meta.ascend&&meta.ascend.shards>=1)},
 ];
 function achTxt(a){return (settings.lang==='en'?a.en:a.de);}
 let achQueue=[],achTimer=null;
@@ -402,6 +415,14 @@ function totalCores(){return Math.floor(Math.sqrt(meta.lifetime/300));}
 function prestigeGain(){return Math.max(0,totalCores()-meta.prestige.cores);}
 function doPrestige(){const g=prestigeGain();if(g<=0)return false;
   meta.prestige.cores=totalCores();meta.skills=[];meta.credits=0;saveMeta();S=stats();return true;}
+// Ascension ("Singularity") — second prestige layer. Spends accumulated cores for
+// permanent Singularity Shards: +8 Bohrkraft & +25% Loot each. Needs >=50 cores.
+const ASCEND_COST=25;
+function ascendGain(){return Math.floor((meta.prestige?meta.prestige.cores:0)/ASCEND_COST);}
+function canAscend(){return ascendGain()>=2;}
+function doAscend(){if(!canAscend())return false;
+  meta.ascend.shards+=ascendGain();
+  meta.prestige.cores=0;meta.lifetime=0;meta.skills=[];meta.credits=0;saveMeta();S=stats();return true;}
 function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
 
 // Skill tree — starts with ONE unlockable skill; buying a node reveals its children.
@@ -462,8 +483,9 @@ function stats(){
     bossPow+=e.bossPow||0;heatShield+=e.heatShield||0;
     if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
+  const shards=meta.ascend?meta.ascend.shards:0;power+=shards*8;
   return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,abilities,
-    prestigeMult:1+cores*0.12, tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
+    prestigeMult:(1+cores*0.12)*(1+shards*0.25), tier:Math.min(7,1+Math.floor(meta.skills.length/3)+drones+(shards>0?1:0))};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
 const RES={
@@ -505,7 +527,8 @@ let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
 const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
-const drops=[],parts=[],dmgnums=[];
+const drops=[],parts=[],dmgnums=[],enemies=[];
+let bossBeam=0;
 let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0,moveMag=0;
 
 /* ===================== CAMERA ===================== */
@@ -656,7 +679,7 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
-  drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
+  drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;bossBeam=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
 function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
@@ -692,6 +715,8 @@ function buildTree(){
   document.getElementById('treeCash').textContent='$'+meta.credits;
   const pg=prestigeGain(),pb=document.getElementById('btnPrestige');
   pb.style.display=pg>0?'inline-flex':'none';pb.textContent='⚛ +'+pg;
+  const ag=ascendGain(),ab=document.getElementById('btnAscend');
+  ab.style.display=canAscend()?'inline-flex':'none';ab.textContent='✦ +'+ag;
   const ex=treeExtent(),cw=(ex.maxx-ex.minx)*COLW+140,ch=(ex.maxy)*ROWH+150;
   const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
   const cx=(-ex.minx)*COLW+70, ox=(x)=>cx+x*COLW, oy=(y)=>60+y*ROWH;
@@ -838,7 +863,10 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     run.bossPulseT-=dt;
     if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;run.heat=Math.min(99,run.heat+Math.max(1,8+ph*3-S.heatShield));
       shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();vibe([20,45,20]);
-      if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}}
+      if(ph>=1)drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-14);   // suction: pull toward the core
+      if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}
+    if(ph>=2){bossBeam+=dt*1.3;                                     // rotating laser sweep
+      if(Math.abs(angDiff(bossBeam,drill.ang))<0.13){run.heat=Math.min(99,run.heat+14*dt);if(rnd()<0.3)burst(W/2,DRILL_SY,P.core,2,1);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
@@ -862,6 +890,17 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){parts.splice(i,1);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
   for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;d.y-=26*dt;if(d.age>=d.life)dmgnums.splice(i,1);}
+  // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
+  if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt){
+    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0});}
+  const drwx2=drill.rad*Math.cos(drill.ang),drwy2=drill.rad*Math.sin(drill.ang);
+  for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.age+=dt;
+    e.rad+=(drill.rad-e.rad)*Math.min(1,dt*1.4);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*1.4);
+    const ewx=e.rad*Math.cos(e.ang),ewy=e.rad*Math.sin(e.ang),ed=Math.hypot(drwx2-ewx,drwy2-ewy);
+    if(ed<26){if(drilling||run.boostT>0){run.haul+=22*P.valueMul*S.prestigeMult;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);}
+      else{run.heat=Math.min(99,run.heat+6);shake=Math.max(shake,10);sfx.shock();vibe([15,30]);burst(W/2,DRILL_SY,T.dmg,8,1.2);}
+      enemies.splice(i,1);continue;}
+    if(e.age>9)enemies.splice(i,1);}
   if(shake>0)shake=Math.max(0,shake-dt*26);
   if(flash>0)flash=Math.max(0,flash-dt*1.6);
   if(glitch>0)glitch=Math.max(0,glitch-dt*1.2);}
@@ -949,6 +988,10 @@ function scene(){
   // drops
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
+  // creatures (angular blob + glowing eyes)
+  for(const e of enemies){const ps=w2s(e.rad,e.ang),x=ps[0]*S1|0,y=ps[1]*S1|0,s=Math.max(3,TILE*0.26*SCALEcur*S1);
+    o.fillStyle=T.space2;o.fillRect(x-s,y-s,s*2,s*2);o.strokeStyle=T.dmg;o.lineWidth=1;o.strokeRect(x-s,y-s,s*2,s*2);
+    o.fillStyle=T.dmg;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,1,1);o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,1,1);}
   // particles
   for(const p of parts){const a=1-p.age/p.life;o.globalAlpha=a;o.fillStyle=p.color;
     o.fillRect((p.x*S1)|0,(p.y*S1)|0,p.size,p.size);}o.globalAlpha=1;
@@ -1010,7 +1053,14 @@ function draw(){scene();
   if(run.bossWave>0){const wr=(1-run.bossWave)*Math.max(W,H)*0.6;ctx.strokeStyle=P.core;ctx.globalAlpha=run.bossWave*0.8;
     ctx.lineWidth=3;ctx.beginPath();ctx.arc(pcx,pcy,wr,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
   if(run.inBoss){const bp=0.1+0.09*Math.sin(performance.now()/220),v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.7);
-    v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,P.core);ctx.globalAlpha=bp;ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+    v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,P.core);ctx.globalAlpha=bp;ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
+    // phase-2 rotating laser sweep from the core
+    if(run.bossKills>=8){const f=-Math.PI/2+angDiff(bossBeam,drill.ang),L=Math.max(W,H)*1.4,
+      ex=pcx+Math.cos(f)*L,ey=pcy+Math.sin(f)*L,al=angDiff(bossBeam,drill.ang),
+      hot=Math.abs(al)<0.13;ctx.save();ctx.globalCompositeOperation='lighter';
+      ctx.strokeStyle=hot?'#fff':P.core;ctx.globalAlpha=hot?0.9:0.55;ctx.lineWidth=hot?7:4;
+      ctx.beginPath();ctx.moveTo(pcx,pcy);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.globalAlpha=0.25;ctx.lineWidth=hot?18:12;ctx.strokeStyle=P.core;ctx.stroke();ctx.restore();}}
   drawHUD();}
 
 /* ===================== HUD (crisp full-res) ===================== */
@@ -1101,6 +1151,12 @@ document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
 document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
   hide('prestigeOver');show('treeOver');buildTree();};
+document.getElementById('btnAscend').onclick=()=>{sfx.ui();const g=ascendGain(),ns=meta.ascend.shards+g;
+  document.getElementById('ascendTxt').innerHTML='Wandelt <b>'+meta.prestige.cores+'</b> Kerne in <b style="color:#ff4de0">'+g+'</b> Splitter.<br>Setzt Kerne, Skill-Baum &amp; Credits zurück.<br>Splitter: <b>'+meta.ascend.shards+'</b> → <b style="color:#ff4de0">'+ns+'</b><br>Permanent: +'+(ns*25)+'% Loot · +'+(ns*8)+' Bohrkraft.';
+  hide('treeOver');show('ascendOver');};
+document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree();};
+document.getElementById('btnAscendGo').onclick=()=>{if(doAscend()){sfx.leg();vibe([30,50,30,70,30,120]);updateAbilityButtons();checkAchievements();}
+  hide('ascendOver');show('treeOver');buildTree();};
 document.getElementById('btnHelp').onclick=()=>{sfx.ui();show('tutOver');};
 document.getElementById('btnTutGo').onclick=()=>{sfx.ui();hide('tutOver');meta.tutorialSeen=true;saveMeta();};
 updateAbilityButtons();
