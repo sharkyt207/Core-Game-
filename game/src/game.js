@@ -205,6 +205,21 @@ const SKILLS=[
  {id:'drilllord', name:'Bohr-Meister',  ic:'⛏️', cost:3600, req:['coredrill'],pos:[0.4,7], eff:{dp:60,wide:1}},
  {id:'singularity',name:'Singularität', ic:'🌀', cost:12000,req:['apex','coredrill'], pos:[-0.9,8.4],
    eff:{dp:220,ds:100,de:200,dv:1.5,crit:1,drone:2,chain:1,bossPow:2}},
+ // --- expansion: mobility & magnet ---
+ {id:'speed3',    name:'Speed III',      ic:'💨', cost:1000, req:['speed2'],   pos:[-1.9,3],  eff:{ds:70}},
+ {id:'magnet2',   name:'Magnet II',      ic:'🧲', cost:1400, req:['magpulse'], pos:[-3.9,4],  eff:{dm:130}},
+ // --- expansion: survival / fuel & cooling ---
+ {id:'reactor3',  name:'Reaktor III',    ic:'🔋', cost:2600, req:['reactor2'], pos:[2.6,5],   eff:{de:160,dr:12}},
+ {id:'fuelcell',  name:'Brennzelle',     ic:'⚗️', cost:3400, req:['reactor3'], pos:[2.6,6],   eff:{fuelOre:1,de:80}},
+ {id:'cool3',     name:'Kühlung III',    ic:'❄️', cost:2200, req:['heatshield'],pos:[3.9,5],  eff:{dh:5,dc:10}},
+ {id:'freeze',    name:'Cryo-Vent',      ic:'🧊', cost:3000, req:['cool3'],    pos:[3.9,6],   eff:{ability:'freeze',dc:6}},
+ // --- expansion: greed (loot) branch ---
+ {id:'luck1',     name:'Glückstreffer',  ic:'🍀', cost:1600, req:['crit2'],    pos:[2.6,6],   eff:{luck:0.09,dv:0.2}},
+ {id:'combo',     name:'Kombo-Meister',  ic:'🔗', cost:2000, req:['crit2'],    pos:[1.6,6],   eff:{combo:1,dv:0.3}},
+ {id:'greed',     name:'Gier',           ic:'💎', cost:4200, req:['combo'],    pos:[1.6,7],   eff:{dv:1.4}},
+ // --- expansion: heavy ordnance & elite drones ---
+ {id:'nuke',      name:'Kern-Sprengung', ic:'☢️', cost:4000, req:['plasma'],   pos:[-1.9,6.4],eff:{ability:'nuke',dp:40}},
+ {id:'drone3',    name:'Drohnen-Elite',  ic:'🛰️', cost:4400, req:['dronemine'],pos:[-3.5,6.6],eff:{drone:2,dronemine:1,dv:0.5}},
 ];
 const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
 function owned(id){return meta.skills.includes(id);}
@@ -215,16 +230,17 @@ function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
 
 function stats(){
   let power=30,speed=230,energyMax=140,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
-  let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0;const abilities={};
+  let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0,luck=0,fuelOre=0,combo=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
     heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;chain+=e.chain||0;
-    bossPow+=e.bossPow||0;heatShield+=e.heatShield||0;
+    bossPow+=e.bossPow||0;heatShield+=e.heatShield||0;luck+=e.luck||0;fuelOre+=e.fuelOre||0;
+    if(e.combo)combo=1;
     if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
   const shards=meta.ascend?meta.ascend.shards:0;power+=shards*8;
-  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,abilities,
-    prestigeMult:(1+cores*0.12)*(1+shards*0.25), tier:Math.min(7,1+Math.floor(meta.skills.length/3)+drones+(shards>0?1:0))};}
+  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,luck,fuelOre,combo,abilities,
+    prestigeMult:(1+cores*0.12)*(1+shards*0.25), tier:Math.min(8,1+Math.floor(meta.skills.length/3)+drones+(shards>0?1:0))};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
 const RES={
@@ -240,11 +256,12 @@ function genTile(depthM,ring,sec){
   if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul;return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
   let rock='dirt';
   if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
+  const lk=(typeof S!=='undefined'&&S&&S.luck)||0;   // Glückstreffer: more & rarer finds
   let res=null;const roll=rnd();
-  if(roll<0.15){
-    if(depthM>20&&rnd()<0.05)res='artifact';
-    else if(depthM>13&&rnd()<0.16)res='core';
-    else if(depthM>7&&rnd()<0.30)res='crystal';
+  if(roll<0.15+lk){
+    if(depthM>20&&rnd()<0.05+lk)res='artifact';
+    else if(depthM>13&&rnd()<0.16+lk)res='core';
+    else if(depthM>7&&rnd()<0.30+lk)res='crystal';
     else if(depthM>3&&rnd()<0.5)res='cuprite'; else res='ferrite';}
   // rich veins: coarse hashed clusters of better ore -> juicy pockets
   if(!res&&depthM>5&&hash((ring/2)|0,(sec/3)|0)%1000<55){
@@ -264,7 +281,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -307,7 +324,7 @@ cv.addEventListener('mousedown',onDown);
 window.addEventListener('mousemove',e=>{if(input.active)onMove(e);});
 window.addEventListener('mouseup',onUp);
 const kb={};
-window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();if(k==='m')magpulse();if(k==='t')teleport();});
+window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();if(k==='m')magpulse();if(k==='t')teleport();if(k==='f')freeze();if(k==='n')nuke();});
 window.addEventListener('keyup',e=>{kb[e.key.toLowerCase()]=false;});
 function kbVec(){let x=0,y=0;if(kb['arrowleft']||kb['a'])x-=1;if(kb['arrowright']||kb['d'])x+=1;
   if(kb['arrowup']||kb['w'])y-=1;if(kb['arrowdown']||kb['s'])y+=1;
@@ -394,10 +411,11 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,T.dmg);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
+    if(S.combo){run.combo=Math.min(99,run.combo+1);run.comboT=1.5;}      // Kombo-Meister: streak while you keep breaking
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
-      run.haul+=140*P.valueMul*S.prestigeMult;run.bossKills++;meta.stats.guardian=true;checkAchievements();}
+      run.haul+=140*lootMul();run.bossKills++;meta.stats.guardian=true;checkAchievements();}
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
@@ -440,10 +458,23 @@ function magpulse(){if(!run.active||!S.abilities.magpulse||run.magCd>0)return;if
 function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(run.energy<20){sfx.ui();return;}
   run.energy-=20;run.tpCd=14;drill.rad=R_SURF+320;snapCamera();       // warp back to orbit (escape heat/danger)
   flash=Math.max(flash,0.6);shake=Math.max(shake,10);glitch=0.4;sfx.shock();vibe([20,30,20]);}
+function freeze(){if(!run.active||!S.abilities.freeze||run.freezeCd>0)return;if(run.energy<24){sfx.ui();return;}
+  run.energy-=24;run.freezeCd=18;run.freezeT=5;run.heat=0;          // flush heat + suppress it for a few seconds
+  flash=Math.max(flash,0.5);glitch=0.2;sfx.rare();vibe([12,24,12]);
+  for(let i=0;i<24;i++)burst(W/2+(rnd()-0.5)*60,DRILL_SY+(rnd()-0.5)*60,'#8be9ff',1,1.4);}
+function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.energy<42){sfx.ui();return;}
+  run.energy-=42;run.nukeCd=22;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=4;
+  for(let dr=-R;dr<=R;dr++){const rg=cr+dr;if(rg<0||rg>=RINGS)continue;const n=secCount(rg),sc=sectorOf(drill.ang,rg);
+    for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+2)mineTile(rg,((sc+ds)%n+n)%n,9999);}
+  run.haul+=120*lootMul();                                          // detonation bonus
+  shake=Math.max(shake,26);flash=Math.max(flash,1);hitstop=0.08;glitch=0.6;
+  sfx.shock();sfx.leg();vibe([30,50,30,80,120]);burst(W/2,DRILL_SY,P.core,40,2.2);}
+// loot multiplier folds in planet, prestige and the live mining combo
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,40)*0.02):1);}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
@@ -474,7 +505,9 @@ function updateAbilityButtons(){const a=stats().abilities;
   document.getElementById('btnBoost').style.display=a.boost?'flex':'none';
   document.getElementById('btnLaser').style.display=a.laser?'flex':'none';
   document.getElementById('btnMag').style.display=a.magpulse?'flex':'none';
-  document.getElementById('btnTp').style.display=a.teleport?'flex':'none';}
+  document.getElementById('btnTp').style.display=a.teleport?'flex':'none';
+  document.getElementById('btnFreeze').style.display=a.freeze?'flex':'none';
+  document.getElementById('btnNuke').style.display=a.nuke?'flex':'none';}
 
 /* ---------- SKILL TREE (graphical, pannable, hidden until reachable) ---------- */
 const COLW=96,ROWH=104;
@@ -615,7 +648,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
-  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt;if(rnd()<0.5)sfx.tick();
+  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
     // continuous drilling rumble — stronger the faster you go
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
@@ -643,6 +676,10 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
   if(run.magCd>0)run.magCd=Math.max(0,run.magCd-dt);
   if(run.tpCd>0)run.tpCd=Math.max(0,run.tpCd-dt);
+  if(run.freezeCd>0)run.freezeCd=Math.max(0,run.freezeCd-dt);
+  if(run.nukeCd>0)run.nukeCd=Math.max(0,run.nukeCd-dt);
+  if(run.freezeT>0){run.freezeT=Math.max(0,run.freezeT-dt);run.heat=Math.max(0,run.heat-dt*30);}  // Cryo-Vent window: fast cooling
+  if(run.comboT>0){run.comboT-=dt;if(run.comboT<=0)run.combo=0;}                                    // streak lapses if you stop
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // combat drones: periodically auto-mine a nearby tile
   if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
@@ -654,7 +691,9 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
     if(dist<S.magnet||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
-    if(dist<22){run.haul+=RES[dp.id].value*S.valueMul*P.valueMul*S.prestigeMult;burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
+    if(dist<22){run.haul+=RES[dp.id].value*lootMul();
+      if(S.fuelOre)run.energy=Math.min(S.energyMax,run.energy+(2+RES[dp.id].value*0.03)*S.fuelOre);  // Brennzelle: ore refuels
+      burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
   // particles / dmg numbers (screen space)
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){parts.splice(i,1);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
@@ -666,7 +705,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.age+=dt;
     e.rad+=(drill.rad-e.rad)*Math.min(1,dt*1.4);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*1.4);
     const ewx=e.rad*Math.cos(e.ang),ewy=e.rad*Math.sin(e.ang),ed=Math.hypot(drwx2-ewx,drwy2-ewy);
-    if(ed<26){if(drilling||run.boostT>0){run.haul+=22*P.valueMul*S.prestigeMult;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);}
+    if(ed<26){if(drilling||run.boostT>0){run.haul+=22*lootMul();burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);}
       else{run.heat=Math.min(99,run.heat+6);shake=Math.max(shake,10);sfx.shock();vibe([15,30]);burst(W/2,DRILL_SY,T.dmg,8,1.2);}
       enemies.splice(i,1);continue;}
     if(e.age>9)enemies.splice(i,1);}
@@ -883,6 +922,9 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     const y2=y1+bh+6;
     txt(c,'HEAT '+Math.round(run.heat)+'%',M,y2,'left',hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
+    if(S.combo&&run.combo>1){const cc=run.combo>=25?'#ff4de0':run.combo>=10?T.accent:'#8be9ff';
+      txt(c,'COMBO ×'+run.combo,W/2,H*0.35,'center',cc,Math.round(W*0.05*(1+Math.min(run.combo,40)*0.006)));}
+    if(run.freezeT>0)txt(c,'❄ CRYO',W/2,H*0.22,'center','#8be9ff',Math.round(W*0.038));
   }
   c.imageSmoothingEnabled=false;}
 function money(n){n=Math.round(n);if(n>=1e6)return'$'+(n/1e6).toFixed(3)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n;}
@@ -891,7 +933,7 @@ function hx(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[
 
 /* ===================== LOOP ===================== */
 const gid=(x)=>document.getElementById(x);
-const shockCdEl=gid('shockCd'),boostCdEl=gid('boostCd'),laserCdEl=gid('laserCd'),magCdEl=gid('magCd'),tpCdEl=gid('tpCd');
+const shockCdEl=gid('shockCd'),boostCdEl=gid('boostCd'),laserCdEl=gid('laserCd'),magCdEl=gid('magCd'),tpCdEl=gid('tpCd'),freezeCdEl=gid('freezeCd'),nukeCdEl=gid('nukeCd');
 let last=performance.now();
 function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   if(hitstop>0)hitstop-=dt;else update(dt);draw();
@@ -899,7 +941,9 @@ function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   boostCdEl.style.transform='scaleY('+(run.boostCd/12)+')';
   laserCdEl.style.transform='scaleY('+(run.laserCd/8)+')';
   magCdEl.style.transform='scaleY('+(run.magCd/10)+')';
-  tpCdEl.style.transform='scaleY('+(run.tpCd/14)+')';requestAnimationFrame(frame);}
+  tpCdEl.style.transform='scaleY('+(run.tpCd/14)+')';
+  freezeCdEl.style.transform='scaleY('+(run.freezeCd/18)+')';
+  nukeCdEl.style.transform='scaleY('+(run.nukeCd/22)+')';requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 
 /* ===================== UI ===================== */
@@ -915,6 +959,8 @@ document.getElementById('btnBoost').onclick=boost;
 document.getElementById('btnLaser').onclick=laser;
 document.getElementById('btnMag').onclick=magpulse;
 document.getElementById('btnTp').onclick=teleport;
+document.getElementById('btnFreeze').onclick=freeze;
+document.getElementById('btnNuke').onclick=nuke;
 document.getElementById('btnSound').onclick=function(){const on=!(settings.sfx&&settings.music);settings.sfx=on;settings.music=on;saveMeta();
   this.textContent=on?'🔊':'🔇';if(on){audio();if(AC&&AC.state==='suspended')AC.resume();startMusic();}else stopMusic();};
 document.getElementById('btnSound').textContent=(settings.sfx&&settings.music)?'🔊':'🔇';
