@@ -49,6 +49,23 @@
   .over.show>*{transform:none;opacity:1;}
   .logo{font-size:min(17vw,74px);font-weight:900;letter-spacing:-.02em;line-height:.9;color:#fff;
     text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #2de2e6;text-transform:uppercase;text-wrap:balance;}
+  /* studio splash */
+  #splashOver{background:#05040a;transition:opacity .5s ease,visibility .5s;}
+  .splashmark{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.4;
+    animation:splashIn 2.4s ease forwards;}
+  #splashOver .slogo{font-size:66px;line-height:1;color:#2de2e6;
+    text-shadow:0 0 20px rgba(45,226,230,.7),4px 4px 0 #ff2266;animation:sspin 6s linear infinite;}
+  #splashOver .sname{font-size:min(9vw,34px);font-weight:900;letter-spacing:.24em;color:#fff;text-shadow:2px 2px 0 #ff2266;}
+  #splashOver .sstudio{font-size:11px;letter-spacing:.62em;color:#7d8391;}
+  @keyframes splashIn{0%{opacity:0;transform:scale(.92)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.04)}}
+  @keyframes sspin{to{transform:rotate(360deg)}}
+  /* animated title */
+  #titleOver.show .logo{animation:logoPulse 3.4s ease-in-out infinite;}
+  @keyframes logoPulse{0%,100%{text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #2de2e6}
+    50%{text-shadow:7px 7px 0 #ff2266,-4px -4px 0 #2de2e6,0 0 26px rgba(255,34,102,.55)}}
+  #btnStart{animation:ctaBreath 2.2s ease-in-out infinite;}
+  @keyframes ctaBreath{0%,100%{box-shadow:6px 6px 0 rgba(255,255,255,.25)}
+    50%{box-shadow:6px 6px 0 rgba(255,255,255,.25),0 0 22px rgba(255,210,63,.6)}}
   .tag{margin-top:14px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#ffd23f;}
   .sub{margin:18px 0 4px;max-width:330px;font-size:12px;line-height:1.7;color:#c9c2d6;}
   .big{margin-top:26px;pointer-events:auto;background:#ffd23f;color:#140f1f;border:3px solid #fff;
@@ -148,7 +165,15 @@
 </div>
 <div class="hint" id="hint">runter = rein · hoch = raus ins All<br>seitlich = um den Planeten</div>
 
-<div class="over show" id="titleOver">
+<div class="over show" id="splashOver">
+  <div class="splashmark">
+    <div class="slogo">◆</div>
+    <div class="sname">NEONFORGE</div>
+    <div class="sstudio">STUDIO</div>
+  </div>
+</div>
+
+<div class="over" id="titleOver">
   <div class="logo">Core<br>Breaker</div>
   <div class="tag">// round planet //</div>
   <div class="sub" id="titleSub">Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen. Fahr rechtzeitig HOME.</div>
