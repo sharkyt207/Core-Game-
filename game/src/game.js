@@ -29,24 +29,43 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:26, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06,
+ {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
- {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1,
+ {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
  {id:'ferro',  name:'FERRO',   unlock:3200, rings:33, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
- {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03,
+ {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3,
+ {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
  {id:'neon',   name:'NEON',    unlock:5500, rings:34, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
- {id:'verdant',name:'VERDANT', unlock:14000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3,
+ {id:'verdant',name:'VERDANT', unlock:14000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
- {id:'obscura',name:'OBSCURA', unlock:22000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4,
+ {id:'obscura',name:'OBSCURA', unlock:22000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
    ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
+
+/* ===================== WEATHER / ENVIRONMENT EVENTS ===================== */
+// Timed hazards (and one boon) that flavour each planet. One primary per planet,
+// with a universal 'quake' fallback. Applied as modifiers inside update().
+const EVENTINFO={
+ quake: {de:'BEBEN',        en:'QUAKE',       col:'#c9a24d', dur:6},
+ magma: {de:'MAGMA-AUSBRUCH',en:'MAGMA SURGE', col:'#ff6a00', dur:6},
+ frost: {de:'FROST-STURM',  en:'FROST STORM', col:'#8be9ff', dur:7},
+ vein:  {de:'ERZADER',      en:'RICH VEIN',   col:'#ffd23f', dur:7},
+ surge: {de:'EMP-STÖRUNG',  en:'EMP SURGE',   col:'#2de2e6', dur:6},
+ spore: {de:'SPOREN-WOLKE', en:'SPORE CLOUD', col:'#3fd977', dur:7},
+ void:  {de:'SOG DER LEERE',en:'VOID PULL',   col:'#8a5cff', dur:6},
+};
+const PLANET_EVENT={terra:'quake',magmar:'magma',cryonis:'frost',ferro:'vein',mechon:'surge',abyss:'void',neon:'surge',verdant:'spore',obscura:'void'};
+function startEvent(){const primary=PLANET_EVENT[P.id]||'quake';
+  const type=rnd()<0.72?primary:'quake';run.event={type,t:EVENTINFO[type].dur};
+  const inf=EVENTINFO[type];flash=Math.max(flash,0.35);shake=Math.max(shake,8);sfx.rare();vibe([18,30,18]);
+  achQueue.push({ic:'⚠',de:[type==='vein'?'Boon':'Umwelt-Event',(settings.lang==='en'?inf.en:inf.de)],
+    en:[type==='vein'?'Boon':'Hazard',inf.en]});if(!achTimer)nextAch();}
 
 /* ===================== CORE / MATH ===================== */
 function rngSeed(s){return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
@@ -79,11 +98,12 @@ const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.contracts)j.contracts=[];
+  if(!j.mats)j.mats={ferrite:0,cuprite:0,crystal:0,core:0,artifact:0};if(!j.refine)j.refine={};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
   if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
   if(!j.records)j.records={};return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},contracts:[],
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},contracts:[],mats:{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0},refine:{},
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
     cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
 const SKINS=[
@@ -146,6 +166,7 @@ const ACH=[
  {id:'chainmaster',ic:'🔗',de:['Kettenmeister','Erreiche Combo ×30'],           en:['Chain Master','Reach Combo x30'],           cond:()=>(meta.stats.maxCombo||0)>=30},
  {id:'brute',   ic:'👹', de:['Brocken-Brecher','Besiege einen Brocken'],        en:['Brute Breaker','Defeat a Brute'],           cond:()=>!!meta.stats.bruteKill},
  {id:'deepvoid',ic:'🌑', de:['Leere','Schalte OBSCURA frei'],                   en:['The Void','Unlock OBSCURA'],                cond:()=>meta.unlockedPlanets.includes('obscura')},
+ {id:'refiner', ic:'⚗️', de:['Veredler','Verbaue Erz in der Refinerie'],        en:['Refiner','Craft an upgrade in the refinery'],cond:()=>Object.keys(meta.refine||{}).length>=1},
 ];
 function achTxt(a){return (settings.lang==='en'?a.en:a.de);}
 let achQueue=[],achTimer=null;
@@ -236,6 +257,17 @@ function canBuy(s){return !owned(s.id)&&s.req.every(owned)&&meta.credits>=s.cost
 function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
   meta.credits-=s.cost;meta.skills.push(id);saveMeta();return true;}
 
+// Refinery recipes: repeatable, tiered permanent bonuses crafted from raw ore.
+// Declared here (above stats) so the stat fold can reference RMAP without a TDZ error.
+const RECIPES=[
+ {id:'edge',   ic:'⛏️', de:['Verstärkte Spitze','+6 Bohrkraft / Stufe'], en:['Reinforced Bit','+6 power / level'],   mat:{crystal:6,core:2}, eff:{power:6}},
+ {id:'coolant',ic:'❄️', de:['Kühlmittel','−1 Hitze / Stufe'],           en:['Coolant','−1 heat / level'],           mat:{cuprite:10},       eff:{heatGen:1}},
+ {id:'plating',ic:'🛢️', de:['Tank-Panzerung','+22 Sprit / Stufe'],      en:['Tank Plating','+22 fuel / level'],     mat:{ferrite:14},       eff:{energyMax:22}},
+ {id:'coil',   ic:'🧲', de:['Magnetspule','+20 Magnet / Stufe'],        en:['Magnet Coil','+20 magnet / level'],    mat:{cuprite:8,crystal:3},eff:{magnet:20}},
+ {id:'polish', ic:'💎', de:['Wert-Politur','+12% Loot / Stufe'],        en:['Value Polish','+12% loot / level'],    mat:{core:5},           eff:{valueMul:0.12}},
+ {id:'alloy',  ic:'🍀', de:['Glückslegierung','+2% Fund / Stufe'],      en:['Lucky Alloy','+2% find / level'],      mat:{crystal:8,artifact:1},eff:{luck:0.02}},
+];
+const RMAP={};RECIPES.forEach(r=>RMAP[r.id]=r);
 function stats(){
   let power=30,speed=230,energyMax=140,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0,luck=0,fuelOre=0,combo=0;const abilities={};
@@ -245,6 +277,11 @@ function stats(){
     bossPow+=e.bossPow||0;heatShield+=e.heatShield||0;luck+=e.luck||0;fuelOre+=e.fuelOre||0;
     if(e.combo)combo=1;
     if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
+  // refinery: permanent bonuses crafted from raw ore
+  const rf=meta.refine||{};
+  for(const id in rf){const r=RMAP&&RMAP[id],L=rf[id]||0;if(!r||!L)continue;const e=r.eff;
+    power+=(e.power||0)*L;energyMax+=(e.energyMax||0)*L;heatGen-=(e.heatGen||0)*L;
+    magnet+=(e.magnet||0)*L;valueMul+=(e.valueMul||0)*L;luck+=(e.luck||0)*L;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
   const shards=meta.ascend?meta.ascend.shards:0;power+=shards*8;
   return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,luck,fuelOre,combo,abilities,
@@ -289,7 +326,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -479,11 +516,11 @@ function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.en
   shake=Math.max(shake,26);flash=Math.max(flash,1);hitstop=0.08;glitch=0.6;
   sfx.shock();sfx.leg();vibe([30,50,30,80,120]);burst(W/2,DRILL_SY,P.core,40,2.2);}
 // loot multiplier folds in planet, prestige and the live mining combo
-function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,30)*0.015):1);}
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1);}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
@@ -502,6 +539,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;document.body.c
   setTimeout(()=>show('gameoverOver'),480);}
 function extract(){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
+  for(const k in run.matsRun)meta.mats[k]=(meta.mats[k]||0)+run.matsRun[k];   // bank refinery ore on success
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('loot',g);updateDaily('runs',1);
   updateContracts('runDepth',run.depthMax);updateContracts('runLoot',g);updateContracts('relics',run.relicsRun);updateContracts('guardians',run.guardsRun);updateContracts('bestCombo',run.maxCombo);
@@ -631,6 +669,31 @@ function buildContracts(){ensureContracts();const g=document.getElementById('con
       '<span class="ps" style="color:#ffd23f">+'+c.reward+'$</span>';
     g.appendChild(row);});}
 function openContracts(from){backTo=from;hide(from);show('contractOver');buildContracts();}
+
+/* ===================== REFINERY (spend raw ore for permanent upgrades) ===================== */
+// (RECIPES/RMAP are declared above stats() so the stat fold can read them.)
+function refineLevel(id){return(meta.refine&&meta.refine[id])||0;}
+function refineCost(r){const L=refineLevel(r.id),c={};for(const m in r.mat)c[m]=r.mat[m]*(L+1);return c;}
+function canCraft(r){const c=refineCost(r);for(const m in c)if((meta.mats[m]||0)<c[m])return false;return true;}
+function craft(id){const r=RMAP[id];if(!r||!canCraft(r))return false;const c=refineCost(r);
+  for(const m in c)meta.mats[m]-=c[m];meta.refine[id]=refineLevel(id)+1;saveMeta();S=stats();checkAchievements();return true;}
+function matName(m){const de=settings.lang!=='en';const n={ferrite:de?'Schrott':'Scrap',cuprite:de?'Kupfer':'Copper',crystal:de?'Kristall':'Shard',core:de?'Kern':'Core',artifact:de?'Relikt':'Relic'};return n[m];}
+function buildRefinery(){const de=settings.lang!=='en';
+  const mh=document.getElementById('refMats');
+  mh.innerHTML=['ferrite','cuprite','crystal','core','artifact'].map(m=>
+    '<span style="color:'+RES[m].glow+'">'+matName(m)+' '+(meta.mats[m]||0)+'</span>').join('  ·  ');
+  const g=document.getElementById('refList');g.innerHTML='';
+  RECIPES.forEach(r=>{const L=refineLevel(r.id),cost=refineCost(r),ok=canCraft(r);
+    const costStr=Object.keys(cost).map(m=>{const have=meta.mats[m]||0;
+      return '<span style="color:'+(have>=cost[m]?'#12d9b0':'#ff4d4d')+'">'+matName(m)+' '+have+'/'+cost[m]+'</span>';}).join(' · ');
+    const card=document.createElement('button');card.className='pcard'+(L>0?' sel':'');
+    card.innerHTML='<span style="font-size:22px;width:34px;text-align:center">'+r.ic+'</span>'+
+      '<span class="pt"><b>'+(de?r.de[0]:r.en[0])+' · Lv '+L+'</b><span>'+(de?r.de[1]:r.en[1])+'<br>'+costStr+'</span></span>'+
+      '<span class="ps" style="color:'+(ok?'#ffd23f':'#555')+'">'+(ok?(de?'BAUEN':'CRAFT'):'🔒')+'</span>';
+    card.disabled=!ok;
+    card.onclick=()=>{if(craft(r.id)){sfx.buy();vibe(14);buildRefinery();updateAbilityButtons();}else sfx.ui();};
+    g.appendChild(card);});}
+function openRefinery(from){backTo=from;hide(from);show('refineOver');buildRefinery();}
 function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
 function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
   document.getElementById('achCount').textContent=meta.achievements.length+'/'+ACH.length;
@@ -685,7 +748,13 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   const boosting=run.boostT>0;POW=S.power*(1+S.crit)*(boosting?2.6:1);
   // impact factor: faster movement (incl. Speed-Skills & Boost) = harder hit on the planet
   moveMag=Math.min(1,mag*(boosting?1.5:1)*(0.7+S.speed/700));
-  const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1)*(boosting?1.4:1);
+  // weather-event modifiers
+  let evSpeed=1,evHeat=1,evMag=1,evSpawn=1;
+  if(run.event){const et=run.event.type;
+    if(et==='frost'){evSpeed=0.55;evHeat=0;}else if(et==='magma')evHeat=2.2;
+    else if(et==='surge')evMag=0;else if(et==='spore')evSpawn=3;}
+  if(run.frostT>0)evSpeed=Math.min(evSpeed,0.5);
+  const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1)*(boosting?1.4:1)*evSpeed;
   drilling=false;
   // radial: screen-down (vy>0) digs inward (rad decreases); up flies out
   moveRadial(-vy*mag*spd*dt);
@@ -695,7 +764,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
-  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
+  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
     // continuous drilling rumble — stronger the faster you go
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
@@ -708,13 +777,20 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   // active core guardian: pulses heat + shockwaves while you fight near the core
   const curR=ringOf(drill.rad),bz=(P.bossRings||2)+4;
   run.inBoss=(drill.rad<R_SURF&&curR>=0&&curR<bz);
-  if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0;   // guardian enrages the more you hit it
+  if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0,bt=P.bossType||'core';   // guardian enrages the more you hit it
     run.bossPulseT-=dt;
-    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;run.heat=Math.min(99,run.heat+Math.max(1,8+ph*3-S.heatShield));
+    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;
+      const heatMul=bt==='inferno'?1.5:bt==='frost'?0.4:1;                        // frost boss burns cold
+      run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*heatMul-S.heatShield));
       shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();vibe([20,45,20]);
-      if(ph>=1)drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-14);   // suction: pull toward the core
+      if(bt==='frost')run.frostT=Math.max(run.frostT,1.6);                        // frost boss slows the drill
+      const suck=bt==='void'?22:14;
+      if(ph>=1||bt==='void')drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-suck);   // suction toward the core
+      if(bt==='hive'){for(let k=0;k<2;k++)enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*2,R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.6,age:0,type:rnd()<0.5?'swift':'crawler',hp:1});}
       if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}
-    if(ph>=2){bossBeam+=dt*1.3;                                     // rotating laser sweep
+    // rotating laser sweep — tech boss starts it early & spins faster
+    const laserOn=bt==='tech'?ph>=1:ph>=2;
+    if(laserOn){bossBeam+=dt*(bt==='tech'?2.1:1.3);
       if(Math.abs(angDiff(bossBeam,drill.ang))<0.13){run.heat=Math.min(99,run.heat+14*dt);if(rnd()<0.3)burst(W/2,DRILL_SY,P.core,2,1);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
@@ -727,6 +803,16 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.nukeCd>0)run.nukeCd=Math.max(0,run.nukeCd-dt);
   if(run.freezeT>0){run.freezeT=Math.max(0,run.freezeT-dt);run.heat=Math.max(0,run.heat-dt*30);}  // Cryo-Vent window: fast cooling
   if(run.comboT>0){run.comboT-=dt;if(run.comboT<=0)run.combo=0;}                                    // streak lapses if you stop
+  if(run.frostT>0)run.frostT=Math.max(0,run.frostT-dt);
+  // weather events: schedule, run, resolve
+  run.eventCd-=dt;
+  if(!run.event&&run.eventCd<=0&&run.depthMax>10&&drill.rad<R_SURF)startEvent();
+  if(run.event){run.event.t-=dt;
+    if(run.event.type==='void')drill.rad=Math.max(R_CORE,drill.rad-10*dt);                          // void pull drags you inward
+    if(run.event.type==='quake'){if(rnd()<dt*2.2)shake=Math.max(shake,9);
+      if(rnd()<dt*0.6){const cr=clamp(ringOf(drill.rad),0,RINGS-1),rr=clamp(cr-1-((rnd()*2)|0),0,RINGS-1);
+        mineTile(rr,sectorOf(drill.ang,rr),9999);run.heat=Math.min(99,run.heat+2);}}                 // falling debris
+    if(run.event.t<=0){run.event=null;run.eventCd=13+rnd()*10;}}
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // combat drones: periodically auto-mine a nearby tile
   if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
@@ -737,8 +823,9 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   const drwx=drill.rad*Math.cos(drill.ang),drwy=drill.rad*Math.sin(drill.ang);
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
-    if(dist<S.magnet||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
+    if(dist<S.magnet*evMag||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
     if(dist<22){run.haul+=RES[dp.id].value*lootMul();
+      run.matsRun[dp.id]=(run.matsRun[dp.id]||0)+1;                                                 // banked on extract, lost on game over
       if(S.fuelOre)run.energy=Math.min(S.energyMax,run.energy+(2+RES[dp.id].value*0.03)*S.fuelOre);  // Brennzelle: ore refuels
       burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
   // particles / dmg numbers (screen space)
@@ -746,7 +833,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
   for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;d.y-=26*dt;if(d.age>=d.life)dmgnums.splice(i,1);}
   // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
-  if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt){
+  if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt*evSpawn){
     const roll=rnd(),ty=(run.depthMax>60&&roll<0.32)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
     enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0,type:ty,hp:ty==='brute'?2:1});}
   const drwx2=drill.rad*Math.cos(drill.ang),drwy2=drill.rad*Math.sin(drill.ang);
@@ -953,13 +1040,17 @@ function draw(){scene();
     ctx.lineWidth=3;ctx.beginPath();ctx.arc(pcx,pcy,wr,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
   if(run.inBoss){const bp=0.1+0.09*Math.sin(performance.now()/220),v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.7);
     v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,P.core);ctx.globalAlpha=bp;ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
-    // phase-2 rotating laser sweep from the core
-    if(run.bossKills>=8){const f=-Math.PI/2+angDiff(bossBeam,drill.ang),L=Math.max(W,H)*1.4,
+    // rotating laser sweep from the core (tech boss shows it earlier)
+    if(run.bossKills>=8||(P.bossType==='tech'&&run.bossKills>=3)){const f=-Math.PI/2+angDiff(bossBeam,drill.ang),L=Math.max(W,H)*1.4,
       ex=pcx+Math.cos(f)*L,ey=pcy+Math.sin(f)*L,al=angDiff(bossBeam,drill.ang),
       hot=Math.abs(al)<0.13;ctx.save();ctx.globalCompositeOperation='lighter';
       ctx.strokeStyle=hot?'#fff':P.core;ctx.globalAlpha=hot?0.9:0.55;ctx.lineWidth=hot?7:4;
       ctx.beginPath();ctx.moveTo(pcx,pcy);ctx.lineTo(ex,ey);ctx.stroke();
       ctx.globalAlpha=0.25;ctx.lineWidth=hot?18:12;ctx.strokeStyle=P.core;ctx.stroke();ctx.restore();}}
+  // weather-event colour wash (subtle, pulsing)
+  if(run.event){const inf=EVENTINFO[run.event.type],a=0.06+0.05*Math.sin(performance.now()/180);
+    const v=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+    v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,inf.col);ctx.globalAlpha=a;ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
   drawHUD();}
 
 /* ===================== HUD (crisp full-res) ===================== */
@@ -987,6 +1078,8 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     if(S.combo&&run.combo>1){const cc=run.combo>=25?'#ff4de0':run.combo>=10?T.accent:'#8be9ff';
       txt(c,'COMBO ×'+run.combo,W/2,H*0.35,'center',cc,Math.round(W*0.05*(1+Math.min(run.combo,40)*0.006)));}
     if(run.freezeT>0)txt(c,'❄ CRYO',W/2,H*0.22,'center','#8be9ff',Math.round(W*0.038));
+    if(run.event){const inf=EVENTINFO[run.event.type];
+      txt(c,'⚠ '+(settings.lang==='en'?inf.en:inf.de)+' '+Math.ceil(run.event.t)+'s',W/2,H*0.19,'center',inf.col,Math.round(W*0.04));}
   }
   c.imageSmoothingEnabled=false;}
 function money(n){n=Math.round(n);if(n>=1e6)return'$'+(n/1e6).toFixed(3)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n;}
@@ -1033,6 +1126,8 @@ document.getElementById('btnAch').onclick=()=>{sfx.ui();openAch('titleOver');};
 document.getElementById('btnAchDone').onclick=()=>{sfx.ui();hide('achOver');show(backTo);};
 document.getElementById('btnContracts').onclick=()=>{sfx.ui();openContracts('titleOver');};
 document.getElementById('btnContractDone').onclick=()=>{sfx.ui();hide('contractOver');show(backTo);};
+document.getElementById('btnRefine').onclick=()=>{sfx.ui();openRefinery('titleOver');};
+document.getElementById('btnRefineDone').onclick=()=>{sfx.ui();hide('refineOver');show(backTo);};
 document.getElementById('btnSkins').onclick=()=>{sfx.ui();openSkins('titleOver');};
 document.getElementById('btnSkinDone').onclick=()=>{sfx.ui();hide('skinOver');show(backTo);};
 // cloud-save prep: portable save code (export/import)

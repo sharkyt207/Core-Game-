@@ -48,11 +48,16 @@ Durchbrettern ganzer Gesteinsschichten — bis nichts dich mehr aufhält.
 Startet mit einem einzigen Skill und öffnet sich Ast um Ast: Drohnen,
 Ketten­reaktionen, Laser-Schächte, Magnet-Puls, Teleport und mehr.
 
-🪐  NEUN WELTEN
+🪐  NEUN WELTEN, EIGENE BOSSE & WETTER
 Terra, Magmar, Cryonis, Ferro, Mechon, Abyss, Neon, Verdant, Obscura — jede mit
-eigener Härte, eigenem Loot und eigenen Gefahren. Tiefe Schichten bergen drei
-Kreaturen-Typen (Crawler, Flitzer, Brocken) und einen Kern-Wächter mit Sog- und
-Laser-Attacken.
+eigener Härte, eigenem Loot, eigenem Kern-Wächter (Feuer, Frost, Tech, Leere,
+Brut) und eigenem Umwelt-Event: Magma-Ausbrüche, Frost-Stürme, Beben, Erzadern,
+EMP-Störungen, Sporen-Wolken und der Sog der Leere. Dazu drei Kreaturen-Typen
+(Crawler, Flitzer, Brocken).
+
+⚗️  REFINERIE
+Verbau erbeutetes Erz zu dauerhaften Upgrades — aber nur, wer rechtzeitig
+extrahiert, behält seine Beute.
 
 📋  KONTRAKTE & ZIELE
 Ein rollendes Kontrakt-Board mit Belohnungen, dazu Tagesziele, Erfolge und
@@ -119,10 +124,16 @@ through entire strata — until nothing can stop you.
 Start with a single skill and open it branch by branch: drones, chain
 reactions, laser shafts, magnet pulse, teleport and more.
 
-🪐  NINE WORLDS
+🪐  NINE WORLDS, UNIQUE BOSSES & WEATHER
 Terra, Magmar, Cryonis, Ferro, Mechon, Abyss, Neon, Verdant, Obscura — each with
-its own hardness, loot and dangers. Deep layers hide three creature types
-(crawlers, swifts, brutes) and a Core Guardian with pull and laser attacks.
+its own hardness, loot, Core Guardian (fire, frost, tech, void, hive) and
+environmental event: magma surges, frost storms, quakes, rich veins, EMP surges,
+spore clouds and the pull of the void. Plus three creature types (crawlers,
+swifts, brutes).
+
+⚗️  REFINERY
+Turn mined ore into permanent upgrades — but only if you extract in time do you
+keep your haul.
 
 📋  CONTRACTS & GOALS
 A rolling contract board with rewards, plus daily goals, achievements and
