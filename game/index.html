@@ -201,6 +201,7 @@
     <button class="mbtn" id="btnContracts">📋 Kontrakte</button>
     <button class="mbtn" id="btnSkins">🎨 Skins</button>
     <button class="mbtn" id="btnAch">🏆 Erfolge</button>
+    <button class="mbtn" id="btnCodex">📖 Kompendium</button>
     <button class="mbtn" id="btnSettings">⚙ Optionen</button>
     <button class="mbtn wide2" id="btnHelp">❓ Tutorial</button>
   </div>
@@ -290,11 +291,15 @@
 
 <!-- TUTORIAL -->
 <div class="over" id="tutOver">
-  <div class="logo" style="font-size:min(13vw,52px)" id="tutTitle">So geht's</div>
-  <div class="sub" id="tut1"></div>
-  <div class="sub" id="tut2" style="color:#ff8a3d"></div>
-  <div class="sub" id="tut3"></div>
-  <button class="big" id="btnTutGo">Los geht's</button>
+  <div class="cuteye" style="color:#2de2e6;font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.34em;text-transform:uppercase;margin-bottom:10px">// tutorial //</div>
+  <div id="tutIcon" style="font-size:52px;line-height:1">🕹️</div>
+  <div class="logo" style="font-size:min(10vw,40px);margin-top:8px" id="tutTitle"></div>
+  <div class="sub" id="tutBody" style="max-width:330px;min-height:92px"></div>
+  <div id="tutDots" style="display:flex;gap:9px;margin:4px 0 2px"></div>
+  <div class="menubtns" style="max-width:300px">
+    <button class="mbtn" id="btnTutSkip">Überspringen</button>
+    <button class="mbtn" id="btnTutNext" style="border-color:#ffd23f;color:#ffd23f">Weiter</button>
+  </div>
 </div>
 
 <!-- SKINS -->
@@ -348,6 +353,13 @@
   <div class="sub" style="max-width:320px">Erfülle Ziele, kassiere Belohnungen. Erledigte Kontrakte werden automatisch durch neue ersetzt.</div>
   <div class="pcards" id="contractList" style="max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
   <button class="big" id="btnContractDone" style="margin-top:16px">Fertig</button>
+</div>
+
+<!-- COMPENDIUM -->
+<div class="over" id="codexOver">
+  <div class="tag" style="color:#2de2e6">// kompendium //</div>
+  <div class="pcards" id="codexList" style="max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch;max-width:360px;"></div>
+  <button class="big" id="btnCodexDone" style="margin-top:12px">Fertig</button>
 </div>
 
 <!-- ACHIEVEMENTS -->

@@ -64,9 +64,9 @@ kombinierbar für deinen eigenen Build.
 Jeden Tag ein fester Seed mit eigenem Planeten und Modifikator — jage einen
 hohen Score und klettere in der Bestenliste.
 
-📋  KONTRAKTE & ZIELE
-Ein rollendes Kontrakt-Board mit Belohnungen, dazu Tagesziele, Erfolge und
-Rekorde — es gibt immer ein nächstes Ziel.
+📋  KONTRAKTE & KOMPENDIUM
+Ein rollendes Kontrakt-Board mit Belohnungen, dazu Tagesziele, Erfolge und ein
+Kompendium mit allen Rekorden, Erzen, Kreaturen, Bossen und Wetter-Events.
 
 ⚛️  ENDLOSE PROGRESSION
 Zwei Prestige-Ebenen: „Core Overload" und die „Singularität" machen dich
@@ -144,9 +144,9 @@ keep your haul. Plus 9 drill modules across 3 slots, freely mixed for your build
 Every day a fixed seed with its own planet and modifier — chase a high score and
 climb the leaderboard.
 
-📋  CONTRACTS & GOALS
-A rolling contract board with rewards, plus daily goals, achievements and
-records — always a next thing to chase.
+📋  CONTRACTS & COMPENDIUM
+A rolling contract board with rewards, plus daily goals, achievements and a
+compendium of every record, ore, creature, boss and weather event.
 
 ⚛️  ENDLESS PROGRESSION
 Two prestige layers — "Core Overload" and the "Singularity" — make you

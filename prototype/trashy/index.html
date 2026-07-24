@@ -192,6 +192,7 @@
     <button class="mbtn" id="btnContracts">📋 Kontrakte</button>
     <button class="mbtn" id="btnSkins">🎨 Skins</button>
     <button class="mbtn" id="btnAch">🏆 Erfolge</button>
+    <button class="mbtn" id="btnCodex">📖 Kompendium</button>
     <button class="mbtn" id="btnSettings">⚙ Optionen</button>
     <button class="mbtn wide2" id="btnHelp">❓ Tutorial</button>
   </div>
@@ -281,11 +282,15 @@
 
 <!-- TUTORIAL -->
 <div class="over" id="tutOver">
-  <div class="logo" style="font-size:min(13vw,52px)" id="tutTitle">So geht's</div>
-  <div class="sub" id="tut1"></div>
-  <div class="sub" id="tut2" style="color:#ff8a3d"></div>
-  <div class="sub" id="tut3"></div>
-  <button class="big" id="btnTutGo">Los geht's</button>
+  <div class="cuteye" style="color:#2de2e6;font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.34em;text-transform:uppercase;margin-bottom:10px">// tutorial //</div>
+  <div id="tutIcon" style="font-size:52px;line-height:1">🕹️</div>
+  <div class="logo" style="font-size:min(10vw,40px);margin-top:8px" id="tutTitle"></div>
+  <div class="sub" id="tutBody" style="max-width:330px;min-height:92px"></div>
+  <div id="tutDots" style="display:flex;gap:9px;margin:4px 0 2px"></div>
+  <div class="menubtns" style="max-width:300px">
+    <button class="mbtn" id="btnTutSkip">Überspringen</button>
+    <button class="mbtn" id="btnTutNext" style="border-color:#ffd23f;color:#ffd23f">Weiter</button>
+  </div>
 </div>
 
 <!-- SKINS -->
@@ -339,6 +344,13 @@
   <div class="sub" style="max-width:320px">Erfülle Ziele, kassiere Belohnungen. Erledigte Kontrakte werden automatisch durch neue ersetzt.</div>
   <div class="pcards" id="contractList" style="max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
   <button class="big" id="btnContractDone" style="margin-top:16px">Fertig</button>
+</div>
+
+<!-- COMPENDIUM -->
+<div class="over" id="codexOver">
+  <div class="tag" style="color:#2de2e6">// kompendium //</div>
+  <div class="pcards" id="codexList" style="max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch;max-width:360px;"></div>
+  <button class="big" id="btnCodexDone" style="margin-top:12px">Fertig</button>
 </div>
 
 <!-- ACHIEVEMENTS -->
@@ -628,7 +640,7 @@ const RECIPES=[
  {id:'coolant',ic:'❄️', de:['Kühlmittel','−1 Hitze / Stufe'],           en:['Coolant','−1 heat / level'],           mat:{cuprite:10},       eff:{heatGen:1}},
  {id:'plating',ic:'🛢️', de:['Tank-Panzerung','+22 Sprit / Stufe'],      en:['Tank Plating','+22 fuel / level'],     mat:{ferrite:14},       eff:{energyMax:22}},
  {id:'coil',   ic:'🧲', de:['Magnetspule','+20 Magnet / Stufe'],        en:['Magnet Coil','+20 magnet / level'],    mat:{cuprite:8,crystal:3},eff:{magnet:20}},
- {id:'polish', ic:'💎', de:['Wert-Politur','+12% Loot / Stufe'],        en:['Value Polish','+12% loot / level'],    mat:{core:5},           eff:{valueMul:0.12}},
+ {id:'polish', ic:'💎', de:['Wert-Politur','+8% Loot / Stufe'],         en:['Value Polish','+8% loot / level'],     mat:{core:6},           eff:{valueMul:0.08}},
  {id:'alloy',  ic:'🍀', de:['Glückslegierung','+2% Fund / Stufe'],      en:['Lucky Alloy','+2% find / level'],      mat:{crystal:8,artifact:1},eff:{luck:0.02}},
 ];
 const RMAP={};RECIPES.forEach(r=>RMAP[r.id]=r);
@@ -642,7 +654,7 @@ const MODULES=[
  {id:'m_luck',  ic:'🍀', de:'Glückschip',    en:'Lucky Chip',   cost:2400, col:'#3fd977', eff:{luck:0.06,dv:0.2}},
  {id:'m_crit',  ic:'🎯', de:'Krit-Modul',    en:'Crit Module',  cost:2600, col:'#ff4de0', eff:{crit:0.7}},
  {id:'m_drone', ic:'🛸', de:'Drohnen-Bay',   en:'Drone Bay',    cost:3200, col:'#8a5cff', eff:{drone:1,dv:0.3}},
- {id:'m_prism', ic:'💎', de:'Wert-Prisma',   en:'Value Prism',  cost:3600, col:'#ffd23f', eff:{dv:0.6}},
+ {id:'m_prism', ic:'💎', de:'Wert-Prisma',   en:'Value Prism',  cost:4200, col:'#ffd23f', eff:{dv:0.5}},
 ];
 const MMAP={};MODULES.forEach(m=>MMAP[m.id]=m);
 function stats(){
@@ -682,7 +694,7 @@ function genTile(depthM,ring,sec){
   if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul*cmul('hard');return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
   let rock='dirt';
   if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
-  const lk=(typeof S!=='undefined'&&S&&S.luck)||0;   // Glückstreffer: more & rarer finds
+  const lk=Math.min(0.4,(typeof S!=='undefined'&&S&&S.luck)||0);   // Glückstreffer: more & rarer finds (capped)
   let res=null;const roll=rnd();
   if(roll<0.15+lk){
     if(depthM>20&&rnd()<0.05+lk)res='artifact';
@@ -997,7 +1009,7 @@ function applyLang(){
   set('btnAch','ach');set('btnSettings','settings');set('btnSettings2','settings');
   set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
   set('btnRetry','retry');set('btnGoMenu','menu');set('btnSkinDone','done');
-  set('tutTitle','tutTitle');set('tut1','tut1');set('tut2','tut2');set('tut3','tut3');set('btnTutGo','tutGo');set('btnHelp','help');
+  set('btnHelp','help');if(document.getElementById('tutOver').classList.contains('show'))renderTut();
   set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');
   buildSettings();updateDailyUI();}
 
@@ -1005,8 +1017,8 @@ function applyLang(){
 function dayRng(){let s=5;for(const c of new Date().toDateString())s=((s*31+c.charCodeAt(0))>>>0);
   return ()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
 function ensureDaily(){const ds=new Date().toDateString();if(meta.daily&&meta.daily.date===ds)return;
-  const r=dayRng(),kinds=[{type:'depth',target:30+Math.floor(r()*45),reward:200},
-    {type:'loot',target:600+Math.floor(r()*2000),reward:300},{type:'runs',target:3+Math.floor(r()*5),reward:250}];
+  const r=dayRng(),kinds=[{type:'depth',target:30+Math.floor(r()*45),reward:250},
+    {type:'loot',target:600+Math.floor(r()*2000),reward:350},{type:'runs',target:3+Math.floor(r()*5),reward:300}];
   const pick=kinds[Math.floor(r()*kinds.length)];
   meta.daily={date:ds,type:pick.type,target:pick.target,reward:pick.reward,progress:0,claimed:false};saveMeta();}
 function dailyDesc(){const d=meta.daily,de=settings.lang!=='en';if(!d)return'';
@@ -1206,6 +1218,69 @@ function showCutscene(p){const de=settings.lang!=='en';
   const nm=document.getElementById('cutName');nm.textContent=p.name;nm.style.textShadow='4px 4px 0 '+p.core+',-3px -3px 0 #2de2e6';
   document.getElementById('cutTag').textContent=PLANET_TAG[p.id]?(de?PLANET_TAG[p.id][0]:PLANET_TAG[p.id][1]):'';
   sfx.leg();vibe([20,40,20,60,120]);flash=Math.max(flash,0.4);show('cutOver');}
+
+/* ===================== TUTORIAL (multi-step onboarding) ===================== */
+const TUTSTEPS=[
+ {ic:'🕹️', de:['Steuerung','Finger unten aufsetzen und ziehen: RUNTER bohrt in den Planeten, HOCH fliegt raus ins All, SEITLICH fliegt um den Planeten.'],
+           en:['Controls','Touch the lower screen and drag: DOWN drills in, UP flies out to space, SIDEWAYS orbits the planet.']},
+ {ic:'🔥', de:['Sprit & Hitze','SPRIT und HITZE regenerieren nicht. Leerer Tank oder 100 % Hitze = Run vorbei. Fahr rechtzeitig HOME (⏏) und extrahiere deine Beute.'],
+           en:['Fuel & Heat','FUEL and HEAT never regenerate. Empty tank or 100% heat = run over. Head HOME (⏏) in time and extract your haul.']},
+ {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
+           en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
+ {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Viel Erfolg!'],
+           en:['Your Goal','Drill deeper through 9 worlds to the molten core — survive bosses, weather and creatures, and become overpowered. Good luck!']},
+];
+let tutIndex=0;
+function renderTut(){const de=settings.lang!=='en',s=TUTSTEPS[tutIndex];
+  document.getElementById('tutIcon').textContent=s.ic;
+  document.getElementById('tutTitle').textContent=de?s.de[0]:s.en[0];
+  document.getElementById('tutBody').textContent=de?s.de[1]:s.en[1];
+  document.getElementById('tutDots').innerHTML=TUTSTEPS.map((_,i)=>
+    '<span style="width:9px;height:9px;border-radius:50%;background:'+(i===tutIndex?'#ffd23f':'#4a4458')+'"></span>').join('');
+  document.getElementById('btnTutNext').textContent=(tutIndex>=TUTSTEPS.length-1)?(de?'Los geht\'s':'Let\'s go'):(de?'Weiter':'Next');
+  document.getElementById('btnTutSkip').textContent=de?'Überspringen':'Skip';}
+function openTut(from){backTo=from||'titleOver';hide(backTo);tutIndex=0;renderTut();show('tutOver');}
+function finishTut(){hide('tutOver');show(backTo);meta.tutorialSeen=true;saveMeta();}
+
+/* ===================== COMPENDIUM (records + codex) ===================== */
+function codexHead(txt,col){return '<div style="width:100%;margin:12px 0 2px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:'+(col||'#ffd23f')+'">'+txt+'</div>';}
+function codexRow(ic,iccol,title,sub,right,rcol){return '<div class="pcard">'+
+  '<span style="font-size:19px;width:30px;text-align:center;color:'+(iccol||'#fff')+'">'+ic+'</span>'+
+  '<span class="pt"><b>'+title+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</span>'+
+  (right!==''?'<span class="ps" style="color:'+(rcol||'#2de2e6')+'">'+right+'</span>':'')+'</div>';}
+function buildCompendium(){const de=settings.lang!=='en',st=meta.stats;let h='';
+  h+=codexHead(de?'Rekorde':'Records','#ffd23f');
+  h+=codexRow('🏆','#ffd23f',de?'Beste Tiefe':'Best depth','',st.bestDepth+'m');
+  h+=codexRow('💰','#12d9b0',de?'Gesamt verdient':'Total earned','',money(st.totalEarned));
+  h+=codexRow('🚀','#2de2e6',de?'Runs gespielt':'Runs played','',st.runs);
+  h+=codexRow('📋','#ff4de0',de?'Kontrakte erfüllt':'Contracts done','',st.contractsDone||0);
+  h+=codexRow('🟣','#8a5cff',de?'Relikte gefunden':'Relics found','',st.relics||0);
+  h+=codexRow('💠','#2de2e6',de?'Wächter besiegt':'Guardians beaten','',st.guardianKills||0);
+  h+=codexRow('🔗','#8be9ff',de?'Beste Combo':'Best combo','','×'+(st.maxCombo||0));
+  h+=codexRow('🏁','#ff4de0',de?'Challenge-Bestwert':'Challenge best','',meta.challenge.best||0);
+  h+=codexHead(de?'Planeten-Rekorde':'Planet records','#12d9b0');
+  PLANETS.forEach(p=>{const own=meta.unlockedPlanets.includes(p.id);
+    h+=codexRow('🪐',p.core,p.name,own?'':(de?'gesperrt':'locked'),(meta.records[p.id]||0)+'m');});
+  h+=codexHead(de?'Erze':'Ores','#ffd23f');
+  const rn={common:de?'Gewöhnlich':'Common',uncommon:de?'Ungewöhnlich':'Uncommon',rare:de?'Selten':'Rare',legendary:de?'Legendär':'Legendary'};
+  for(const k in RES){const r=RES[k];h+=codexRow('◆',r.color,r.name,rn[r.rar],r.value+'$','#ffd23f');}
+  h+=codexHead(de?'Kreaturen':'Creatures','#ff3b6b');
+  [['Crawler',de?'Jagt gemächlich · Biss +6 Hitze':'Slow hunter · bite +6 heat','#ff3b6b'],
+   ['Flitzer',de?'Schnell & klein · Biss +4':'Fast & small · bite +4','#ffef5c'],
+   ['Brocken',de?'Zäh (2 Treffer) · Biss +11 Hitze':'Tough (2 hits) · bite +11 heat','#ff6a00']
+  ].forEach(c=>h+=codexRow('👾',c[2],c[0],c[1],''));
+  h+=codexHead(de?'Kern-Wächter':'Core Guardians','#ff8a3d');
+  [['Standard',de?'Puls & Schockwelle':'Pulse & shockwave','#ff8a3d'],
+   ['Inferno · Magmar',de?'Extra Hitze-Puls':'Extra heat pulse','#ff6a00'],
+   ['Frost · Cryonis',de?'Verlangsamt den Bohrer':'Slows the drill','#8be9ff'],
+   ['Tech · Mechon',de?'Früher, schneller Laser':'Early, faster laser','#2de2e6'],
+   ['Void · Abyss/Obscura',de?'Starker Sog zum Kern':'Strong pull to core','#8a5cff'],
+   ['Hive · Verdant',de?'Spawnt Kreaturen':'Spawns creatures','#3fd977']
+  ].forEach(x=>h+=codexRow('💠',x[2],x[0],x[1],''));
+  h+=codexHead(de?'Wetter-Events':'Weather events','#c9a24d');
+  for(const k in EVENTINFO){const e=EVENTINFO[k];h+=codexRow('⚠',e.col,de?e.de:e.en,'',e.dur+'s',e.col);}
+  document.getElementById('codexList').innerHTML=h;}
+function openCompendium(from){backTo=from;hide(from);show('codexOver');buildCompendium();}
 
 /* ===================== UPDATE ===================== */
 let curDt=0.016;
@@ -1603,6 +1678,8 @@ document.getElementById('btnChallenge').onclick=()=>{sfx.ui();openChallenge('tit
 document.getElementById('btnChalDone').onclick=()=>{sfx.ui();hide('challengeOver');show(backTo);};
 document.getElementById('btnChalStart').onclick=()=>{sfx.ui();startChallenge();};
 document.getElementById('btnCutGo').onclick=()=>{sfx.ui();hide('cutOver');show('planetOver');buildPlanets();};
+document.getElementById('btnCodex').onclick=()=>{sfx.ui();openCompendium('titleOver');};
+document.getElementById('btnCodexDone').onclick=()=>{sfx.ui();hide('codexOver');show(backTo);};
 document.getElementById('btnSkins').onclick=()=>{sfx.ui();openSkins('titleOver');};
 document.getElementById('btnSkinDone').onclick=()=>{sfx.ui();hide('skinOver');show(backTo);};
 // cloud-save prep: portable save code (export/import)
@@ -1635,8 +1712,9 @@ document.getElementById('btnAscend').onclick=()=>{sfx.ui();const g=ascendGain(),
 document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree();};
 document.getElementById('btnAscendGo').onclick=()=>{if(doAscend()){sfx.leg();vibe([30,50,30,70,30,120]);updateAbilityButtons();checkAchievements();}
   hide('ascendOver');show('treeOver');buildTree();};
-document.getElementById('btnHelp').onclick=()=>{sfx.ui();show('tutOver');};
-document.getElementById('btnTutGo').onclick=()=>{sfx.ui();hide('tutOver');meta.tutorialSeen=true;saveMeta();};
+document.getElementById('btnHelp').onclick=()=>{sfx.ui();openTut('titleOver');};
+document.getElementById('btnTutNext').onclick=()=>{sfx.ui();if(tutIndex>=TUTSTEPS.length-1)finishTut();else{tutIndex++;renderTut();}};
+document.getElementById('btnTutSkip').onclick=()=>{sfx.ui();finishTut();};
 updateAbilityButtons();
 applyLang();
 // unlock the audio context on the first interaction and start ambient music
@@ -1645,6 +1723,6 @@ window.addEventListener('pointerdown',unlockAudio);
 window.addEventListener('keydown',unlockAudio);
 // studio splash -> title (first-launch onboarding waits until after the splash)
 setTimeout(()=>{hide('splashOver');show('titleOver');
-  if(!meta.tutorialSeen)setTimeout(()=>show('tutOver'),380);},2400);
+  if(!meta.tutorialSeen)setTimeout(()=>openTut('titleOver'),380);},2400);
 })();
 </script>
