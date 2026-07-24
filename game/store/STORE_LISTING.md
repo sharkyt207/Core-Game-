@@ -48,15 +48,19 @@ Durchbrettern ganzer Gesteinsschichten — bis nichts dich mehr aufhält.
 Startet mit einem einzigen Skill und öffnet sich Ast um Ast: Drohnen,
 Ketten­reaktionen, Laser-Schächte, Magnet-Puls, Teleport und mehr.
 
-🪐  SIEBEN WELTEN
-Terra, Magmar, Cryonis, Mechon, Abyss, Neon, Verdant — jede mit eigener Härte,
-eigenem Loot und eigenen Gefahren. Tiefe Schichten bergen Kreaturen und
-einen Kern-Wächter mit Sog- und Laser-Attacken.
+🪐  NEUN WELTEN
+Terra, Magmar, Cryonis, Ferro, Mechon, Abyss, Neon, Verdant, Obscura — jede mit
+eigener Härte, eigenem Loot und eigenen Gefahren. Tiefe Schichten bergen drei
+Kreaturen-Typen (Crawler, Flitzer, Brocken) und einen Kern-Wächter mit Sog- und
+Laser-Attacken.
+
+📋  KONTRAKTE & ZIELE
+Ein rollendes Kontrakt-Board mit Belohnungen, dazu Tagesziele, Erfolge und
+Rekorde — es gibt immer ein nächstes Ziel.
 
 ⚛️  ENDLOSE PROGRESSION
 Zwei Prestige-Ebenen: „Core Overload" und die „Singularität" machen dich
-dauerhaft stärker. Erfolge, Tagesziele und Rekorde geben dir immer ein
-nächstes Ziel.
+dauerhaft stärker.
 
 ✨  EIGENER LOOK & FEEL
 Handgemachte Neon-Pixel-Grafik, satter prozeduraler Sound und feines Feedback
@@ -115,15 +119,18 @@ through entire strata — until nothing can stop you.
 Start with a single skill and open it branch by branch: drones, chain
 reactions, laser shafts, magnet pulse, teleport and more.
 
-🪐  SEVEN WORLDS
-Terra, Magmar, Cryonis, Mechon, Abyss, Neon, Verdant — each with its own
-hardness, loot and dangers. Deep layers hide creatures and a Core Guardian
-with pull and laser attacks.
+🪐  NINE WORLDS
+Terra, Magmar, Cryonis, Ferro, Mechon, Abyss, Neon, Verdant, Obscura — each with
+its own hardness, loot and dangers. Deep layers hide three creature types
+(crawlers, swifts, brutes) and a Core Guardian with pull and laser attacks.
+
+📋  CONTRACTS & GOALS
+A rolling contract board with rewards, plus daily goals, achievements and
+records — always a next thing to chase.
 
 ⚛️  ENDLESS PROGRESSION
 Two prestige layers — "Core Overload" and the "Singularity" — make you
-permanently stronger. Achievements, daily goals and records always give you
-a next thing to chase.
+permanently stronger.
 
 ✨  ITS OWN LOOK & FEEL
 Hand-crafted neon pixel art, rich procedural sound and crisp haptic feedback.

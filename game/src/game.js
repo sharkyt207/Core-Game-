@@ -33,6 +33,8 @@ const PLANETS=[
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
+ {id:'ferro',  name:'FERRO',   unlock:3200, rings:33, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
+   ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
  {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03,
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
  {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3,
@@ -41,6 +43,8 @@ const PLANETS=[
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
  {id:'verdant',name:'VERDANT', unlock:14000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3,
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
+ {id:'obscura',name:'OBSCURA', unlock:22000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4,
+   ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
 
@@ -74,12 +78,12 @@ const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.contracts)j.contracts=[];
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
   if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
   if(!j.records)j.records={};return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},contracts:[],
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
     cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
 const SKINS=[
@@ -138,6 +142,10 @@ const ACH=[
  {id:'veteran',ic:'🎖️', de:['Veteran','Spiele 25 Runs'],                     en:['Veteran','Play 25 runs'],                   cond:()=>meta.stats.runs>=25},
  {id:'guardian',ic:'💠',de:['Kern-Wächter','Durchbrich eine Boss-Schicht'],   en:['Core Guardian','Break through a boss layer'],cond:()=>!!meta.stats.guardian},
  {id:'singular',ic:'✦', de:['Singularität','Steige zum ersten Mal auf'],       en:['Singularity','Ascend for the first time'],  cond:()=>(meta.ascend&&meta.ascend.shards>=1)},
+ {id:'contractor',ic:'📋',de:['Auftragsjäger','Erfülle 5 Kontrakte'],           en:['Contractor','Complete 5 contracts'],        cond:()=>(meta.stats.contractsDone||0)>=5},
+ {id:'chainmaster',ic:'🔗',de:['Kettenmeister','Erreiche Combo ×30'],           en:['Chain Master','Reach Combo x30'],           cond:()=>(meta.stats.maxCombo||0)>=30},
+ {id:'brute',   ic:'👹', de:['Brocken-Brecher','Besiege einen Brocken'],        en:['Brute Breaker','Defeat a Brute'],           cond:()=>!!meta.stats.bruteKill},
+ {id:'deepvoid',ic:'🌑', de:['Leere','Schalte OBSCURA frei'],                   en:['The Void','Unlock OBSCURA'],                cond:()=>meta.unlockedPlanets.includes('obscura')},
 ];
 function achTxt(a){return (settings.lang==='en'?a.en:a.de);}
 let achQueue=[],achTimer=null;
@@ -281,7 +289,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -402,6 +410,7 @@ function dmgNum(x,y,v,color){if(dmgnums.length>40)dmgnums.shift();dmgnums.push({
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
+  if(id==='artifact'){run.relicsRun++;meta.stats.relics=(meta.stats.relics||0)+1;}   // contract/achievement tracking
   if(r.rar==='rare'){sfx.rare();vibe([12,30,12,30,40]);flash=Math.max(flash,0.5);shake=Math.max(shake,10);glitch=0.25;}
   else if(r.rar==='legendary'){sfx.leg();vibe([20,40,20,40,20,60,120]);flash=Math.max(flash,0.9);shake=Math.max(shake,18);glitch=0.5;}
   else if(r.rar==='uncommon'){sfx.rare();vibe([8,20,25]);}else vibe(6);}
@@ -411,11 +420,11 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,T.dmg);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
-    if(S.combo){run.combo=Math.min(99,run.combo+1);run.comboT=1.5;}      // Kombo-Meister: streak while you keep breaking
+    run.combo=Math.min(99,run.combo+1);run.comboT=1.5;if(run.combo>run.maxCombo)run.maxCombo=run.combo;  // streak (loot bonus only with Kombo-Meister)
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
-      run.haul+=140*lootMul();run.bossKills++;meta.stats.guardian=true;checkAchievements();}
+      run.haul+=140*lootMul();run.bossKills++;run.guardsRun++;meta.stats.guardian=true;meta.stats.guardianKills=(meta.stats.guardianKills||0)+1;checkAchievements();}
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
@@ -470,11 +479,11 @@ function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.en
   shake=Math.max(shake,26);flash=Math.max(flash,1);hitstop=0.08;glitch=0.6;
   sfx.shock();sfx.leg();vibe([30,50,30,80,120]);burst(W/2,DRILL_SY,P.core,40,2.2);}
 // loot multiplier folds in planet, prestige and the live mining combo
-function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,40)*0.02):1);}
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,30)*0.015):1);}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
@@ -485,6 +494,7 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
 function gameOver(reason){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('runs',1);
+  updateContracts('runDepth',run.depthMax);updateContracts('relics',run.relicsRun);updateContracts('guardians',run.guardsRun);updateContracts('bestCombo',run.maxCombo);
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
@@ -494,6 +504,7 @@ function extract(){if(!run.active)return;run.active=false;document.body.classLis
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('loot',g);updateDaily('runs',1);
+  updateContracts('runDepth',run.depthMax);updateContracts('runLoot',g);updateContracts('relics',run.relicsRun);updateContracts('guardians',run.guardsRun);updateContracts('bestCombo',run.maxCombo);
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
@@ -584,6 +595,42 @@ function updateDaily(kind,val){ensureDaily();const d=meta.daily;if(d.claimed)ret
     if(d.progress>=d.target){d.claimed=true;meta.credits+=d.reward;
       achQueue.push({ic:'◆',de:[t('dailyDone'),'+'+d.reward+' $'],en:[t('dailyDone'),'+'+d.reward+' $']});if(!achTimer)nextAch();}
     saveMeta();}updateDailyUI();}
+/* ===================== CONTRACTS (rolling goals w/ rewards) ===================== */
+const CONTRACTS=[
+ {id:'depth', ic:'⛏️', metric:'runDepth', de:'Erreiche %T m in einem Run', en:'Reach %T m in one run',    tiers:[[40,300],[70,700],[110,1500],[160,3200]]},
+ {id:'loot',  ic:'💰', metric:'runLoot',  de:'Verdiene %T $ in einem Run', en:'Earn %T $ in one run',      tiers:[[1500,400],[5000,900],[12000,2000],[30000,4500]]},
+ {id:'relic', ic:'🟣', metric:'relics',   de:'Finde %T Relikte',           en:'Find %T relics',            tiers:[[3,500],[8,1200],[18,2600]]},
+ {id:'guard', ic:'💠', metric:'guardians',de:'Besiege %T Kern-Wächter',    en:'Defeat %T Core Guardians',  tiers:[[3,600],[8,1500],[16,3200]]},
+ {id:'combo', ic:'🔗', metric:'bestCombo',de:'Erreiche Combo ×%T',         en:'Reach Combo x%T',           tiers:[[15,400],[30,900],[50,1800]]},
+];
+const CMAP={};CONTRACTS.forEach(c=>CMAP[c.id]=c);
+const CMAX_METRIC={runDepth:1,runLoot:1,bestCombo:1};   // these track the run's best, others accumulate
+function rollContract(exclude){const pool=CONTRACTS.filter(c=>!exclude.includes(c.metric));
+  const c=pool[Math.floor(Math.random()*pool.length)],ti=c.tiers[Math.floor(Math.random()*c.tiers.length)];
+  return{cid:c.id,metric:c.metric,target:ti[0],reward:ti[1],progress:0,claimed:false};}
+function ensureContracts(){if(!meta.contracts)meta.contracts=[];
+  while(meta.contracts.length<3)meta.contracts.push(rollContract(meta.contracts.map(x=>x.metric)));
+  saveMeta();}
+function updateContracts(metric,val){ensureContracts();let changed=false;
+  for(const c of meta.contracts){if(c.claimed||c.metric!==metric)continue;
+    if(CMAX_METRIC[metric])c.progress=Math.max(c.progress,val);else c.progress+=val;
+    if(metric==='bestCombo'&&val>(meta.stats.maxCombo||0))meta.stats.maxCombo=val;
+    if(c.progress>=c.target){c.claimed=true;meta.credits+=c.reward;meta.stats.contractsDone=(meta.stats.contractsDone||0)+1;
+      achQueue.push({ic:'📋',de:['Kontrakt erfüllt','+'+c.reward+' $'],en:['Contract done','+'+c.reward+' $']});if(!achTimer)nextAch();}
+    changed=true;}
+  // roll a fresh contract in place of any completed one (keeps 3 distinct, always live)
+  for(let i=0;i<meta.contracts.length;i++)if(meta.contracts[i].claimed){
+    meta.contracts[i]=rollContract(meta.contracts.filter((_,j)=>j!==i).map(x=>x.metric));changed=true;}
+  if(changed)saveMeta();}
+function contractDesc(c){const p=CMAP[c.cid];return(settings.lang==='en'?p.en:p.de).replace('%T',c.target);}
+function buildContracts(){ensureContracts();const g=document.getElementById('contractList');g.innerHTML='';
+  meta.contracts.forEach(c=>{const p=CMAP[c.cid],pr=Math.min(c.progress,c.target);
+    const row=document.createElement('div');row.className='pcard';
+    row.innerHTML='<span style="font-size:22px;width:34px;text-align:center">'+p.ic+'</span>'+
+      '<span class="pt"><b>'+contractDesc(c)+'</b><span>'+pr+' / '+c.target+'</span></span>'+
+      '<span class="ps" style="color:#ffd23f">+'+c.reward+'$</span>';
+    g.appendChild(row);});}
+function openContracts(from){backTo=from;hide(from);show('contractOver');buildContracts();}
 function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
 function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
   document.getElementById('achCount').textContent=meta.achievements.length+'/'+ACH.length;
@@ -700,15 +747,26 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;d.y-=26*dt;if(d.age>=d.life)dmgnums.splice(i,1);}
   // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
   if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt){
-    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0});}
+    const roll=rnd(),ty=(run.depthMax>60&&roll<0.32)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
+    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0,type:ty,hp:ty==='brute'?2:1});}
   const drwx2=drill.rad*Math.cos(drill.ang),drwy2=drill.rad*Math.sin(drill.ang);
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.age+=dt;
-    e.rad+=(drill.rad-e.rad)*Math.min(1,dt*1.4);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*1.4);
+    // swift creatures chase hard, brutes lumber
+    const hs=e.type==='swift'?2.8:e.type==='brute'?0.9:1.5;
+    e.rad+=(drill.rad-e.rad)*Math.min(1,dt*hs);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*hs);
     const ewx=e.rad*Math.cos(e.ang),ewy=e.rad*Math.sin(e.ang),ed=Math.hypot(drwx2-ewx,drwy2-ewy);
-    if(ed<26){if(drilling||run.boostT>0){run.haul+=22*lootMul();burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);}
-      else{run.heat=Math.min(99,run.heat+6);shake=Math.max(shake,10);sfx.shock();vibe([15,30]);burst(W/2,DRILL_SY,T.dmg,8,1.2);}
-      enemies.splice(i,1);continue;}
-    if(e.age>9)enemies.splice(i,1);}
+    if(ed<26){
+      if(drilling||run.boostT>0){                         // hit it back
+        e.hp--;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);
+        if(e.hp<=0){run.haul+=(e.type==='brute'?44:22)*lootMul();if(e.type==='brute')meta.stats.bruteKill=true;enemies.splice(i,1);continue;}
+        e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.4;           // brute survives one hit, knocked back
+      }else{                                               // it bites you
+        const hd=e.type==='brute'?11:e.type==='swift'?4:6;
+        run.heat=Math.min(99,run.heat+hd);shake=Math.max(shake,e.type==='brute'?16:10);
+        sfx.shock();vibe([15,30]);burst(W/2,DRILL_SY,T.dmg,8,1.2);
+        if(e.type==='brute'){e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.6;}else{enemies.splice(i,1);continue;}
+      }}
+    if(e.age>(e.type==='brute'?13:9))enemies.splice(i,1);}
   if(shake>0)shake=Math.max(0,shake-dt*26);
   if(flash>0)flash=Math.max(0,flash-dt*1.6);
   if(glitch>0)glitch=Math.max(0,glitch-dt*1.2);}
@@ -813,10 +871,14 @@ function scene(){
   // drops
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
-  // creatures (angular blob + glowing eyes)
-  for(const e of enemies){const ps=w2s(e.rad,e.ang),x=ps[0]*S1|0,y=ps[1]*S1|0,s=Math.max(3,TILE*0.26*SCALEcur*S1);
-    o.fillStyle=T.space2;o.fillRect(x-s,y-s,s*2,s*2);o.strokeStyle=T.dmg;o.lineWidth=1;o.strokeRect(x-s,y-s,s*2,s*2);
-    o.fillStyle=T.dmg;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,1,1);o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,1,1);}
+  // creatures — angular blob + glowing eyes; size/colour by type
+  for(const e of enemies){const ps=w2s(e.rad,e.ang),x=ps[0]*S1|0,y=ps[1]*S1|0,
+    sc=e.type==='brute'?0.38:e.type==='swift'?0.2:0.26,s=Math.max(3,TILE*sc*SCALEcur*S1),
+    eye=e.type==='swift'?'#ffef5c':e.type==='brute'?'#ff6a00':T.dmg;
+    o.fillStyle=T.space2;o.fillRect(x-s,y-s,s*2,s*2);
+    o.strokeStyle=e.type==='brute'?'#ff6a00':T.dmg;o.lineWidth=e.type==='brute'?2:1;o.strokeRect(x-s,y-s,s*2,s*2);
+    o.fillStyle=eye;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);
+    o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);}
   // particles
   for(const p of parts){const a=1-p.age/p.life;o.globalAlpha=a;o.fillStyle=p.color;
     o.fillRect((p.x*S1)|0,(p.y*S1)|0,p.size,p.size);}o.globalAlpha=1;
@@ -969,6 +1031,8 @@ document.getElementById('btnSettings2').onclick=()=>{sfx.ui();openSettings('shop
 document.getElementById('btnSettingsDone').onclick=()=>{sfx.ui();hide('settingsOver');show(backTo);};
 document.getElementById('btnAch').onclick=()=>{sfx.ui();openAch('titleOver');};
 document.getElementById('btnAchDone').onclick=()=>{sfx.ui();hide('achOver');show(backTo);};
+document.getElementById('btnContracts').onclick=()=>{sfx.ui();openContracts('titleOver');};
+document.getElementById('btnContractDone').onclick=()=>{sfx.ui();hide('contractOver');show(backTo);};
 document.getElementById('btnSkins').onclick=()=>{sfx.ui();openSkins('titleOver');};
 document.getElementById('btnSkinDone').onclick=()=>{sfx.ui();hide('skinOver');show(backTo);};
 // cloud-save prep: portable save code (export/import)
