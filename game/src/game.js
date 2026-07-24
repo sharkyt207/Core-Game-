@@ -72,10 +72,34 @@ function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true};
-  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};return j;}}catch(e){}
+  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
-    settings:{music:true,sfx:true,vibe:true,shake:true},stats:{runs:0,bestDepth:0,totalEarned:0}};}
+    settings:{music:true,sfx:true,vibe:true,shake:true},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[]};}
 const settings=meta.settings;
+
+/* ===================== ACHIEVEMENTS ===================== */
+const ACH=[
+ {id:'first',  ic:'🚀', name:'Erster Abstieg', desc:'Starte deinen ersten Run',      cond:()=>meta.stats.runs>=1},
+ {id:'d50',    ic:'⛏️', name:'Tiefgänger',     desc:'Erreiche 50m Tiefe',            cond:()=>meta.stats.bestDepth>=50},
+ {id:'d100',   ic:'🔥', name:'Kernnähe',        desc:'Erreiche 100m Tiefe',           cond:()=>meta.stats.bestDepth>=100},
+ {id:'rich',   ic:'💰', name:'Reich',           desc:'Verdiene 10.000 $ gesamt',      cond:()=>meta.stats.totalEarned>=10000},
+ {id:'tycoon', ic:'🏦', name:'Tycoon',          desc:'Verdiene 100.000 $ gesamt',     cond:()=>meta.stats.totalEarned>=100000},
+ {id:'tech5',  ic:'🌳', name:'Techniker',       desc:'Schalte 5 Skills frei',         cond:()=>meta.skills.length>=5},
+ {id:'apex',   ic:'☢️', name:'APEX',            desc:'Baue den APEX-Reaktor',         cond:()=>meta.skills.includes('apex')},
+ {id:'expl',   ic:'🪐', name:'Entdecker',       desc:'Schalte 3 Planeten frei',       cond:()=>meta.unlockedPlanets.length>=3},
+ {id:'starmap',ic:'🌌', name:'Sternenkarte',    desc:'Schalte alle 5 Planeten frei',  cond:()=>meta.unlockedPlanets.length>=5},
+ {id:'core1',  ic:'⚛️', name:'Core Overload',   desc:'Prestige zum ersten Mal',       cond:()=>meta.prestige.cores>=1},
+ {id:'veteran',ic:'🎖️', name:'Veteran',         desc:'Spiele 25 Runs',                cond:()=>meta.stats.runs>=25},
+];
+let achQueue=[],achTimer=null;
+function checkAchievements(){let any=false;
+  for(const a of ACH)if(!meta.achievements.includes(a.id)&&a.cond()){meta.achievements.push(a.id);achQueue.push(a);any=true;}
+  if(any)saveMeta();if(!achTimer&&achQueue.length)nextAch();}
+function nextAch(){const a=achQueue.shift();if(!a){achTimer=null;return;}
+  const el=document.getElementById('achPop');
+  el.innerHTML='<span class="ai">'+a.ic+'</span><span class="at"><b>Erfolg freigeschaltet</b><span>'+a.name+'</span></span>';
+  el.classList.add('show');sfx.rare();vibe([12,30,12]);
+  achTimer=setTimeout(()=>{el.classList.remove('show');achTimer=setTimeout(nextAch,420);},2600);}
 // Prestige ("Core Overload"): cores grow with the sqrt of lifetime earnings.
 function totalCores(){return Math.floor(Math.sqrt(meta.lifetime/300));}
 function prestigeGain(){return Math.max(0,totalCores()-meta.prestige.cores);}
@@ -315,7 +339,7 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
 function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
-  meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();
+  meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
@@ -323,7 +347,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
   setTimeout(()=>show('gameoverOver'),480);}
 function extract(){if(!run.active)return;run.active=false;stopMusic();const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
-  meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();
+  meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
@@ -359,7 +383,7 @@ function buildTree(){
     const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
     n.style.left=ox(s.pos[0])+'px';n.style.top=oy(s.pos[1])+'px';
     n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
-    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree();}else{sfx.ui();}};
+    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree();checkAchievements();}else{sfx.ui();}};
     cvs.appendChild(n);}
   // centre the scroll on the frontier (first buyable, else root)
   requestAnimationFrame(()=>{const sc=document.getElementById('treeScroll');
@@ -379,6 +403,15 @@ function buildSettings(){
   document.getElementById('stRuns').textContent=meta.stats.runs;
   document.getElementById('stCash').textContent=money(meta.stats.totalEarned);}
 function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
+function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
+  document.getElementById('achCount').textContent=meta.achievements.length+'/'+ACH.length;
+  ACH.forEach(a=>{const has=meta.achievements.includes(a.id);
+    const row=document.createElement('div');row.className='pcard'+(has?' sel':'');
+    row.innerHTML='<span style="font-size:24px;width:34px;text-align:center;'+(has?'':'filter:grayscale(1);opacity:.45;')+'">'+a.ic+'</span>'+
+      '<span class="pt"><b>'+a.name+'</b><span>'+a.desc+'</span></span>'+
+      '<span class="ps" style="color:'+(has?'#2de2e6':'#555')+'">'+(has?'✓':'🔒')+'</span>';
+    g.appendChild(row);});}
+function openAch(from){backTo=from;hide(from);show('achOver');buildAch();}
 
 /* ---------- PLANET MENU (graphical select/unlock) ---------- */
 function buildPlanets(){const g=document.getElementById('planetCards');g.innerHTML='';
@@ -395,7 +428,7 @@ function buildPlanets(){const g=document.getElementById('planetCards');g.innerHT
     card.disabled=!own&&meta.credits<p.unlock;
     card.onclick=()=>{if(own){meta.planet=p.id;}
       else if(meta.credits>=p.unlock){meta.credits-=p.unlock;meta.unlockedPlanets.push(p.id);meta.planet=p.id;}else{sfx.ui();return;}
-      saveMeta();sfx.buy();vibe(12);buildPlanets();};
+      saveMeta();sfx.buy();vibe(12);buildPlanets();checkAchievements();};
     g.appendChild(card);});}
 
 /* ===================== UPDATE ===================== */
@@ -428,7 +461,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;vibe([20,30,20]);}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
   if(run.energy<=0){run.energy=0;gameOver('SPRIT LEER');return;}
   if(run.heat>=100){run.heat=100;gameOver('ÜBERHITZT');return;}
-  const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax)run.depthMax=dm;
+  const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
   if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
@@ -653,6 +686,8 @@ document.getElementById('btnSound').textContent=(settings.sfx&&settings.music)?'
 document.getElementById('btnSettings').onclick=()=>{sfx.ui();openSettings('titleOver');};
 document.getElementById('btnSettings2').onclick=()=>{sfx.ui();openSettings('shopOver');};
 document.getElementById('btnSettingsDone').onclick=()=>{sfx.ui();hide('settingsOver');show(backTo);};
+document.getElementById('btnAch').onclick=()=>{sfx.ui();openAch('titleOver');};
+document.getElementById('btnAchDone').onclick=()=>{sfx.ui();hide('achOver');show(backTo);};
 // menu navigation
 document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');};
 document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};
@@ -666,7 +701,7 @@ document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGai
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
-document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();}
+document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
   hide('prestigeOver');show('treeOver');buildTree();};
 updateAbilityButtons();
 })();
