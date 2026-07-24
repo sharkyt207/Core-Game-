@@ -449,8 +449,9 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;bossBeam=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
+  document.body.classList.add('playing');   // reveal the in-run HUD/ability bar
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
-function gameOver(reason){if(!run.active)return;run.active=false;/* music continues as menu ambience */
+function gameOver(reason){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('runs',1);
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
@@ -458,7 +459,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;/* music contin
   document.getElementById('goDepth').textContent=run.depthMax;
   document.getElementById('goLost').textContent=Math.round(run.haul);
   setTimeout(()=>show('gameoverOver'),480);}
-function extract(){if(!run.active)return;run.active=false;/* music continues as menu ambience */const g=Math.round(run.haul);
+function extract(){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('loot',g);updateDaily('runs',1);
