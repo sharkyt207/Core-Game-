@@ -70,8 +70,12 @@ const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0}};}
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
+  if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true};
+  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};return j;}}catch(e){}
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
+    settings:{music:true,sfx:true,vibe:true,shake:true},stats:{runs:0,bestDepth:0,totalEarned:0}};}
+const settings=meta.settings;
 // Prestige ("Core Overload"): cores grow with the sqrt of lifetime earnings.
 function totalCores(){return Math.floor(Math.sqrt(meta.lifetime/300));}
 function prestigeGain(){return Math.max(0,totalCores()-meta.prestige.cores);}
@@ -216,12 +220,12 @@ function kbVec(){let x=0,y=0;if(kb['arrowleft']||kb['a'])x-=1;if(kb['arrowright'
 /* ===================== AUDIO / HAPTICS ===================== */
 let AC=null,muted=false;
 function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
-function blip(f,dur,type,vol,slide){if(muted)return;const a=audio();if(!a)return;
+function blip(f,dur,type,vol,slide){if(!settings.sfx)return;const a=audio();if(!a)return;
   const o=a.createOscillator(),g=a.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,a.currentTime);
   if(slide)o.frequency.exponentialRampToValueAtTime(slide,a.currentTime+dur);
   g.gain.setValueAtTime(vol||0.15,a.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur);
   o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur);}
-function noise(dur,vol){if(muted)return;const a=audio();if(!a)return;
+function noise(dur,vol){if(!settings.sfx)return;const a=audio();if(!a)return;
   const n=a.createBuffer(1,a.sampleRate*dur,a.sampleRate),d=n.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
   const s=a.createBufferSource(),g=a.createGain();s.buffer=n;g.gain.value=vol||0.08;
@@ -231,14 +235,14 @@ const sfx={tick:()=>noise(0.03,0.05),brk:()=>blip(170+rnd()*70,0.11,'square',0.1
   leg:()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>blip(f,0.2,'sawtooth',0.16),i*100));},
   shock:()=>{blip(90,0.4,'sawtooth',0.22,1200);noise(0.3,0.12);},
   ui:()=>blip(640,0.06,'square',0.12),buy:()=>{blip(520,0.08,'square',0.14);setTimeout(()=>blip(780,0.1,'square',0.14),70);}};
-function vibe(p){if(muted)return;
+function vibe(p){if(!settings.vibe)return;
   const cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
   if(cap){try{const d=Array.isArray(p)?p.reduce((a,b)=>a+b,0):p;cap.vibrate({duration:Math.min(320,d)});return;}catch(e){}}
   if(navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
 // procedural background music — intensifies with depth
 let musicTimer=null,beat=0;
 function musicRoot(){const r=[110,98,130.81,146.83,87.31];return r[Math.max(0,PLANETS.indexOf(P))%5];}
-function startMusic(){if(musicTimer)return;beat=0;musicTimer=setInterval(()=>{if(muted||!run.active)return;
+function startMusic(){if(musicTimer)return;beat=0;musicTimer=setInterval(()=>{if(!settings.music||!run.active)return;
   const dT=Math.min(1,run.depthMax/40),rt=musicRoot(),root=[rt,rt,rt*1.335,rt*1.19][beat&3];
   blip(root,0.5,'triangle',0.05);
   if((beat&1)===0)blip(root*2,0.3,'sine',0.03);
@@ -311,13 +315,15 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
 function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
+  meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
   document.getElementById('goLost').textContent=Math.round(run.haul);
   setTimeout(()=>show('gameoverOver'),480);}
 function extract(){if(!run.active)return;run.active=false;stopMusic();const g=Math.round(run.haul);
-  meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;saveMeta();
+  meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
+  meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
@@ -363,6 +369,16 @@ function buildTree(){
 let backTo='titleOver';
 function openTree(from){backTo=from;hide(from);show('treeOver');buildTree();}
 function openPlanets(from){backTo=from;hide(from);show('planetOver');buildPlanets();}
+function buildSettings(){
+  document.querySelectorAll('.mbtn.set').forEach(b=>{const k=b.dataset.k,on=!!settings[k];
+    b.classList.toggle('off',!on);b.querySelector('span').textContent=on?'AN':'AUS';
+    b.onclick=()=>{settings[k]=!settings[k];saveMeta();sfx.ui();
+      if(k==='music'){if(settings.music&&run.active)startMusic();else if(!settings.music)stopMusic();}
+      buildSettings();};});
+  document.getElementById('stBest').textContent=meta.stats.bestDepth+'m';
+  document.getElementById('stRuns').textContent=meta.stats.runs;
+  document.getElementById('stCash').textContent=money(meta.stats.totalEarned);}
+function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
 
 /* ---------- PLANET MENU (graphical select/unlock) ---------- */
 function buildPlanets(){const g=document.getElementById('planetCards');g.innerHTML='';
@@ -468,7 +484,7 @@ function shadeFor(ring,sec,rock){const v=hash(ring,sec)%100,base=v<58?P.ground[0
   return tintc(base,(ROCKMUL[rock]||0.8)*dep);}
 function scene(){
   const o=octx,S1=1/PIX;o.imageSmoothingEnabled=false;
-  const jx=(Math.random()-0.5)*shake*S1,jy=(Math.random()-0.5)*shake*S1;
+  const sh=settings.shake?shake:0,jx=(Math.random()-0.5)*sh*S1,jy=(Math.random()-0.5)*sh*S1;
   o.save();o.translate(jx,jy);
   // space background
   const depthT=Math.min(1,run.depthMax/RINGS);
@@ -631,7 +647,12 @@ document.getElementById('btnBoost').onclick=boost;
 document.getElementById('btnLaser').onclick=laser;
 document.getElementById('btnMag').onclick=magpulse;
 document.getElementById('btnTp').onclick=teleport;
-document.getElementById('btnSound').onclick=function(){muted=!muted;this.textContent=muted?'🔇':'🔊';if(!muted){audio();if(AC&&AC.state==='suspended')AC.resume();}};
+document.getElementById('btnSound').onclick=function(){const on=!(settings.sfx&&settings.music);settings.sfx=on;settings.music=on;saveMeta();
+  this.textContent=on?'🔊':'🔇';if(on){audio();if(AC&&AC.state==='suspended')AC.resume();if(run.active)startMusic();}else stopMusic();};
+document.getElementById('btnSound').textContent=(settings.sfx&&settings.music)?'🔊':'🔇';
+document.getElementById('btnSettings').onclick=()=>{sfx.ui();openSettings('titleOver');};
+document.getElementById('btnSettings2').onclick=()=>{sfx.ui();openSettings('shopOver');};
+document.getElementById('btnSettingsDone').onclick=()=>{sfx.ui();hide('settingsOver');show(backTo);};
 // menu navigation
 document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');};
 document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};

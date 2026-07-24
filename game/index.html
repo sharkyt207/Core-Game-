@@ -76,6 +76,9 @@
     font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px;box-shadow:4px 4px 0 rgba(255,255,255,.2);
     display:flex;align-items:center;justify-content:center;gap:8px;}
   .mbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(255,255,255,.2);}
+  .mbtn.set{justify-content:space-between;padding:12px 15px;}
+  .mbtn.set span{font-size:12px;letter-spacing:.1em;color:#2de2e6;}
+  .mbtn.set.off{opacity:.6;} .mbtn.set.off span{color:#9a90ad;}
 
   /* skill tree */
   #treeOver{padding:0;justify-content:flex-start;}
@@ -140,6 +143,7 @@
   <div class="menubtns">
     <button class="mbtn" id="btnTree">🌳 Skill Tree</button>
     <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
+    <button class="mbtn" id="btnSettings">⚙ Einstellungen</button>
   </div>
 </div>
 
@@ -153,6 +157,7 @@
   <div class="menubtns">
     <button class="mbtn" id="btnTree2">🌳 Skill Tree</button>
     <button class="mbtn" id="btnPlanets2">🪐 Planeten</button>
+    <button class="mbtn" id="btnSettings2">⚙ Einstellungen</button>
   </div>
   <button class="big" id="btnDescend" style="margin-top:16px">Drop In</button>
 </div>
@@ -193,6 +198,23 @@
   <div class="sub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
   <button class="big" id="btnRetry">Nochmal</button>
   <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="over" id="settingsOver">
+  <div class="tag" style="color:#2de2e6">// einstellungen //</div>
+  <div class="menubtns" style="max-width:320px">
+    <button class="mbtn set" data-k="music">Musik <span>AN</span></button>
+    <button class="mbtn set" data-k="sfx">Sounds <span>AN</span></button>
+    <button class="mbtn set" data-k="vibe">Vibration <span>AN</span></button>
+    <button class="mbtn set" data-k="shake">Screen Shake <span>AN</span></button>
+  </div>
+  <div class="result" style="margin-top:18px">
+    <div><b id="stBest">0</b><span>Beste Tiefe</span></div>
+    <div><b id="stRuns">0</b><span>Runs</span></div>
+    <div><b id="stCash">0</b><span>Gesamt $</span></div>
+  </div>
+  <button class="big" id="btnSettingsDone" style="margin-top:18px">Fertig</button>
 </div>
   <script type="module" src="/src/game.js"></script>
 </body>
