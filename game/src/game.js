@@ -245,7 +245,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,bossPulseT:0,bossWave:0};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[];
 let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0,moveMag=0;
@@ -324,13 +324,15 @@ function startMusic(){if(musicTimer)return;beat=0;musicTimer=setInterval(()=>{if
   if((beat&1)===0)blip(root*2,0.3,'sine',0.03);
   if(dT>0.3&&(beat&3)===2)blip(root*3,0.22,'sawtooth',0.02+dT*0.03);
   if(dT>0.6&&(beat&1))blip(root*4,0.12,'square',0.015+dT*0.02);
+  if(run.inBoss){blip(rt*1.5,0.15,'sawtooth',0.05);if((beat&1)===0)blip(rt*0.5,0.4,'square',0.04);}  // tense boss layer
   beat++;},430);}
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
 
 /* ===================== FX ===================== */
 function burst(x,y,color,n,spd){for(let i=0;i<n;i++){const a=rnd()*TAU,s=(spd||1)*(40+rnd()*160);
-  parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,life:0.5+rnd()*0.5,age:0,color,size:1+(rnd()<0.5?1:2)});}}
-function dmgNum(x,y,v,color){dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:0.7,color});}
+  parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,life:0.5+rnd()*0.5,age:0,color,size:1+(rnd()<0.5?1:2)});}
+  if(parts.length>260)parts.splice(0,parts.length-260);}   // cap for performance
+function dmgNum(x,y,v,color){if(dmgnums.length>40)dmgnums.shift();dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:0.7,color});}
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
@@ -346,7 +348,7 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
-      run.haul+=140*P.valueMul*S.prestigeMult;meta.stats.guardian=true;checkAchievements();}
+      run.haul+=140*P.valueMul*S.prestigeMult;run.bossKills++;meta.stats.guardian=true;checkAchievements();}
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
@@ -393,7 +395,7 @@ function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;
-  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;
+  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
@@ -573,9 +575,12 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.heat>=100){run.heat=100;gameOver(t('reasonHeat'));return;}
   // active core guardian: pulses heat + shockwaves while you fight near the core
   const curR=ringOf(drill.rad),bz=(P.bossRings||2)+4;
-  if(drill.rad<R_SURF&&curR>=0&&curR<bz){run.bossPulseT-=dt;
-    if(run.bossPulseT<=0){run.bossPulseT=2.2;run.heat=Math.min(99,run.heat+8);shake=Math.max(shake,14);
-      run.bossWave=1;sfx.shock();vibe([20,45,20]);}}
+  run.inBoss=(drill.rad<R_SURF&&curR>=0&&curR<bz);
+  if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0;   // guardian enrages the more you hit it
+    run.bossPulseT-=dt;
+    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;run.heat=Math.min(99,run.heat+8+ph*3);
+      shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();vibe([20,45,20]);
+      if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
@@ -746,6 +751,8 @@ function draw(){scene();
   // boss shockwave ring emanating from the core
   if(run.bossWave>0){const wr=(1-run.bossWave)*Math.max(W,H)*0.6;ctx.strokeStyle=P.core;ctx.globalAlpha=run.bossWave*0.8;
     ctx.lineWidth=3;ctx.beginPath();ctx.arc(pcx,pcy,wr,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
+  if(run.inBoss){const bp=0.1+0.09*Math.sin(performance.now()/220),v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.7);
+    v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,P.core);ctx.globalAlpha=bp;ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
   drawHUD();}
 
 /* ===================== HUD (crisp full-res) ===================== */
