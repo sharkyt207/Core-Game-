@@ -145,6 +145,7 @@
   <div class="menubtns">
     <button class="mbtn" id="btnTree">🌳 Skill Tree</button>
     <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
+    <button class="mbtn" id="btnSkins">🎨 Skins</button>
     <button class="mbtn" id="btnAch">🏆 Erfolge</button>
     <button class="mbtn" id="btnSettings">⚙ Einstellungen</button>
   </div>
@@ -212,6 +213,8 @@
     <button class="mbtn set" data-k="vibe">Vibration <span>AN</span></button>
     <button class="mbtn set" data-k="shake">Screen Shake <span>AN</span></button>
     <button class="mbtn" id="btnLang">🌐 Sprache: DE</button>
+    <button class="mbtn" id="btnExport">⬆ Save exportieren</button>
+    <button class="mbtn" id="btnImport">⬇ Save importieren</button>
   </div>
   <div class="result" style="margin-top:18px">
     <div><b id="stBest">0</b><span>Beste Tiefe</span></div>
@@ -219,6 +222,13 @@
     <div><b id="stCash">0</b><span>Gesamt $</span></div>
   </div>
   <button class="big" id="btnSettingsDone" style="margin-top:18px">Fertig</button>
+</div>
+
+<!-- SKINS -->
+<div class="over" id="skinOver">
+  <div class="tag" style="color:#ffd23f">// bohrer-skins //</div>
+  <div class="pcards" id="skinList" style="max-height:66vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <button class="big" id="btnSkinDone" style="margin-top:16px">Fertig</button>
 </div>
 
 <!-- ACHIEVEMENTS -->
@@ -258,7 +268,7 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:26, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.9, valueMul:1.7, gasChance:0.06,
+ {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06,
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
@@ -302,9 +312,19 @@ function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
-  if(!j.daily)j.daily=null;return j;}}catch(e){}
+  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
-    settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null};}
+    settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
+    cosmetics:{owned:['default'],equipped:'default'}};}
+const SKINS=[
+ {id:'default',name:'Standard',cost:0,    ring:'#c9cdd4', blob:'#ffe14d', core:'#ff8a3d'},
+ {id:'gold',   name:'Gold',    cost:1500, ring:'#ffe08a', blob:'#fff2b0', core:'#ffbf3d'},
+ {id:'plasma', name:'Plasma',  cost:3000, ring:'#2de2e6', blob:'#b6fff2', core:'#12d9b0'},
+ {id:'toxic',  name:'Toxic',   cost:4500, ring:'#39ff14', blob:'#eaff00', core:'#12ff7a'},
+ {id:'void',   name:'Void',    cost:6000, ring:'#8a5cff', blob:'#e6d8ff', core:'#ff4de0'},
+];
+const SKINMAP={};SKINS.forEach(s=>SKINMAP[s.id]=s);
+function curSkin(){return SKINMAP[meta.cosmetics.equipped]||SKINS[0];}
 const settings=meta.settings;
 
 /* ===================== i18n ===================== */
@@ -344,6 +364,7 @@ const ACH=[
  {id:'starmap',ic:'🌌', de:['Sternenkarte','Schalte alle 5 Planeten frei'],  en:['Star Map','Unlock all 5 planets'],          cond:()=>meta.unlockedPlanets.length>=5},
  {id:'core1',  ic:'⚛️', de:['Core Overload','Prestige zum ersten Mal'],      en:['Core Overload','Prestige for the first time'],cond:()=>meta.prestige.cores>=1},
  {id:'veteran',ic:'🎖️', de:['Veteran','Spiele 25 Runs'],                     en:['Veteran','Play 25 runs'],                   cond:()=>meta.stats.runs>=25},
+ {id:'guardian',ic:'💠',de:['Kern-Wächter','Durchbrich eine Boss-Schicht'],   en:['Core Guardian','Break through a boss layer'],cond:()=>!!meta.stats.guardian},
 ];
 function achTxt(a){return (settings.lang==='en'?a.en:a.de);}
 let achQueue=[],achTimer=null;
@@ -404,7 +425,7 @@ function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
   meta.credits-=s.cost;meta.skills.push(id);saveMeta();return true;}
 
 function stats(){
-  let power=30,speed=230,energyMax=130,energyRegen=0,coolRate=0,heatGen=7,magnet=68,valueMul=1,crit=0,drones=0;
+  let power=30,speed=230,energyMax=140,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
@@ -422,8 +443,11 @@ const RES={
   core:   {name:'Core',  color:'#2de2e6',glow:'#c8ffff',value:130,rar:'rare'},
   artifact:{name:'Relic',color:'#8a5cff',glow:'#e6d8ff',value:520,rar:'legendary'},
 };
-const HARD={dirt:16,stone:34,hard:64,dark:96};
-function genTile(depthM,ring,sec){let rock='dirt';
+const HARD={dirt:16,stone:34,hard:64,dark:96,boss:260};
+function genTile(depthM,ring,sec){
+  // core guardian: the 2 innermost rings are a super-hard boss layer with guaranteed loot
+  if(ring<2){const bhp=HARD.boss*P.hardMul;return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
+  let rock='dirt';
   if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
   let res=null;const roll=rnd();
   if(roll<0.15){
@@ -548,6 +572,9 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
+    // core guardian broken: big payoff
+    if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
+      run.haul+=140*P.valueMul*S.prestigeMult;meta.stats.guardian=true;checkAchievements();}
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
@@ -674,7 +701,7 @@ function applyLang(){
   set('btnTree','tree');set('btnTree2','tree');set('btnPlanets','planets');set('btnPlanets2','planets');
   set('btnAch','ach');set('btnSettings','settings');set('btnSettings2','settings');
   set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
-  set('btnRetry','retry');set('btnGoMenu','menu');
+  set('btnRetry','retry');set('btnGoMenu','menu');set('btnSkinDone','done');
   set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');
   buildSettings();updateDailyUI();}
 
@@ -707,6 +734,19 @@ function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
       '<span class="ps" style="color:'+(has?'#2de2e6':'#555')+'">'+(has?'✓':'🔒')+'</span>';
     g.appendChild(row);});}
 function openAch(from){backTo=from;hide(from);show('achOver');buildAch();}
+function buildSkins(){const g=document.getElementById('skinList');g.innerHTML='';const de=settings.lang!=='en';
+  SKINS.forEach(s=>{const owned=meta.cosmetics.owned.includes(s.id),eq=meta.cosmetics.equipped===s.id;
+    const card=document.createElement('button');card.className='pcard'+(eq?' sel':'');
+    const globe='radial-gradient(circle at 34% 30%, '+s.blob+', '+s.ring+' 60%, #0a0713 100%)';
+    card.innerHTML='<span class="globe" style="border-radius:8px;background:'+globe+';border:2px solid '+s.core+';box-shadow:inset -6px -6px 10px rgba(0,0,0,.6),0 0 12px '+s.core+'66;"></span>'+
+      '<span class="pt"><b>'+s.name+'</b><span>'+(s.cost?(de?'Bohrer-Skin':'Drill skin'):(de?'Standard':'Default'))+'</span></span>'+
+      '<span class="ps" style="color:'+(eq?'#2de2e6':owned?'#12d9b0':'#ffd23f')+'">'+(eq?'★':owned?(de?'nutzen':'equip'):s.cost+'$ 🔒')+'</span>';
+    card.disabled=!owned&&meta.credits<s.cost;
+    card.onclick=()=>{if(meta.cosmetics.owned.includes(s.id)){meta.cosmetics.equipped=s.id;}
+      else if(meta.credits>=s.cost){meta.credits-=s.cost;meta.cosmetics.owned.push(s.id);meta.cosmetics.equipped=s.id;}else{sfx.ui();return;}
+      saveMeta();sfx.buy();vibe(12);buildSkins();};
+    g.appendChild(card);});}
+function openSkins(from){backTo=from;hide(from);show('skinOver');buildSkins();}
 
 /* ---------- PLANET MENU (graphical select/unlock) ---------- */
 function buildPlanets(){const g=document.getElementById('planetCards');g.innerHTML='';
@@ -848,6 +888,7 @@ function scene(){
       o.fillStyle=shadeFor(ring,sec,t.rock);
       o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);o.lineTo(p3[0]*S1,p3[1]*S1);o.lineTo(p4[0]*S1,p4[1]*S1);o.closePath();o.fill();
       o.strokeStyle='rgba(0,0,0,0.30)';o.lineWidth=1;o.stroke();
+      if(t.boss){o.strokeStyle=P.core;o.lineWidth=2;o.stroke();o.globalAlpha=0.3+0.3*Math.sin(performance.now()/200);o.fillStyle=P.core;o.fill();o.globalAlpha=1;}
       // granular texture (stable per tile -> rotates with the planet, no shimmer)
       const hh=hash(ring*7+3,sec*13+5),gx=(p1[0]+p2[0]+p3[0]+p4[0])/4*S1,gy=(p1[1]+p2[1]+p3[1]+p4[1])/4*S1,gs=Math.max(1,TILE*0.3*SCALEcur*S1);
       o.fillStyle=tintc(P.ground[1],1.25);o.fillRect((gx+((hh>>2)%7-3)*gs*0.22)|0,(gy+((hh>>5)%7-3)*gs*0.22)|0,1,1);
@@ -878,15 +919,15 @@ function scene(){
   for(const d of dmgnums){const a=1-d.age/d.life;o.globalAlpha=a;o.fillStyle=d.color;o.fillText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}o.globalAlpha=1;
   o.restore();
 }
-function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
+function drawPod(cx,cy,S1){const o=octx,sk=curSkin();
   const rad=Math.max(2,TILE*SCALEcur*S1*0.34),imp=0.3+moveMag*1.5;   // teeth length grows with speed
   o.save();o.translate(cx,cy);o.rotate(drill.face+Math.PI/2);         // point the drill toward movement
   // angular chassis (square body)
   o.fillStyle=T.space2;o.fillRect(-rad,-rad,rad*2,rad*2);
-  o.strokeStyle=T.ring;o.lineWidth=Math.max(1,rad*0.2);o.strokeRect(-rad,-rad,rad*2,rad*2);
-  // pulsing core square
+  o.strokeStyle=sk.ring;o.lineWidth=Math.max(1,rad*0.2);o.strokeRect(-rad,-rad,rad*2,rad*2);
+  // pulsing core square (skin colour)
   const pulse=0.5+Math.sin(performance.now()/220)*0.5,cs=rad*0.5;
-  o.fillStyle=tier>=5?T.accent:T.blob;o.globalAlpha=0.85+pulse*0.15;o.fillRect(-cs,-cs,cs*2,cs*2);o.globalAlpha=1;
+  o.fillStyle=sk.blob;o.globalAlpha=0.85+pulse*0.15;o.fillRect(-cs,-cs,cs*2,cs*2);o.globalAlpha=1;
   // drill teeth (triangles) at the leading edge — longer & hotter the faster you go
   o.fillStyle=drilling?T.fuel:'#c8f6ff';const tw=rad*0.6;
   for(let i=-1;i<=1;i++){o.beginPath();o.moveTo(i*tw,rad);o.lineTo((i+0.5)*tw,rad+rad*imp);o.lineTo((i-0.5)*tw,rad+rad*imp);o.closePath();o.fill();}
@@ -899,7 +940,7 @@ function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
   // orbiting drones (square, count scales with unlocked drone skills)
   const nd=Math.min(6,S.drones);
   if(nd>0){for(let i=0;i<nd;i++){const a=performance.now()/500+i*(TAU/nd),ox=cx+Math.cos(a)*rad*2.6,oy=cy+Math.sin(a)*rad*2.6,ds=Math.max(2,rad*0.5);
-    o.fillStyle=T.core;o.fillRect((ox-ds/2)|0,(oy-ds/2)|0,ds|0,ds|0);
+    o.fillStyle=sk.core;o.fillRect((ox-ds/2)|0,(oy-ds/2)|0,ds|0,ds|0);
     if(S.dronemine){o.strokeStyle=T.dmg;o.globalAlpha=0.5;o.lineWidth=1;o.beginPath();o.moveTo(cx,cy);o.lineTo(ox,oy);o.stroke();o.globalAlpha=1;}}}}
 
 function draw(){scene();
@@ -985,6 +1026,17 @@ document.getElementById('btnSettings2').onclick=()=>{sfx.ui();openSettings('shop
 document.getElementById('btnSettingsDone').onclick=()=>{sfx.ui();hide('settingsOver');show(backTo);};
 document.getElementById('btnAch').onclick=()=>{sfx.ui();openAch('titleOver');};
 document.getElementById('btnAchDone').onclick=()=>{sfx.ui();hide('achOver');show(backTo);};
+document.getElementById('btnSkins').onclick=()=>{sfx.ui();openSkins('titleOver');};
+document.getElementById('btnSkinDone').onclick=()=>{sfx.ui();hide('skinOver');show(backTo);};
+// cloud-save prep: portable save code (export/import)
+document.getElementById('btnExport').onclick=()=>{sfx.ui();
+  try{const code=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+    if(navigator.clipboard)navigator.clipboard.writeText(code).catch(()=>{});
+    window.prompt(settings.lang==='en'?'Save code (copy it):':'Save-Code (kopieren):',code);}catch(e){}};
+document.getElementById('btnImport').onclick=()=>{sfx.ui();let code;
+  try{code=window.prompt(settings.lang==='en'?'Paste save code:':'Save-Code einfügen:','');}catch(e){}
+  if(!code)return;try{const j=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+    if(j&&j.v===2){localStorage.setItem(SAVE_KEY,JSON.stringify(j));location.reload();}else sfx.ui();}catch(e){sfx.ui();}};
 // menu navigation
 document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');};
 document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};
