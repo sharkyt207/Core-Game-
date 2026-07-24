@@ -51,13 +51,19 @@ function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;r
 
 /* ===================== PLANET GEOMETRY (polar) ===================== */
 const R_CORE=120, TILE=40;
-let RINGS=P.rings, R_SURF=0, SECTORS=0, DSEC=0, CAP_RAD=0;
-function applyGeometry(){R_SURF=R_CORE+RINGS*TILE;SECTORS=Math.round(TAU*R_SURF/TILE);DSEC=TAU/SECTORS;CAP_RAD=R_SURF+900;}
+let RINGS=P.rings, R_SURF=0, CAP_RAD=0;
+function applyGeometry(){R_SURF=R_CORE+RINGS*TILE;CAP_RAD=R_SURF+900;}
 applyGeometry();
 function setPlanet(id){P=PLANETS.find(p=>p.id===id)||PLANETS[0];RINGS=P.rings;applyGeometry();world.clear();}
 // ring index from radius: <0 = core wall, >=RINGS = space
 function ringOf(r){if(r>=R_SURF)return RINGS;if(r<R_CORE)return -1;return Math.floor((r-R_CORE)/TILE);}
-function sectorOf(a){let s=Math.floor(a/DSEC);return ((s%SECTORS)+SECTORS)%SECTORS;}
+// per-ring sector count so cells stay ~TILE-sized (square) at EVERY depth
+function secCount(ring){const rad=R_CORE+(ring+0.5)*TILE;return Math.max(8,Math.round(TAU*rad/TILE));}
+function dsecOf(ring){return TAU/secCount(ring);}
+function sectorOf(a,ring){const n=secCount(ring),s=Math.floor(a/(TAU/n));return ((s%n)+n)%n;}
+function neighborsOf(ring,sec){const n=secCount(ring),a=(sec+0.5)*(TAU/n);
+  return [[ring+1,ring+1<RINGS?sectorOf(a,ring+1):sec],[ring-1,ring-1>=0?sectorOf(a,ring-1):sec],
+          [ring,(sec+1)%n],[ring,(sec-1+n)%n]];}
 
 /* ===================== SAVE / SKILL TREE ===================== */
 const SAVE_KEY='corebreaker_tree_v1';
@@ -162,7 +168,7 @@ let POW=S.power;                                 // effective drill power (boost
 const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[];
-let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0;
+let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0,moveMag=0;
 
 /* ===================== CAMERA ===================== */
 let W=0,H=0,PIX=3,LW=0,LH=0,DRILL_SY=0;
@@ -249,7 +255,7 @@ function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false
   else if(r.rar==='uncommon'){sfx.rare();vibe([8,20,25]);}else vibe(6);}
 let tickAcc=0,chainGuard=0;
 function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return false;t.hp-=dmg;
-  const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*DSEC,ps=w2s(rad_c,ang_c);
+  const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*dsecOf(ring),ps=w2s(rad_c,ang_c);
   tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,T.dmg);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
@@ -257,36 +263,31 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
-      if(chainGuard<2){chainGuard++;
-        const gn=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]];
-        for(const nn of gn)mineTile(nn[0],nn[1],9999);chainGuard--;}}
+      if(chainGuard<2){chainGuard++;for(const nn of neighborsOf(ring,sec))mineTile(nn[0],nn[1],9999);chainGuard--;}}
     // brittle ice (Cryonis): shattering block cracks a random neighbour for free
-    if(P.brittle&&chainGuard<1&&rnd()<0.35){chainGuard++;
-      const bn=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]],pk=bn[Math.floor(rnd()*4)];
+    if(P.brittle&&chainGuard<1&&rnd()<0.35){chainGuard++;const bn=neighborsOf(ring,sec),pk=bn[Math.floor(rnd()*4)];
       mineTile(pk[0],pk[1],9999);chainGuard--;}
     // chain reaction: destroyed blocks detonate neighbours (depth = chain level)
     if(S.chain>0&&chainGuard<S.chain){chainGuard++;
-      const nb=[[ring+1,sec],[ring-1,sec],[ring,(sec+1)%SECTORS],[ring,(sec-1+SECTORS)%SECTORS]];
-      for(const nn of nb)if(rnd()<0.6)mineTile(nn[0],nn[1],9999);
-      chainGuard--;}
+      for(const nn of neighborsOf(ring,sec))if(rnd()<0.6)mineTile(nn[0],nn[1],9999);chainGuard--;}
     return true;}
   return false;}
 // drilling into a tile; Breitbohrer (wide) also carves the two side tiles
 function drillTile(ring,sec,dmg){mineTile(ring,sec,dmg);
-  if(S.wide){mineTile(ring,(sec+1)%SECTORS,dmg*0.7);mineTile(ring,(sec-1+SECTORS)%SECTORS,dmg*0.7);}}
+  if(S.wide){const n=secCount(ring);mineTile(ring,(sec+1)%n,dmg*0.7);mineTile(ring,(sec-1+n)%n,dmg*0.7);}}
 
 function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if(run.energy<22){sfx.ui();return;}
-  run.energy-=22;run.shockCd=5;const cr=clamp(ringOf(drill.rad),0,RINGS-1),cs=sectorOf(drill.ang),R=2;
-  for(let dr=-R;dr<=R;dr++)for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+1){
-    const rg=cr+dr,se=((cs+ds)%SECTORS+SECTORS)%SECTORS;if(rg>=0&&rg<RINGS)mineTile(rg,se,9999);}
+  run.energy-=22;run.shockCd=5;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=2;
+  for(let dr=-R;dr<=R;dr++){const rg=cr+dr;if(rg<0||rg>=RINGS)continue;const n=secCount(rg),sc=sectorOf(drill.ang,rg);
+    for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+1)mineTile(rg,((sc+ds)%n+n)%n,9999);}
   shake=Math.max(shake,16);flash=Math.max(flash,0.55);hitstop=0.05;glitch=0.3;
   sfx.shock();vibe([18,25,60]);burst(W/2,DRILL_SY,T.blob,26,1.6);}
 function boost(){if(!run.active||!S.abilities.boost||run.boostCd>0||run.boostT>0)return;if(run.energy<28){sfx.ui();return;}
   run.energy-=28;run.boostT=4;run.boostCd=12;flash=Math.max(flash,0.3);shake=Math.max(shake,6);
   sfx.rare();vibe([10,20,10]);burst(W/2,DRILL_SY,T.accent,18,1.3);}
 function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run.energy<30){sfx.ui();return;}
-  run.energy-=30;run.laserCd=8;const cs=sectorOf(drill.ang),cr=clamp(ringOf(drill.rad),0,RINGS-1);
-  for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,cs,9999);            // burns a shaft toward the core
+  run.energy-=30;run.laserCd=8;const cr=clamp(ringOf(drill.rad),0,RINGS-1);
+  for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,sectorOf(drill.ang,r),9999); // burns a shaft toward the core
   shake=Math.max(shake,14);flash=Math.max(flash,0.5);glitch=0.3;sfx.shock();vibe([15,30,15]);
   laserFx=0.18;}
 function magpulse(){if(!run.active||!S.abilities.magpulse||run.magCd>0)return;if(run.energy<18){sfx.ui();return;}
@@ -384,6 +385,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   else if(kv){vx=kv.dx;vy=kv.dy;mag=1;}
   run.boostT=Math.max(0,run.boostT-dt);
   const boosting=run.boostT>0;POW=S.power*(1+S.crit)*(boosting?2.6:1);
+  // impact factor: faster movement (incl. Speed-Skills & Boost) = harder hit on the planet
+  moveMag=Math.min(1,mag*(boosting?1.5:1)*(0.7+S.speed/700));
   const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1)*(boosting?1.4:1);
   drilling=false;
   // radial: screen-down (vy>0) digs inward (rad decreases); up flies out
@@ -394,7 +397,9 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
-  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt;if(rnd()<0.5)sfx.tick();}
+  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt;if(rnd()<0.5)sfx.tick();
+    if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
+      if(rnd()<moveMag*0.7)burst(W/2+(rnd()-0.5)*14,DRILL_SY+8+(rnd()-0.5)*10,P.ground[1],2,moveMag*1.3);}}
   if(run.energy<=0){run.energy=0;gameOver('SPRIT LEER');return;}
   if(run.heat>=100){run.heat=100;gameOver('ÜBERHITZT');return;}
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax)run.depthMax=dm;
@@ -406,9 +411,9 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // combat drones: periodically auto-mine a nearby tile
   if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
-    const cr=clamp(ringOf(drill.rad),0,RINGS-1),cs=sectorOf(drill.ang);
-    const dr=cr+(Math.floor(rnd()*5)-2),ds=((cs+Math.floor(rnd()*5)-2)%SECTORS+SECTORS)%SECTORS;
-    if(dr>=0&&dr<RINGS)mineTile(dr,ds,S.power*0.9);}}
+    const cr=clamp(ringOf(drill.rad),0,RINGS-1),dr=clamp(cr+(Math.floor(rnd()*5)-2),0,RINGS-1);
+    const n=secCount(dr),ds=((sectorOf(drill.ang,dr)+Math.floor(rnd()*5)-2)%n+n)%n;
+    mineTile(dr,ds,S.power*0.9);}}
   // drops: magnet + collect (polar)
   const drwx=drill.rad*Math.cos(drill.ang),drwy=drill.rad*Math.sin(drill.ang);
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
@@ -423,7 +428,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(flash>0)flash=Math.max(0,flash-dt*1.6);
   if(glitch>0)glitch=Math.max(0,glitch-dt*1.2);}
 function moveRadial(dRad){if(dRad===0)return;const dir=Math.sign(dRad);
-  const target=drill.rad+dRad,probe=target+dir*(TILE*0.4),ring=ringOf(probe),sec=sectorOf(drill.ang);
+  const target=drill.rad+dRad,probe=target+dir*(TILE*0.4),ring=ringOf(probe),sec=sectorOf(drill.ang,clamp(ring,0,RINGS-1));
   const t=tilePolar(ring,sec);
   if(t&&t.wall){drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad);return;}   // core: block
   if(t){drilling=true;drillTile(ring,sec,POW*(run.energy>0?1:0.3)*curDt);return;} // rock: mine+block
@@ -431,7 +436,7 @@ function moveRadial(dRad){if(dRad===0)return;const dir=Math.sign(dRad);
 function moveAngular(dAng){if(dAng===0)return;const dir=Math.sign(dAng);
   const curRing=ringOf(drill.rad);
   if(curRing>=RINGS||curRing<0){drill.ang+=dAng;return;}                  // space/core edge: free
-  const sec=sectorOf(drill.ang+dir*(DSEC*0.6)+dAng),t=tilePolar(curRing,sec);
+  const sec=sectorOf(drill.ang+dir*(dsecOf(curRing)*0.6)+dAng,curRing),t=tilePolar(curRing,sec);
   if(t&&!t.wall){drilling=true;drillTile(curRing,sec,POW*(run.energy>0?1:0.3)*curDt);return;}
   drill.ang+=dAng;}
 
@@ -473,15 +478,15 @@ function scene(){
   // planet surface — always the same 2D tile view; only mild zoom when flying up.
   // Angular range is computed to reach the screen edges (+margin) so the planet always
   // continues at the sides (no pop-in) and you always see the individual tiles.
-  const curRing=clamp(ringOf(drill.rad),0,RINGS-1),curSec=sectorOf(drill.ang);
+  const curRing=clamp(ringOf(drill.rad),0,RINGS-1);
   const ringLo=Math.max(0,curRing-18),ringHi=Math.min(RINGS-1,curRing+3);
   const rRef=Math.min(drill.rad,R_SURF)*SCALEcur;
   const halfA=Math.asin(clamp((W*0.5+40)/Math.max(1,rRef),0,1))+0.20;
-  const range=Math.min(SECTORS>>1,Math.ceil(halfA/DSEC));
   for(let ring=ringLo;ring<=ringHi;ring++){const rin=R_CORE+ring*TILE,rout=rin+TILE;
-    for(let off=-range;off<=range;off++){const sec=((curSec+off)%SECTORS+SECTORS)%SECTORS;
+    const n=secCount(ring),ds=TAU/n,curSec=sectorOf(drill.ang,ring),range=Math.min(n>>1,Math.ceil(halfA/ds)+1);
+    for(let off=-range;off<=range;off++){const sec=((curSec+off)%n+n)%n;
       const t=tilePolar(ring,sec);if(!t||t.wall)continue;
-      const a0=sec*DSEC,a1=a0+DSEC;
+      const a0=sec*ds,a1=a0+ds;
       const p1=w2s(rout,a0),p2=w2s(rout,a1),p3=w2s(rin,a1),p4=w2s(rin,a0);
       const minx=Math.min(p1[0],p2[0],p3[0],p4[0]),maxx=Math.max(p1[0],p2[0],p3[0],p4[0]);
       const miny=Math.min(p1[1],p2[1],p3[1],p4[1]),maxy=Math.max(p1[1],p2[1],p3[1],p4[1]);
@@ -518,23 +523,27 @@ function scene(){
   o.restore();
 }
 function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
-  // small pod that scales with the world zoom (much smaller than before)
-  const rad=Math.max(3,TILE*SCALEcur*S1*0.42);
-  o.strokeStyle=T.ring;o.lineWidth=Math.max(1,rad*0.16);o.beginPath();o.arc(cx,cy,rad,0,TAU);o.stroke();
-  o.fillStyle=T.space2;o.beginPath();o.arc(cx,cy,rad-1,0,TAU);o.fill();
-  const pulse=0.5+Math.sin(performance.now()/220)*0.5,br=Math.max(1,rad*0.34);
-  for(let i=0;i<3;i++){const a=performance.now()/900+i*2.094,bx=cx+Math.cos(a)*rad*0.3,by=cy+Math.sin(a)*rad*0.3;
-    o.fillStyle=tier>=5?T.accent:T.blob;o.globalAlpha=0.85+pulse*0.15;o.beginPath();o.arc(bx,by,br,0,TAU);o.fill();}o.globalAlpha=1;
-  // drill teeth in facing direction while digging
-  if(drilling){o.fillStyle=T.fuel;const dx=Math.cos(drill.face),dy=Math.sin(drill.face);
-    for(let i=0;i<3;i++){const tt=rad+1+i;o.fillRect((cx+dx*tt)|0,(cy+dy*tt)|0,2,2);}}
-  // overdrive aura while boosting
-  if(run.boostT>0){o.strokeStyle=T.accent;o.lineWidth=1;o.beginPath();o.arc(cx,cy,rad*1.7,0,TAU);o.stroke();}
-  // orbiting drones — count scales with unlocked drone skills (visible swarm)
+  const rad=Math.max(3,TILE*SCALEcur*S1*0.42),imp=0.3+moveMag*1.5;   // teeth length grows with speed
+  o.save();o.translate(cx,cy);o.rotate(drill.face+Math.PI/2);         // point the drill toward movement
+  // angular chassis (square body)
+  o.fillStyle=T.space2;o.fillRect(-rad,-rad,rad*2,rad*2);
+  o.strokeStyle=T.ring;o.lineWidth=Math.max(1,rad*0.2);o.strokeRect(-rad,-rad,rad*2,rad*2);
+  // pulsing core square
+  const pulse=0.5+Math.sin(performance.now()/220)*0.5,cs=rad*0.5;
+  o.fillStyle=tier>=5?T.accent:T.blob;o.globalAlpha=0.85+pulse*0.15;o.fillRect(-cs,-cs,cs*2,cs*2);o.globalAlpha=1;
+  // drill teeth (triangles) at the leading edge — longer & hotter the faster you go
+  o.fillStyle=drilling?T.fuel:'#c8f6ff';const tw=rad*0.6;
+  for(let i=-1;i<=1;i++){o.beginPath();o.moveTo(i*tw,rad);o.lineTo((i+0.5)*tw,rad+rad*imp);o.lineTo((i-0.5)*tw,rad+rad*imp);o.closePath();o.fill();}
+  o.restore();
+  // impact shock square when drilling fast
+  if(drilling&&moveMag>0.4){o.strokeStyle=T.fuel;o.globalAlpha=(moveMag-0.4)*0.9;o.lineWidth=1;
+    const ir=rad*(1.5+moveMag*1.2);o.strokeRect((cx-ir)|0,(cy-ir)|0,(ir*2)|0,(ir*2)|0);o.globalAlpha=1;}
+  // overdrive aura
+  if(run.boostT>0){o.strokeStyle=T.accent;o.lineWidth=1;o.strokeRect((cx-rad*1.9)|0,(cy-rad*1.9)|0,(rad*3.8)|0,(rad*3.8)|0);}
+  // orbiting drones (square, count scales with unlocked drone skills)
   const nd=Math.min(6,S.drones);
-  if(nd>0){for(let i=0;i<nd;i++){const a=performance.now()/500+i*(TAU/nd),
-      ox=cx+Math.cos(a)*rad*2.3,oy=cy+Math.sin(a)*rad*2.3;
-    o.fillStyle=T.core;o.beginPath();o.arc(ox,oy,Math.max(1,rad*0.26),0,TAU);o.fill();
+  if(nd>0){for(let i=0;i<nd;i++){const a=performance.now()/500+i*(TAU/nd),ox=cx+Math.cos(a)*rad*2.6,oy=cy+Math.sin(a)*rad*2.6,ds=Math.max(2,rad*0.5);
+    o.fillStyle=T.core;o.fillRect((ox-ds/2)|0,(oy-ds/2)|0,ds|0,ds|0);
     if(S.dronemine){o.strokeStyle=T.dmg;o.globalAlpha=0.5;o.lineWidth=1;o.beginPath();o.moveTo(cx,cy);o.lineTo(ox,oy);o.stroke();o.globalAlpha=1;}}}}
 
 function draw(){scene();
@@ -578,8 +587,7 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     txt(c,'FUEL',M,y1,'left',ef<0.2?'#ff4d4d':'#ffffff',fs);
     bar(c,M+lx,y1-1,bw,bh,ef,ef<0.2?'#ff4d4d':T.fuel);
     const y2=y1+bh+6;
-    txt(c,'HEAT',M,y2,'left',hf>0.7?'#ff4d4d':'#ffffff',fs);
-    bar(c,M+lx,y2-1,bw,bh,hf,hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d');
+    txt(c,'HEAT '+Math.round(run.heat)+'%',M,y2,'left',hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
   }
   c.imageSmoothingEnabled=false;}
