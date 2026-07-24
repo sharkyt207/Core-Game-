@@ -231,11 +231,15 @@ const sfx={tick:()=>noise(0.03,0.05),brk:()=>blip(170+rnd()*70,0.11,'square',0.1
   leg:()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>blip(f,0.2,'sawtooth',0.16),i*100));},
   shock:()=>{blip(90,0.4,'sawtooth',0.22,1200);noise(0.3,0.12);},
   ui:()=>blip(640,0.06,'square',0.12),buy:()=>{blip(520,0.08,'square',0.14);setTimeout(()=>blip(780,0.1,'square',0.14),70);}};
-function vibe(p){if(!muted&&navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
+function vibe(p){if(muted)return;
+  const cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
+  if(cap){try{const d=Array.isArray(p)?p.reduce((a,b)=>a+b,0):p;cap.vibrate({duration:Math.min(320,d)});return;}catch(e){}}
+  if(navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
 // procedural background music — intensifies with depth
 let musicTimer=null,beat=0;
+function musicRoot(){const r=[110,98,130.81,146.83,87.31];return r[Math.max(0,PLANETS.indexOf(P))%5];}
 function startMusic(){if(musicTimer)return;beat=0;musicTimer=setInterval(()=>{if(muted||!run.active)return;
-  const dT=Math.min(1,run.depthMax/40),root=[110,110,146.83,130.81][beat&3];
+  const dT=Math.min(1,run.depthMax/40),rt=musicRoot(),root=[rt,rt,rt*1.335,rt*1.19][beat&3];
   blip(root,0.5,'triangle',0.05);
   if((beat&1)===0)blip(root*2,0.3,'sine',0.03);
   if(dT>0.3&&(beat&3)===2)blip(root*3,0.22,'sawtooth',0.02+dT*0.03);
@@ -300,6 +304,7 @@ function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;
+  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
@@ -398,8 +403,13 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
   if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*dt;if(rnd()<0.5)sfx.tick();
+    // continuous drilling rumble — stronger the faster you go
+    run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
       if(rnd()<moveMag*0.7)burst(W/2+(rnd()-0.5)*14,DRILL_SY+8+(rnd()-0.5)*10,P.ground[1],2,moveMag*1.3);}}
+  // warning haptics when a budget gets critical (fires once per crossing)
+  if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;vibe([30,40,30]);}else if(run.heat<84)run.warnHeat=false;
+  if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;vibe([20,30,20]);}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
   if(run.energy<=0){run.energy=0;gameOver('SPRIT LEER');return;}
   if(run.heat>=100){run.heat=100;gameOver('ÜBERHITZT');return;}
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax)run.depthMax=dm;
@@ -523,7 +533,7 @@ function scene(){
   o.restore();
 }
 function drawPod(cx,cy,S1){const o=octx,tier=S.tier;
-  const rad=Math.max(3,TILE*SCALEcur*S1*0.42),imp=0.3+moveMag*1.5;   // teeth length grows with speed
+  const rad=Math.max(2,TILE*SCALEcur*S1*0.34),imp=0.3+moveMag*1.5;   // teeth length grows with speed
   o.save();o.translate(cx,cy);o.rotate(drill.face+Math.PI/2);         // point the drill toward movement
   // angular chassis (square body)
   o.fillStyle=T.space2;o.fillRect(-rad,-rad,rad*2,rad*2);
