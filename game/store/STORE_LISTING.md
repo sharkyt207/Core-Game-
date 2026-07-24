@@ -55,9 +55,14 @@ Brut) und eigenem Umwelt-Event: Magma-Ausbrüche, Frost-Stürme, Beben, Erzadern
 EMP-Störungen, Sporen-Wolken und der Sog der Leere. Dazu drei Kreaturen-Typen
 (Crawler, Flitzer, Brocken).
 
-⚗️  REFINERIE
+⚗️  REFINERIE & BOHRER-MODULE
 Verbau erbeutetes Erz zu dauerhaften Upgrades — aber nur, wer rechtzeitig
-extrahiert, behält seine Beute.
+extrahiert, behält seine Beute. Dazu 9 Bohrer-Module in 3 Slots, frei
+kombinierbar für deinen eigenen Build.
+
+🏁  TÄGLICHE CHALLENGE
+Jeden Tag ein fester Seed mit eigenem Planeten und Modifikator — jage einen
+hohen Score und klettere in der Bestenliste.
 
 📋  KONTRAKTE & ZIELE
 Ein rollendes Kontrakt-Board mit Belohnungen, dazu Tagesziele, Erfolge und
@@ -131,9 +136,13 @@ environmental event: magma surges, frost storms, quakes, rich veins, EMP surges,
 spore clouds and the pull of the void. Plus three creature types (crawlers,
 swifts, brutes).
 
-⚗️  REFINERY
+⚗️  REFINERY & DRILL MODULES
 Turn mined ore into permanent upgrades — but only if you extract in time do you
-keep your haul.
+keep your haul. Plus 9 drill modules across 3 slots, freely mixed for your build.
+
+🏁  DAILY CHALLENGE
+Every day a fixed seed with its own planet and modifier — chase a high score and
+climb the leaderboard.
 
 📋  CONTRACTS & GOALS
 A rolling contract board with rewards, plus daily goals, achievements and
