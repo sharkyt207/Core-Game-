@@ -188,6 +188,14 @@ const SKILLS=[
  {id:'dronemine',name:'Kampfdrohnen',   ic:'🛸', cost:2600, req:['droneswarm'],pos:[-2.7,6],eff:{drone:1,dronemine:1,dv:0.4}},
  {id:'apex',    name:'APEX-Reaktor',    ic:'☢️', cost:6000, req:['plasma','chain2','dronemine'], pos:[-0.9,7.3],
    eff:{dp:120,ds:80,de:150,dr:8,dv:1.0,crit:0.8,drone:2}},
+ // --- endgame branch: boss-tech ---
+ {id:'crit2',    name:'Kritisch II',    ic:'🎯', cost:1400, req:['overload'], pos:[1.7,5], eff:{crit:0.6,dp:20}},
+ {id:'reactor2', name:'Reaktor II',     ic:'🔋', cost:1600, req:['reactor'],  pos:[2.6,4], eff:{de:120,dr:10}},
+ {id:'heatshield',name:'Hitzeschild',   ic:'🛡️', cost:1800, req:['cool2'],    pos:[3.4,4], eff:{heatShield:5,dh:3}},
+ {id:'coredrill', name:'Kern-Bohrer',   ic:'💥', cost:3200, req:['plasma'],   pos:[-0.6,7], eff:{bossPow:2,dp:30}},
+ {id:'drilllord', name:'Bohr-Meister',  ic:'⛏️', cost:3600, req:['coredrill'],pos:[0.4,7], eff:{dp:60,wide:1}},
+ {id:'singularity',name:'Singularität', ic:'🌀', cost:12000,req:['apex','coredrill'], pos:[-0.9,8.4],
+   eff:{dp:220,ds:100,de:200,dv:1.5,crit:1,drone:2,chain:1,bossPow:2}},
 ];
 const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
 function owned(id){return meta.skills.includes(id);}
@@ -198,13 +206,14 @@ function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
 
 function stats(){
   let power=30,speed=230,energyMax=140,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
-  let chain=0,wide=0,dronemine=0;const abilities={};
+  let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
     heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;chain+=e.chain||0;
+    bossPow+=e.bossPow||0;heatShield+=e.heatShield||0;
     if(e.auto)magnet+=120;if(e.drone)drones++;if(e.wide)wide=1;if(e.dronemine)dronemine=1;if(e.ability)abilities[e.ability]=1;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
-  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,abilities,
+  return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,abilities,
     prestigeMult:1+cores*0.12, tier:Math.min(6,1+Math.floor(meta.skills.length/3)+drones)};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
@@ -578,7 +587,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   run.inBoss=(drill.rad<R_SURF&&curR>=0&&curR<bz);
   if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0;   // guardian enrages the more you hit it
     run.bossPulseT-=dt;
-    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;run.heat=Math.min(99,run.heat+8+ph*3);
+    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;run.heat=Math.min(99,run.heat+Math.max(1,8+ph*3-S.heatShield));
       shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();vibe([20,45,20]);
       if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
@@ -611,13 +620,13 @@ function moveRadial(dRad){if(dRad===0)return;const dir=Math.sign(dRad);
   const target=drill.rad+dRad,probe=target+dir*(TILE*0.4),ring=ringOf(probe),sec=sectorOf(drill.ang,clamp(ring,0,RINGS-1));
   const t=tilePolar(ring,sec);
   if(t&&t.wall){drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad);return;}   // core: block
-  if(t){drilling=true;drillTile(ring,sec,POW*(run.energy>0?1:0.3)*curDt);return;} // rock: mine+block
+  if(t){drilling=true;drillTile(ring,sec,POW*(run.energy>0?1:0.3)*(t.boss?(1+S.bossPow):1)*curDt);return;} // rock: mine+block
   drill.rad=clamp(target,R_CORE+TILE*0.4,CAP_RAD);}                       // empty/space: move
 function moveAngular(dAng){if(dAng===0)return;const dir=Math.sign(dAng);
   const curRing=ringOf(drill.rad);
   if(curRing>=RINGS||curRing<0){drill.ang+=dAng;return;}                  // space/core edge: free
   const sec=sectorOf(drill.ang+dir*(dsecOf(curRing)*0.6)+dAng,curRing),t=tilePolar(curRing,sec);
-  if(t&&!t.wall){drilling=true;drillTile(curRing,sec,POW*(run.energy>0?1:0.3)*curDt);return;}
+  if(t&&!t.wall){drilling=true;drillTile(curRing,sec,POW*(run.energy>0?1:0.3)*(t.boss?(1+S.bossPow):1)*curDt);return;}
   drill.ang+=dAng;}
 
 /* ===================== RENDER ===================== */
