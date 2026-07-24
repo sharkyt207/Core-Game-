@@ -326,10 +326,11 @@ function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
-  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;return j;}}catch(e){}
+  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
+  if(!j.records)j.records={};return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
-    cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false};}
+    cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
 const SKINS=[
  {id:'default',name:'Standard',cost:0,    ring:'#c9cdd4', blob:'#ffe14d', core:'#ff8a3d'},
  {id:'gold',   name:'Gold',    cost:1500, ring:'#ffe08a', blob:'#fff2b0', core:'#ffbf3d'},
@@ -493,7 +494,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0};
+const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,bossPulseT:0,bossWave:0};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[];
 let shake=0,flash=0,hitstop=0,drilling=false,glitch=0,laserFx=0,moveMag=0;
@@ -641,14 +642,14 @@ function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(
 /* ===================== RUN ===================== */
 function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax;run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;
-  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;
+  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
 function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
-  meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
+  meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('runs',1);
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
   document.getElementById('goReason').textContent=reason;
@@ -657,7 +658,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
   setTimeout(()=>show('gameoverOver'),480);}
 function extract(){if(!run.active)return;run.active=false;stopMusic();const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
-  meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
+  meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('loot',g);updateDaily('runs',1);
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
@@ -778,9 +779,11 @@ function buildPlanets(){const g=document.getElementById('planetCards');g.innerHT
       'radial-gradient(circle at 28% 24%, '+p.ground[1]+' 0 9%, transparent 11%),'+
       'radial-gradient(circle at 34% 30%, '+p.ground[1]+', '+p.ground[0]+' 52%, '+p.ground[2]+' 100%)';
     const gstyle='background:'+globe+';border:2px solid '+p.core+';box-shadow:inset -7px -7px 12px rgba(0,0,0,.65),0 0 14px '+p.core+'66;';
+    const rec=meta.records[p.id]||0,de=settings.lang!=='en';
     card.innerHTML='<span class="globe" style="'+gstyle+'"></span>'+
-      '<span class="pt"><b>'+p.name+'</b><span>Härte ×'+p.hardMul.toFixed(1)+' · Loot ×'+p.valueMul.toFixed(1)+' · Tiefe '+p.rings+'</span></span>'+
-      '<span class="ps" style="color:'+(sel?'#2de2e6':own?'#12d9b0':'#ffd23f')+'">'+(sel?'★ AKTIV':own?'WÄHLEN':p.unlock+'$ 🔒')+'</span>';
+      '<span class="pt"><b>'+p.name+'</b><span>'+(de?'Härte':'Hard')+' ×'+p.hardMul.toFixed(1)+' · Loot ×'+p.valueMul.toFixed(1)+
+        (rec?'<br>'+(de?'Rekord':'Record')+': '+rec+'m':'')+'</span></span>'+
+      '<span class="ps" style="color:'+(sel?'#2de2e6':own?'#12d9b0':'#ffd23f')+'">'+(sel?'★ '+(de?'AKTIV':'ACTIVE'):own?(de?'WÄHLEN':'SELECT'):p.unlock+'$ 🔒')+'</span>';
     card.disabled=!own&&meta.credits<p.unlock;
     card.onclick=()=>{if(own){meta.planet=p.id;}
       else if(meta.credits>=p.unlock){meta.credits-=p.unlock;meta.unlockedPlanets.push(p.id);meta.planet=p.id;}else{sfx.ui();return;}
@@ -817,6 +820,12 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;vibe([20,30,20]);}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
   if(run.energy<=0){run.energy=0;gameOver(t('reasonFuel'));return;}
   if(run.heat>=100){run.heat=100;gameOver(t('reasonHeat'));return;}
+  // active core guardian: pulses heat + shockwaves while you fight near the core
+  const curR=ringOf(drill.rad),bz=(P.bossRings||2)+4;
+  if(drill.rad<R_SURF&&curR>=0&&curR<bz){run.bossPulseT-=dt;
+    if(run.bossPulseT<=0){run.bossPulseT=2.2;run.heat=Math.min(99,run.heat+8);shake=Math.max(shake,14);
+      run.bossWave=1;sfx.shock();vibe([20,45,20]);}}
+  if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
@@ -983,6 +992,9 @@ function draw(){scene();
   if(run.heat>70){const v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.65);
     const a=(run.heat-70)/30*0.5;v.addColorStop(0,'rgba(255,50,30,0)');v.addColorStop(1,'rgba(255,40,20,'+a+')');
     ctx.fillStyle=v;ctx.fillRect(0,0,W,H);}
+  // boss shockwave ring emanating from the core
+  if(run.bossWave>0){const wr=(1-run.bossWave)*Math.max(W,H)*0.6;ctx.strokeStyle=P.core;ctx.globalAlpha=run.bossWave*0.8;
+    ctx.lineWidth=3;ctx.beginPath();ctx.arc(pcx,pcy,wr,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
   drawHUD();}
 
 /* ===================== HUD (crisp full-res) ===================== */
