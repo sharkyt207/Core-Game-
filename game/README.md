@@ -24,16 +24,38 @@ npx cap add android  &&  npm run cap:sync
 ## Struktur
 ```
 game/
-├── index.html            # Portrait-Shell (Viewport, Styles, HUD/Controls-Markup)
+├── index.html            # Portrait-Shell (lädt src/main.ts)
 ├── capacitor.config.ts   # iOS/Android-Wrapper (appId, webDir=dist)
 ├── vite.config.ts        # base "./" für Capacitor, dev host:true
 ├── tsconfig.json         # strict
 └── src/
+    ├── main.ts           # Native-Bootstrap: restauriert Save aus Capacitor
+    │                     #   Preferences, registriert Haptics/App, lädt dann game.js
     ├── game.js           # Spiel-Engine (aus dem bestätigten Prototyp)
     └── core/
         ├── EventBus.ts   # typisiertes Pub/Sub (für schrittweise TS-Extraktion)
         └── palette.ts    # Farb-Identität
 ```
+
+## Native Build (iOS / Android)
+Benötigt lokal Xcode (iOS) bzw. Android Studio (Android) — nicht in der Cloud-Session.
+```bash
+npm install
+npm run build            # -> dist/
+npx cap add ios          # bzw. android   (einmalig)
+npm run cap:sync         # kopiert dist/ + Plugins in die native App
+npx cap open ios         # bzw. android   -> in Xcode/Android Studio bauen & signieren
+```
+
+## Haptik & Cloud-Save
+- **Haptik:** `main.ts` bündelt `@capacitor/haptics`; die Engine ruft über die
+  `window.Capacitor.Plugins.Haptics`-Bridge native Vibration auf (iOS + Android).
+  Im Web-Browser Fallback auf die Vibration-API (Android-Web; iOS-Safari kann per
+  Web nicht vibrieren).
+- **Cloud-Save-Seam:** `main.ts` spiegelt den Speicherstand nach `@capacitor/preferences`
+  (nativer Speicher) und stellt ihn beim Start wieder her. Genau hier wird ein echtes
+  Cloud-Sync (iCloud/Backend) eingehängt: `Preferences` gegen einen Remote-Adapter
+  tauschen. Portabler Save-Code-Export/Import ist bereits im Spiel (Einstellungen).
 
 ## Weg nach vorn (Typisierung)
 `game.js` ist die eine laufende Quelle der Wahrheit. Sobald das Design stabil ist,

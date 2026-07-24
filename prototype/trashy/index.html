@@ -147,6 +147,7 @@
     <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
     <button class="mbtn" id="btnSkins">🎨 Skins</button>
     <button class="mbtn" id="btnAch">🏆 Erfolge</button>
+    <button class="mbtn" id="btnHelp">❓ Tutorial</button>
     <button class="mbtn" id="btnSettings">⚙ Einstellungen</button>
   </div>
 </div>
@@ -224,6 +225,15 @@
   <button class="big" id="btnSettingsDone" style="margin-top:18px">Fertig</button>
 </div>
 
+<!-- TUTORIAL -->
+<div class="over" id="tutOver">
+  <div class="logo" style="font-size:min(13vw,52px)" id="tutTitle">So geht's</div>
+  <div class="sub" id="tut1"></div>
+  <div class="sub" id="tut2" style="color:#ff8a3d"></div>
+  <div class="sub" id="tut3"></div>
+  <button class="big" id="btnTutGo">Los geht's</button>
+</div>
+
 <!-- SKINS -->
 <div class="over" id="skinOver">
   <div class="tag" style="color:#ffd23f">// bohrer-skins //</div>
@@ -274,8 +284,12 @@ const PLANETS=[
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
  {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03,
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05,
+ {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3,
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
+ {id:'neon',   name:'NEON',    unlock:5500, rings:34, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
+   ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
+ {id:'verdant',name:'VERDANT', unlock:14000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3,
+   ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
 ];
 let P=PLANETS[0];
 
@@ -312,10 +326,10 @@ function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
-  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};return j;}}catch(e){}
+  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
-    cosmetics:{owned:['default'],equipped:'default'}};}
+    cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false};}
 const SKINS=[
  {id:'default',name:'Standard',cost:0,    ring:'#c9cdd4', blob:'#ffe14d', core:'#ff8a3d'},
  {id:'gold',   name:'Gold',    cost:1500, ring:'#ffe08a', blob:'#fff2b0', core:'#ffbf3d'},
@@ -337,7 +351,10 @@ const L={de:{
   goSub:'Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.',
   shopSub:'Upgrade die Rostlaube. Dann tiefer.', langBtn:'🌐 Sprache: DE',
   achUnlocked:'Erfolg freigeschaltet', dailyTitle:'Tagesziel', dailyDone:'Tagesziel geschafft!',
-  reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren'
+  reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren',
+  tutTitle:'So geht\'s', tut1:'Finger unten aufsetzen & ziehen: RUNTER bohrt rein, HOCH fliegt raus, SEITLICH um den Planeten.',
+  tut2:'SPRIT & HITZE regenerieren nicht! Bei leer oder 100% = Game Over. Fahr rechtzeitig HOME (⏏).',
+  tut3:'Verkaufe Loot, kauf Skills im Baum, tauch tiefer. Ziel: der glühende Kern.', tutGo:'Los geht\'s', help:'❓ Tutorial'
  },en:{
   dropIn:'Drop In', tree:'🌳 Skill Tree', planets:'🪐 Planets', ach:'🏆 Achievements', settings:'⚙ Settings',
   done:'Done', retry:'Retry', menu:'Menu', on:'ON', off:'OFF',
@@ -347,7 +364,10 @@ const L={de:{
   goSub:'No extract = no cash. Fuel &amp; heat do not regen — head HOME in time.',
   shopSub:'Upgrade the rustbucket. Then deeper.', langBtn:'🌐 Language: EN',
   achUnlocked:'Achievement unlocked', dailyTitle:'Daily Goal', dailyDone:'Daily goal complete!',
-  reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost'
+  reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost',
+  tutTitle:'How to play', tut1:'Touch the lower screen & drag: DOWN drills in, UP flies out, SIDEWAYS around the planet.',
+  tut2:'FUEL & HEAT do not regen! Empty or 100% = Game Over. Head HOME (⏏) in time.',
+  tut3:'Sell loot, buy skills in the tree, dig deeper. Goal: the glowing core.', tutGo:'Let\'s go', help:'❓ Tutorial'
  }};
 function t(k){const d=L[settings.lang]||L.de;return d[k]!=null?d[k]:(L.de[k]!=null?L.de[k]:k);}
 
@@ -361,7 +381,7 @@ const ACH=[
  {id:'tech5',  ic:'🌳', de:['Techniker','Schalte 5 Skills frei'],            en:['Engineer','Unlock 5 skills'],               cond:()=>meta.skills.length>=5},
  {id:'apex',   ic:'☢️', de:['APEX','Baue den APEX-Reaktor'],                 en:['APEX','Build the APEX reactor'],            cond:()=>meta.skills.includes('apex')},
  {id:'expl',   ic:'🪐', de:['Entdecker','Schalte 3 Planeten frei'],          en:['Explorer','Unlock 3 planets'],              cond:()=>meta.unlockedPlanets.length>=3},
- {id:'starmap',ic:'🌌', de:['Sternenkarte','Schalte alle 5 Planeten frei'],  en:['Star Map','Unlock all 5 planets'],          cond:()=>meta.unlockedPlanets.length>=5},
+ {id:'starmap',ic:'🌌', de:['Sternenkarte','Schalte alle Planeten frei'],    en:['Star Map','Unlock all planets'],            cond:()=>meta.unlockedPlanets.length>=PLANETS.length},
  {id:'core1',  ic:'⚛️', de:['Core Overload','Prestige zum ersten Mal'],      en:['Core Overload','Prestige for the first time'],cond:()=>meta.prestige.cores>=1},
  {id:'veteran',ic:'🎖️', de:['Veteran','Spiele 25 Runs'],                     en:['Veteran','Play 25 runs'],                   cond:()=>meta.stats.runs>=25},
  {id:'guardian',ic:'💠',de:['Kern-Wächter','Durchbrich eine Boss-Schicht'],   en:['Core Guardian','Break through a boss layer'],cond:()=>!!meta.stats.guardian},
@@ -445,8 +465,8 @@ const RES={
 };
 const HARD={dirt:16,stone:34,hard:64,dark:96,boss:260};
 function genTile(depthM,ring,sec){
-  // core guardian: the 2 innermost rings are a super-hard boss layer with guaranteed loot
-  if(ring<2){const bhp=HARD.boss*P.hardMul;return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
+  // core guardian: the innermost rings are a super-hard boss layer with guaranteed loot
+  if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul;return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
   let rock='dirt';
   if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
   let res=null;const roll=rnd();
@@ -702,6 +722,7 @@ function applyLang(){
   set('btnAch','ach');set('btnSettings','settings');set('btnSettings2','settings');
   set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
   set('btnRetry','retry');set('btnGoMenu','menu');set('btnSkinDone','done');
+  set('tutTitle','tutTitle');set('tut1','tut1');set('tut2','tut2');set('tut3','tut3');set('btnTutGo','tutGo');set('btnHelp','help');
   set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');
   buildSettings();updateDailyUI();}
 
@@ -1052,7 +1073,10 @@ document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
 document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
   hide('prestigeOver');show('treeOver');buildTree();};
+document.getElementById('btnHelp').onclick=()=>{sfx.ui();show('tutOver');};
+document.getElementById('btnTutGo').onclick=()=>{sfx.ui();hide('tutOver');meta.tutorialSeen=true;saveMeta();};
 updateAbilityButtons();
 applyLang();
+if(!meta.tutorialSeen)show('tutOver');   // first-launch onboarding
 })();
 </script>
