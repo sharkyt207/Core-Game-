@@ -33,9 +33,9 @@ const PLANETS=[
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
- {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04,
+ {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03,
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05,
+ {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05,
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
 ];
 let P=PLANETS[0];
@@ -71,33 +71,59 @@ const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
   if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};
-  if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true};
-  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];return j;}}catch(e){}
+  if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de'};if(!j.settings.lang)j.settings.lang='de';
+  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
+  if(!j.daily)j.daily=null;return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},
-    settings:{music:true,sfx:true,vibe:true,shake:true},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[]};}
+    settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null};}
 const settings=meta.settings;
+
+/* ===================== i18n ===================== */
+const L={de:{
+  dropIn:'Abtauchen', tree:'🌳 Skill Tree', planets:'🪐 Planeten', ach:'🏆 Erfolge', settings:'⚙ Einstellungen',
+  done:'Fertig', retry:'Nochmal', menu:'Menü', on:'AN', off:'AUS',
+  titleSub:'Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen. Fahr rechtzeitig HOME.',
+  hint:'runter = rein · hoch = raus ins All<br>seitlich = um den Planeten',
+  sMusic:'Musik', sSfx:'Sounds', sVibe:'Vibration', sShake:'Screen Shake',
+  goSub:'Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.',
+  shopSub:'Upgrade die Rostlaube. Dann tiefer.', langBtn:'🌐 Sprache: DE',
+  achUnlocked:'Erfolg freigeschaltet', dailyTitle:'Tagesziel', dailyDone:'Tagesziel geschafft!',
+  reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren'
+ },en:{
+  dropIn:'Drop In', tree:'🌳 Skill Tree', planets:'🪐 Planets', ach:'🏆 Achievements', settings:'⚙ Settings',
+  done:'Done', retry:'Retry', menu:'Menu', on:'ON', off:'OFF',
+  titleSub:'Drill into the round planet. Down = in, up = out to space, sideways = fly around. Head HOME in time.',
+  hint:'down = dig in · up = out to space<br>sideways = around the planet',
+  sMusic:'Music', sSfx:'Sounds', sVibe:'Vibration', sShake:'Screen Shake',
+  goSub:'No extract = no cash. Fuel &amp; heat do not regen — head HOME in time.',
+  shopSub:'Upgrade the rustbucket. Then deeper.', langBtn:'🌐 Language: EN',
+  achUnlocked:'Achievement unlocked', dailyTitle:'Daily Goal', dailyDone:'Daily goal complete!',
+  reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost'
+ }};
+function t(k){const d=L[settings.lang]||L.de;return d[k]!=null?d[k]:(L.de[k]!=null?L.de[k]:k);}
 
 /* ===================== ACHIEVEMENTS ===================== */
 const ACH=[
- {id:'first',  ic:'🚀', name:'Erster Abstieg', desc:'Starte deinen ersten Run',      cond:()=>meta.stats.runs>=1},
- {id:'d50',    ic:'⛏️', name:'Tiefgänger',     desc:'Erreiche 50m Tiefe',            cond:()=>meta.stats.bestDepth>=50},
- {id:'d100',   ic:'🔥', name:'Kernnähe',        desc:'Erreiche 100m Tiefe',           cond:()=>meta.stats.bestDepth>=100},
- {id:'rich',   ic:'💰', name:'Reich',           desc:'Verdiene 10.000 $ gesamt',      cond:()=>meta.stats.totalEarned>=10000},
- {id:'tycoon', ic:'🏦', name:'Tycoon',          desc:'Verdiene 100.000 $ gesamt',     cond:()=>meta.stats.totalEarned>=100000},
- {id:'tech5',  ic:'🌳', name:'Techniker',       desc:'Schalte 5 Skills frei',         cond:()=>meta.skills.length>=5},
- {id:'apex',   ic:'☢️', name:'APEX',            desc:'Baue den APEX-Reaktor',         cond:()=>meta.skills.includes('apex')},
- {id:'expl',   ic:'🪐', name:'Entdecker',       desc:'Schalte 3 Planeten frei',       cond:()=>meta.unlockedPlanets.length>=3},
- {id:'starmap',ic:'🌌', name:'Sternenkarte',    desc:'Schalte alle 5 Planeten frei',  cond:()=>meta.unlockedPlanets.length>=5},
- {id:'core1',  ic:'⚛️', name:'Core Overload',   desc:'Prestige zum ersten Mal',       cond:()=>meta.prestige.cores>=1},
- {id:'veteran',ic:'🎖️', name:'Veteran',         desc:'Spiele 25 Runs',                cond:()=>meta.stats.runs>=25},
+ {id:'first',  ic:'🚀', de:['Erster Abstieg','Starte deinen ersten Run'],      en:['First Descent','Start your first run'],       cond:()=>meta.stats.runs>=1},
+ {id:'d50',    ic:'⛏️', de:['Tiefgänger','Erreiche 50m Tiefe'],                en:['Digger','Reach 50m depth'],                 cond:()=>meta.stats.bestDepth>=50},
+ {id:'d100',   ic:'🔥', de:['Kernnähe','Erreiche 100m Tiefe'],                 en:['Near the Core','Reach 100m depth'],         cond:()=>meta.stats.bestDepth>=100},
+ {id:'rich',   ic:'💰', de:['Reich','Verdiene 10.000 $ gesamt'],              en:['Rich','Earn 10,000 $ total'],               cond:()=>meta.stats.totalEarned>=10000},
+ {id:'tycoon', ic:'🏦', de:['Tycoon','Verdiene 100.000 $ gesamt'],           en:['Tycoon','Earn 100,000 $ total'],            cond:()=>meta.stats.totalEarned>=100000},
+ {id:'tech5',  ic:'🌳', de:['Techniker','Schalte 5 Skills frei'],            en:['Engineer','Unlock 5 skills'],               cond:()=>meta.skills.length>=5},
+ {id:'apex',   ic:'☢️', de:['APEX','Baue den APEX-Reaktor'],                 en:['APEX','Build the APEX reactor'],            cond:()=>meta.skills.includes('apex')},
+ {id:'expl',   ic:'🪐', de:['Entdecker','Schalte 3 Planeten frei'],          en:['Explorer','Unlock 3 planets'],              cond:()=>meta.unlockedPlanets.length>=3},
+ {id:'starmap',ic:'🌌', de:['Sternenkarte','Schalte alle 5 Planeten frei'],  en:['Star Map','Unlock all 5 planets'],          cond:()=>meta.unlockedPlanets.length>=5},
+ {id:'core1',  ic:'⚛️', de:['Core Overload','Prestige zum ersten Mal'],      en:['Core Overload','Prestige for the first time'],cond:()=>meta.prestige.cores>=1},
+ {id:'veteran',ic:'🎖️', de:['Veteran','Spiele 25 Runs'],                     en:['Veteran','Play 25 runs'],                   cond:()=>meta.stats.runs>=25},
 ];
+function achTxt(a){return (settings.lang==='en'?a.en:a.de);}
 let achQueue=[],achTimer=null;
 function checkAchievements(){let any=false;
   for(const a of ACH)if(!meta.achievements.includes(a.id)&&a.cond()){meta.achievements.push(a.id);achQueue.push(a);any=true;}
   if(any)saveMeta();if(!achTimer&&achQueue.length)nextAch();}
 function nextAch(){const a=achQueue.shift();if(!a){achTimer=null;return;}
   const el=document.getElementById('achPop');
-  el.innerHTML='<span class="ai">'+a.ic+'</span><span class="at"><b>Erfolg freigeschaltet</b><span>'+a.name+'</span></span>';
+  el.innerHTML='<span class="ai">'+a.ic+'</span><span class="at"><b>'+t('achUnlocked')+'</b><span>'+achTxt(a)[0]+'</span></span>';
   el.classList.add('show');sfx.rare();vibe([12,30,12]);
   achTimer=setTimeout(()=>{el.classList.remove('show');achTimer=setTimeout(nextAch,420);},2600);}
 // Prestige ("Core Overload"): cores grow with the sqrt of lifetime earnings.
@@ -180,7 +206,8 @@ function genTile(depthM,ring,sec){let rock='dirt';
   if(!res&&depthM>5&&hash((ring/2)|0,(sec/3)|0)%1000<55){
     res=depthM>16&&rnd()<0.25?'core':depthM>9&&rnd()<0.6?'crystal':'cuprite';}
   const gas=depthM>3&&rnd()<(P.gasChance||0.018);
-  const hp=HARD[rock]*P.hardMul;return{rock,res,gas,hp,maxhp:hp};}
+  const cave=!gas&&depthM>8&&rnd()<(P.caveChance||0);
+  const hp=HARD[rock]*P.hardMul;return{rock,res,gas,cave,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
 function tilePolar(ring,sec){
   if(ring<0)return{wall:true};           // core
@@ -296,6 +323,12 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
       if(chainGuard<2){chainGuard++;for(const nn of neighborsOf(ring,sec))mineTile(nn[0],nn[1],9999);chainGuard--;}}
+    // cave-in: ceiling collapses -> rubble falls, heat spike, heavy shake
+    if(t.cave){run.heat=Math.min(99,run.heat+10);shake=Math.max(shake,16);flash=Math.max(flash,0.5);glitch=0.3;
+      sfx.shock();vibe([25,50,25]);
+      for(let k=1;k<=3;k++){const rr=ring+k;if(rr>=RINGS)break;const ss=sectorOf(ang_c,rr);
+        const pp=w2s(R_CORE+(rr+0.5)*TILE,(ss+0.5)*dsecOf(rr));burst(pp[0],pp[1],P.ground[2],8,1.6);
+        if(chainGuard<1){chainGuard++;mineTile(rr,ss,9999);chainGuard--;}}}
     // brittle ice (Cryonis): shattering block cracks a random neighbour for free
     if(P.brittle&&chainGuard<1&&rnd()<0.35){chainGuard++;const bn=neighborsOf(ring,sec),pk=bn[Math.floor(rnd()*4)];
       mineTile(pk[0],pk[1],9999);chainGuard--;}
@@ -340,6 +373,7 @@ function startRun(){S=stats();setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0)
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
 function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
+  updateDaily('depth',run.depthMax);updateDaily('runs',1);
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
@@ -348,6 +382,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;stopMusic();
 function extract(){if(!run.active)return;run.active=false;stopMusic();const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;saveMeta();checkAchievements();
+  updateDaily('depth',run.depthMax);updateDaily('loot',g);updateDaily('runs',1);
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
@@ -393,22 +428,53 @@ function buildTree(){
 let backTo='titleOver';
 function openTree(from){backTo=from;hide(from);show('treeOver');buildTree();}
 function openPlanets(from){backTo=from;hide(from);show('planetOver');buildPlanets();}
-function buildSettings(){
+function buildSettings(){const lbl={music:'sMusic',sfx:'sSfx',vibe:'sVibe',shake:'sShake'};
   document.querySelectorAll('.mbtn.set').forEach(b=>{const k=b.dataset.k,on=!!settings[k];
-    b.classList.toggle('off',!on);b.querySelector('span').textContent=on?'AN':'AUS';
+    b.classList.toggle('off',!on);b.innerHTML=t(lbl[k])+' <span>'+(on?t('on'):t('off'))+'</span>';
     b.onclick=()=>{settings[k]=!settings[k];saveMeta();sfx.ui();
       if(k==='music'){if(settings.music&&run.active)startMusic();else if(!settings.music)stopMusic();}
       buildSettings();};});
+  const lb=document.getElementById('btnLang');if(lb){lb.textContent=t('langBtn');
+    lb.onclick=()=>{settings.lang=settings.lang==='de'?'en':'de';saveMeta();sfx.ui();applyLang();};}
   document.getElementById('stBest').textContent=meta.stats.bestDepth+'m';
   document.getElementById('stRuns').textContent=meta.stats.runs;
   document.getElementById('stCash').textContent=money(meta.stats.totalEarned);}
+function applyLang(){
+  const set=(id,key,html)=>{const e=document.getElementById(id);if(!e)return;html?e.innerHTML=t(key):e.textContent=t(key);};
+  set('btnStart','dropIn');set('btnDescend','dropIn');
+  set('btnTree','tree');set('btnTree2','tree');set('btnPlanets','planets');set('btnPlanets2','planets');
+  set('btnAch','ach');set('btnSettings','settings');set('btnSettings2','settings');
+  set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
+  set('btnRetry','retry');set('btnGoMenu','menu');
+  set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');
+  buildSettings();updateDailyUI();}
+
+/* ===================== DAILY GOAL ===================== */
+function dayRng(){let s=5;for(const c of new Date().toDateString())s=((s*31+c.charCodeAt(0))>>>0);
+  return ()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+function ensureDaily(){const ds=new Date().toDateString();if(meta.daily&&meta.daily.date===ds)return;
+  const r=dayRng(),kinds=[{type:'depth',target:30+Math.floor(r()*45),reward:200},
+    {type:'loot',target:600+Math.floor(r()*2000),reward:300},{type:'runs',target:3+Math.floor(r()*5),reward:250}];
+  const pick=kinds[Math.floor(r()*kinds.length)];
+  meta.daily={date:ds,type:pick.type,target:pick.target,reward:pick.reward,progress:0,claimed:false};saveMeta();}
+function dailyDesc(){const d=meta.daily,de=settings.lang!=='en';if(!d)return'';
+  return d.type==='depth'?(de?'Erreiche Tiefe ':'Reach depth ')+d.target+'m':
+    d.type==='loot'?(de?'Verdiene ':'Earn ')+d.target+' $':
+    (de?'Spiele ':'Play ')+d.target+(de?' Runs':' runs');}
+function updateDailyUI(){ensureDaily();const el=document.getElementById('dailyCard');if(!el)return;const d=meta.daily;
+  el.innerHTML='◆ '+t('dailyTitle')+': '+dailyDesc()+'  ['+Math.min(d.target,d.progress)+'/'+d.target+']'+(d.claimed?' ✓ +'+d.reward+'$':'');}
+function updateDaily(kind,val){ensureDaily();const d=meta.daily;if(d.claimed)return;
+  if(d.type===kind){if(kind==='depth')d.progress=Math.max(d.progress,val);else d.progress+=val;
+    if(d.progress>=d.target){d.claimed=true;meta.credits+=d.reward;
+      achQueue.push({ic:'◆',de:[t('dailyDone'),'+'+d.reward+' $'],en:[t('dailyDone'),'+'+d.reward+' $']});if(!achTimer)nextAch();}
+    saveMeta();}updateDailyUI();}
 function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
 function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
   document.getElementById('achCount').textContent=meta.achievements.length+'/'+ACH.length;
   ACH.forEach(a=>{const has=meta.achievements.includes(a.id);
     const row=document.createElement('div');row.className='pcard'+(has?' sel':'');
     row.innerHTML='<span style="font-size:24px;width:34px;text-align:center;'+(has?'':'filter:grayscale(1);opacity:.45;')+'">'+a.ic+'</span>'+
-      '<span class="pt"><b>'+a.name+'</b><span>'+a.desc+'</span></span>'+
+      '<span class="pt"><b>'+achTxt(a)[0]+'</b><span>'+achTxt(a)[1]+'</span></span>'+
       '<span class="ps" style="color:'+(has?'#2de2e6':'#555')+'">'+(has?'✓':'🔒')+'</span>';
     g.appendChild(row);});}
 function openAch(from){backTo=from;hide(from);show('achOver');buildAch();}
@@ -459,8 +525,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   // warning haptics when a budget gets critical (fires once per crossing)
   if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;vibe([30,40,30]);}else if(run.heat<84)run.warnHeat=false;
   if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;vibe([20,30,20]);}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
-  if(run.energy<=0){run.energy=0;gameOver('SPRIT LEER');return;}
-  if(run.heat>=100){run.heat=100;gameOver('ÜBERHITZT');return;}
+  if(run.energy<=0){run.energy=0;gameOver(t('reasonFuel'));return;}
+  if(run.heat>=100){run.heat=100;gameOver(t('reasonHeat'));return;}
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
@@ -563,7 +629,9 @@ function scene(){
         o.fillStyle=R.color;o.beginPath();o.moveTo(cx,cy-s);o.lineTo(cx+s,cy);o.lineTo(cx,cy+s);o.lineTo(cx-s,cy);o.closePath();o.fill();
         o.fillStyle=R.glow;o.beginPath();o.moveTo(cx,cy-s*0.55);o.lineTo(cx+s*0.4,cy-s*0.05);o.lineTo(cx-s*0.15,cy+s*0.2);o.closePath();o.fill();}
       if(t.gas){const gx=(p1[0]+p3[0])/2*S1,gy=(p1[1]+p3[1])/2*S1,gp=0.5+Math.sin(performance.now()/160+ring)*0.5;
-        o.globalAlpha=0.55+gp*0.45;o.fillStyle=T.fuel;o.fillRect((gx-1)|0,(gy-1)|0,3,3);o.globalAlpha=1;}}}
+        o.globalAlpha=0.55+gp*0.45;o.fillStyle=T.fuel;o.fillRect((gx-1)|0,(gy-1)|0,3,3);o.globalAlpha=1;}
+      if(t.cave){const cx2=(p1[0]+p3[0])/2*S1|0,cy2=(p1[1]+p3[1])/2*S1|0;o.fillStyle='rgba(0,0,0,0.6)';
+        o.fillRect(cx2-2,cy2,4,1);o.fillRect(cx2,cy2-2,1,4);}}}
   // drops
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
@@ -704,5 +772,6 @@ document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestig
 document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
   hide('prestigeOver');show('treeOver');buildTree();};
 updateAbilityButtons();
+applyLang();
 })();
 

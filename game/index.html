@@ -149,8 +149,8 @@
 <div class="over show" id="titleOver">
   <div class="logo">Core<br>Breaker</div>
   <div class="tag">// round planet //</div>
-  <div class="sub">Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen.
-    Sammle Zeug, pass auf FUEL auf, fahr HOME und rüste auf.</div>
+  <div class="sub" id="titleSub">Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen. Fahr rechtzeitig HOME.</div>
+  <div id="dailyCard" style="margin-top:12px;max-width:320px;font-size:11px;letter-spacing:.06em;color:#2de2e6;text-transform:uppercase;font-weight:900;"></div>
   <button class="big" id="btnStart">Drop In</button>
   <div class="menubtns">
     <button class="mbtn" id="btnTree">🌳 Skill Tree</button>
@@ -206,9 +206,9 @@
   <div class="tag" id="goReason" style="color:#ff4d4d">ÜBERHITZT</div>
   <div class="result">
     <div><b id="goDepth">0</b><span>Tiefe</span></div>
-    <div><b id="goLost" style="color:#ff4d4d">0</b><span>Loot verloren</span></div>
+    <div><b id="goLost" style="color:#ff4d4d">0</b><span id="goLostLbl">Loot verloren</span></div>
   </div>
-  <div class="sub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
+  <div class="sub" id="goSub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
   <button class="big" id="btnRetry">Nochmal</button>
   <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
 </div>
@@ -221,6 +221,7 @@
     <button class="mbtn set" data-k="sfx">Sounds <span>AN</span></button>
     <button class="mbtn set" data-k="vibe">Vibration <span>AN</span></button>
     <button class="mbtn set" data-k="shake">Screen Shake <span>AN</span></button>
+    <button class="mbtn" id="btnLang">🌐 Sprache: DE</button>
   </div>
   <div class="result" style="margin-top:18px">
     <div><b id="stBest">0</b><span>Beste Tiefe</span></div>
