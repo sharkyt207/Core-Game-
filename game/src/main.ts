@@ -1,55 +1,50 @@
 /**
  * Native bootstrap (Capacitor).
  *
- * Runs BEFORE the game engine (game.js) so a saved game persisted in native
- * storage (Preferences) is restored into localStorage first — the engine reads
- * its save from localStorage unchanged. This is the seam a real cloud sync
- * (iCloud / a backend) plugs into: swap Preferences for a remote adapter.
+ * Order matters: the cloud save is restored into localStorage *before* the
+ * engine is imported, because the engine reads its save exactly once at load.
  *
- * On the web (no Capacitor native layer) the Preferences plugin falls back to
- * web storage, so this is a harmless no-op there and the game runs exactly as
- * the standalone prototype does.
+ * On the web (no native layer) every call below degrades to a harmless no-op,
+ * so the standalone prototype and the wrapped app behave identically.
  */
-import { Preferences } from "@capacitor/preferences";
 import { Haptics } from "@capacitor/haptics";
 import { App } from "@capacitor/app";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { initCloud, pushSave } from "./cloud";
 
-const SAVE_KEY = "corebreaker_tree_v1";
+async function start(): Promise<void> {
+  // Light text on the dark neon UI; the canvas draws under the bar.
+  StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+  StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
 
-function setupPersistence(): void {
-  const persist = async (): Promise<void> => {
-    try {
-      const v = localStorage.getItem(SAVE_KEY);
-      if (v) await Preferences.set({ key: SAVE_KEY, value: v });
-    } catch {
-      /* ignore */
-    }
-  };
-  // Mirror the save into native storage whenever the app is backgrounded/closed.
-  window.addEventListener("pagehide", () => void persist());
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) void persist();
-  });
-  // Keep the app open on Android back (in-game menus handle navigation).
+  // Restore progress first — see cloud.ts for the merge rule.
+  await initCloud();
+
+  // Keep the app alive on Android back; in-game menus own navigation.
   App.addListener("backButton", () => {
     /* no-op */
   }).catch(() => {});
-  // Referencing Haptics guarantees the plugin is bundled so the engine's
-  // window.Capacitor.Plugins.Haptics bridge works on device.
-  void Haptics;
-}
 
-async function start(): Promise<void> {
-  try {
-    const { value } = await Preferences.get({ key: SAVE_KEY });
-    if (value && !localStorage.getItem(SAVE_KEY)) localStorage.setItem(SAVE_KEY, value);
-  } catch {
-    /* web / no native layer */
-  }
-  setupPersistence();
-  // Load the game engine only after the save has been restored.
+  // Flush the save when the app is backgrounded — the moment iOS/Android are
+  // most likely to kill the process.
+  App.addListener("appStateChange", ({ isActive }) => {
+    if (!isActive) void pushSave();
+  }).catch(() => {});
+
+  // Referencing Haptics guarantees the plugin is bundled, so the engine's
+  // window.Capacitor.Plugins.Haptics bridge resolves on device.
+  void Haptics;
+
+  // Load the engine only once the save is in place.
   // @ts-ignore - game.js is the plain-JS engine bundle (generated from the prototype)
   await import("./game.js");
+
+  // The engine is live and has painted its first frame — drop the launch image.
+  // Waiting for a frame (not a timer) is what keeps the handover seamless.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => void SplashScreen.hide().catch(() => {}));
+  });
 }
 
 void start();

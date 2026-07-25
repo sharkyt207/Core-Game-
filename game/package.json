@@ -1,6 +1,6 @@
 {
   "name": "corebreaker",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "COREBREAKER — futuristisches Pixel-Art Mining-Game (iOS & Android, Portrait)",
   "type": "module",
   "scripts": {
@@ -8,15 +8,23 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "cap:sync": "cap sync"
+    "assets:generate": "capacitor-assets generate --iconBackgroundColor '#0a0713' --iconBackgroundColorDark '#0a0713' --splashBackgroundColor '#0a0713' --splashBackgroundColorDark '#0a0713'",
+    "cap:sync": "npm run build && cap sync",
+    "ios:add": "cap add ios",
+    "ios:open": "npm run cap:sync && cap open ios",
+    "android:add": "cap add android",
+    "android:open": "npm run cap:sync && cap open android"
   },
   "dependencies": {
     "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.1.2",
     "@capacitor/haptics": "^6.0.0",
-    "@capacitor/preferences": "^6.0.0"
+    "@capacitor/preferences": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.1.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.2"

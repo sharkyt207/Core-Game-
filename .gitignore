@@ -31,3 +31,14 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# Signing material — never commit. Losing these locks you out of app updates,
+# leaking them lets someone else ship as you. Keep them in a password manager.
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.cer
+key.properties
+google-services.json
+GoogleService-Info.plist

@@ -66,11 +66,16 @@ Handy). Nach jeder Phase: kurze Freigabe/Feedback-Runde, bevor es weitergeht.
 - [x] Boss-Schichten mit Wächter + Angriffsmustern (Puls/Hitze, Sog zum Kern, rotierender Laser-Sweep in Phase 2)
 - [x] Gegner-Kreaturen in tiefen Schichten (jagen den Bohrer; beißen = Hitze, oder sterben & droppen beim Bohren/Boost)
 - [x] Menü-/Overlay-Animationen (Fade + Slide-Einblendung)
-- [ ] Weitere Planeten & Fähigkeiten (Content-Ausbau über Daten)
-- [ ] Balancing-Pass (Playtesting)
-- [ ] Performance-Optimierung (Pooling, Partikel-Caps, 60 FPS)
-- [ ] Capacitor-Integration → iOS/Android-Builds
-- **Meilenstein:** veröffentlichbarer Build.
+- [x] Weitere Planeten & Fähigkeiten (9 Welten, Module, Refinerie, Kontrakte, Challenge)
+- [x] Balancing-Pass (Glücks-Cap, Loot-Quellen entschärft; `docs/04_ECONOMY.md`)
+- [x] Performance-Optimierung (Partikel-Pooling, Qualitätsstufen, ~60 % weniger
+      Canvas-Ops auf der niedrigen Stufe, Auto-Erkennung mit Hysterese)
+- [x] Cloud-Save (`src/cloud.ts`, fortschrittsbasierte Merge-Regel, adapter-basiert)
+- [x] Capacitor-Integration vollständig vorbereitet (Splash, StatusBar, Plugins,
+      Icon-/Splash-Quellbilder, Store-Assets, `game/NATIVE_BUILD.md`)
+- [ ] **Nur noch lokal möglich:** `npx cap add ios|android`, Signieren & Hochladen
+      (braucht Xcode auf macOS bzw. Android Studio — nicht in der Cloud-Session)
+- **Meilenstein:** veröffentlichbarer Build — bis auf das Signieren erreicht.
 
 ---
 
