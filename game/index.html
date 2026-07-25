@@ -132,6 +132,8 @@
   .mbtn{transition:transform .07s cubic-bezier(.2,.9,.25,1),box-shadow .07s ease,filter .12s ease,border-color .12s ease;}
   .mbtn:active{transform:translate(3px,3px) scale(.975);box-shadow:0 0 0 rgba(255,255,255,.2);filter:brightness(1.5);}
   .mbtn.set{justify-content:space-between;padding:12px 15px;}
+  /* destructive actions look destructive */
+  .mbtn.danger{border-color:#ff4d4d;color:#ff4d4d;box-shadow:4px 4px 0 rgba(255,77,77,.25);}
   .mbtn.set span{font-size:12px;letter-spacing:.1em;color:#2de2e6;}
   .mbtn.set.off{opacity:.6;} .mbtn.set.off span{color:#9a90ad;}
 
@@ -298,6 +300,19 @@
   <div class="menubtns"><button class="mbtn" id="btnAscendCancel">Abbrechen</button></div>
 </div>
 
+<!-- WIPE SAVE CONFIRM -->
+<div class="over" id="wipeOver">
+  <div class="logo" style="font-size:min(12vw,46px);text-shadow:4px 4px 0 #ff2266,-3px -3px 0 #ff8a3d;">Alles<br>löschen?</div>
+  <div class="sub" style="max-width:330px" id="wipeWarn">Das kann nicht rückgängig gemacht werden.</div>
+  <div class="pcards" id="wipeList" style="max-width:330px"></div>
+  <div class="sub" style="max-width:330px;color:#ffd23f" id="wipeTip">Tipp: Sichere vorher deinen Save-Code — damit kannst du jederzeit zurück.</div>
+  <button class="big" id="btnWipeBackup" style="background:#2de2e6;color:#06121a;">⬆ Erst Save-Code sichern</button>
+  <div class="menubtns" style="max-width:320px">
+    <button class="mbtn" id="btnWipeCancel">Abbrechen</button>
+    <button class="mbtn danger" id="btnWipeGo">Endgültig löschen</button>
+  </div>
+</div>
+
 <!-- PLANET MENU -->
 <div class="over" id="planetOver">
   <div class="tag" style="color:#2de2e6">// planeten //</div>
@@ -330,6 +345,7 @@
     <button class="mbtn" id="btnLang">🌐 Sprache: DE</button>
     <button class="mbtn" id="btnExport">⬆ Save exportieren</button>
     <button class="mbtn" id="btnImport">⬇ Save importieren</button>
+    <button class="mbtn danger" id="btnWipe">🗑 Speicherdaten löschen</button>
   </div>
   <div class="result" style="margin-top:18px">
     <div><b id="stBest">0</b><span>Beste Tiefe</span></div>

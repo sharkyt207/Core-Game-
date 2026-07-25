@@ -1707,6 +1707,46 @@ document.getElementById('btnImport').onclick=()=>{sfx.ui();let code;
   try{code=window.prompt(settings.lang==='en'?'Paste save code:':'Save-Code einfügen:','');}catch(e){}
   if(!code)return;try{const j=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
     if(j&&j.v===2){localStorage.setItem(SAVE_KEY,JSON.stringify(j));location.reload();}else sfx.ui();}catch(e){sfx.ui();}};
+/* Wiping the save is irreversible, so the confirmation spells out exactly what
+   is about to be lost and offers the backup code first. */
+function exportSaveCode(){try{const code=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+  if(navigator.clipboard)navigator.clipboard.writeText(code).catch(()=>{});
+  window.prompt(settings.lang==='en'?'Save code (copy it):':'Save-Code (kopieren):',code);}catch(e){}}
+function buildWipe(){const de=settings.lang!=='en',st=meta.stats;
+  document.getElementById('wipeWarn').textContent=de
+    ?'Dein gesamter Fortschritt wird gelöscht. Das lässt sich nicht rückgängig machen.'
+    :'All of your progress will be deleted. This cannot be undone.';
+  document.getElementById('wipeTip').textContent=de
+    ?'Tipp: Sichere vorher deinen Save-Code — damit kannst du jederzeit zurück.'
+    :'Tip: back up your save code first — you can always restore from it.';
+  document.getElementById('btnWipeBackup').textContent=de?'⬆ Erst Save-Code sichern':'⬆ Back up save code first';
+  document.getElementById('btnWipeCancel').textContent=de?'Abbrechen':'Cancel';
+  document.getElementById('btnWipeGo').textContent=de?'Endgültig löschen':'Delete for good';
+  const row=(ic,lbl,val)=>'<div class="pcard"><span style="font-size:19px;width:30px;text-align:center">'+ic+
+    '</span><span class="pt"><b>'+lbl+'</b></span><span class="ps" style="color:#ff4d4d">'+val+'</span></div>';
+  let h='';
+  h+=row('🏆',de?'Beste Tiefe':'Best depth',(st.bestDepth||0)+'m');
+  h+=row('💰',de?'Cash':'Cash',money(meta.credits));
+  h+=row('🌳',de?'Skills':'Skills',meta.skills.length+'/'+SKILLS.length);
+  h+=row('🪐',de?'Planeten':'Planets',meta.unlockedPlanets.length+'/'+PLANETS.length);
+  h+=row('🔩',de?'Module':'Modules',(meta.modules||[]).length+'/'+MODULES.length);
+  h+=row('⚛️',de?'Kerne':'Cores',meta.prestige.cores);
+  h+=row('✦',de?'Splitter':'Shards',(meta.ascend&&meta.ascend.shards)||0);
+  h+=row('🏅',de?'Erfolge':'Achievements',meta.achievements.length+'/'+ACH.length);
+  h+=row('🚀',de?'Runs':'Runs',st.runs||0);
+  document.getElementById('wipeList').innerHTML=h;}
+async function wipeSaveData(){
+  // Clear the mirrored copy first — a restore prefers the further-along save,
+  // so leaving it would bring the old progress straight back on next launch.
+  try{if(window.__cbWipeCloud)await window.__cbWipeCloud();}catch(e){}
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+  try{sessionStorage.clear();}catch(e){}
+  location.reload();}
+document.getElementById('btnWipe').onclick=()=>{sfx.ui();buildWipe();hide('settingsOver');show('wipeOver');};
+document.getElementById('btnWipeBackup').onclick=()=>{sfx.ui();exportSaveCode();};
+document.getElementById('btnWipeCancel').onclick=()=>{sfx.back();hide('wipeOver');show('settingsOver');buildSettings();};
+document.getElementById('btnWipeGo').onclick=()=>{sfx.shock();haptic('error');
+  document.getElementById('btnWipeGo').disabled=true;wipeSaveData();};
 // menu navigation
 document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');};
 document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};

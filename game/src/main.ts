@@ -11,7 +11,7 @@ import { Haptics } from "@capacitor/haptics";
 import { App } from "@capacitor/app";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar, Style } from "@capacitor/status-bar";
-import { initCloud, pushSave } from "./cloud";
+import { initCloud, pushSave, wipeSave } from "./cloud";
 import { initPWA } from "./pwa";
 
 async function start(): Promise<void> {
@@ -39,6 +39,10 @@ async function start(): Promise<void> {
   // Referencing Haptics guarantees the plugin is bundled, so the engine's
   // window.Capacitor.Plugins.Haptics bridge resolves on device.
   void Haptics;
+
+  // The engine's "delete save data" option calls this so the mirrored copy in
+  // native storage goes too — otherwise the next launch would restore it.
+  (window as unknown as { __cbWipeCloud?: () => Promise<void> }).__cbWipeCloud = wipeSave;
 
   // Load the engine only once the save is in place.
   // @ts-ignore - game.js is the plain-JS engine bundle (generated from the prototype)

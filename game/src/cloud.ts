@@ -112,6 +112,30 @@ export async function pullSave(): Promise<void> {
   }
 }
 
+/**
+ * Wipes the save everywhere it is kept.
+ *
+ * Clearing localStorage alone is not enough: the next launch would pull the
+ * mirrored copy straight back, because a restore prefers whichever save is
+ * further along — and an empty local save always loses that comparison.
+ */
+export async function wipeSave(): Promise<void> {
+  lastPushed = null;
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    // Overwrite first, then remove: a remove that silently fails would otherwise
+    // leave the old progress sitting in native storage.
+    await adapter.set(SAVE_KEY, "");
+    await Preferences.remove({ key: SAVE_KEY });
+  } catch {
+    /* no native layer, or already gone */
+  }
+}
+
 export interface CloudOptions {
   /** Swap in a different backend (e.g. an account-based one) without touching callers. */
   adapter?: CloudAdapter;
