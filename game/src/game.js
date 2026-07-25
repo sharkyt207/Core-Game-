@@ -630,17 +630,35 @@ function updateAbilityButtons(){const a=stats().abilities;
 
 /* ---------- SKILL TREE (graphical, pannable, hidden until reachable) ---------- */
 const COLW=96,ROWH=104;
-function treeExtent(){let minx=0,maxx=0,maxy=0;for(const s of SKILLS){minx=Math.min(minx,s.pos[0]);maxx=Math.max(maxx,s.pos[0]);maxy=Math.max(maxy,s.pos[1]);}
-  return{minx,maxx,maxy};}
-function buildTree(){
+function treeExtent(){let minx=0,maxx=0,miny=0,maxy=0;
+  for(const s of SKILLS){minx=Math.min(minx,s.pos[0]);maxx=Math.max(maxx,s.pos[0]);
+    miny=Math.min(miny,s.pos[1]);maxy=Math.max(maxy,s.pos[1]);}
+  return{minx,maxx,miny,maxy};}
+/**
+ * recenter=true  -> opening the tree: scroll so the frontier node sits centred
+ * recenter=false -> a rebuild after buying: keep the view exactly where it was
+ * The canvas is sized from ALL skills (not just visible ones) plus half a
+ * viewport of padding on every side, so the coordinate system never shifts and
+ * any node — including the root — can sit dead centre.
+ */
+function buildTree(recenter){
   document.getElementById('treeCash').textContent='$'+meta.credits;
   const pg=prestigeGain(),pb=document.getElementById('btnPrestige');
   pb.style.display=pg>0?'inline-flex':'none';pb.textContent='⚛ +'+pg;
   const ag=ascendGain(),ab=document.getElementById('btnAscend');
   ab.style.display=canAscend()?'inline-flex':'none';ab.textContent='✦ +'+ag;
-  const ex=treeExtent(),cw=(ex.maxx-ex.minx)*COLW+140,ch=(ex.maxy)*ROWH+150;
+  const sc=document.getElementById('treeScroll');
+  const keepL=sc.scrollLeft,keepT=sc.scrollTop;          // remember the view
+  const vw=sc.clientWidth||window.innerWidth,vh=sc.clientHeight||window.innerHeight;
+  // Half a viewport lets any node sit dead centre; the extra margin leaves
+  // breathing room beyond that, so the tree can grow in every direction —
+  // including above and left of the root — without the view hitting a hard edge.
+  const EXTRA=140;
+  const padX=Math.max(180,vw/2+EXTRA),padY=Math.max(180,vh/2+EXTRA);
+  const ex=treeExtent();
+  const cw=(ex.maxx-ex.minx)*COLW+padX*2,ch=(ex.maxy-ex.miny)*ROWH+padY*2;
   const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
-  const cx=(-ex.minx)*COLW+70, ox=(x)=>cx+x*COLW, oy=(y)=>60+y*ROWH;
+  const ox=(x)=>padX+(x-ex.minx)*COLW, oy=(y)=>padY+(y-ex.miny)*ROWH;
   // connectors (SVG) — only between visible nodes
   let lines='';for(const s of SKILLS){if(!visibleSkill(s))continue;for(const r of s.req){const p=SKILLMAP[r];if(!p||!visibleSkill(p))continue;
     const col=owned(s.id)?'#2de2e6':(owned(r)?'#ffd23f':'#444');
@@ -652,15 +670,20 @@ function buildTree(){
     const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
     n.style.left=ox(s.pos[0])+'px';n.style.top=oy(s.pos[1])+'px';
     n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
-    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree();checkAchievements();}else{sfx.ui();}};
+    // Buying rebuilds the tree but must NOT move the view — you stay where you look.
+    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}else{sfx.ui();}};
     cvs.appendChild(n);}
-  // centre the scroll on the frontier (first buyable, else root)
-  requestAnimationFrame(()=>{const sc=document.getElementById('treeScroll');
-    const target=SKILLS.find(s=>canBuy(s))||SKILLS.find(s=>visibleSkill(s)&&!owned(s.id))||SKILLS[0];
-    sc.scrollLeft=ox(target.pos[0])-sc.clientWidth/2;sc.scrollTop=Math.max(0,oy(target.pos[1])-sc.clientHeight/2);});
+  requestAnimationFrame(()=>{
+    if(recenter){   // only when opening: put the next buyable node in the middle
+      const target=SKILLS.find(s=>canBuy(s))||SKILLS.find(s=>visibleSkill(s)&&!owned(s.id))||SKILLS[0];
+      sc.scrollLeft=ox(target.pos[0])-vw/2;
+      sc.scrollTop=oy(target.pos[1])-vh/2;
+    }else{          // rebuild: restore the exact scroll position
+      sc.scrollLeft=keepL;sc.scrollTop=keepT;
+    }});
 }
 let backTo='titleOver';
-function openTree(from){backTo=from;hide(from);show('treeOver');buildTree();}
+function openTree(from){backTo=from;hide(from);show('treeOver');buildTree(true);}
 function openPlanets(from){backTo=from;hide(from);show('planetOver');buildPlanets();}
 function buildSettings(){const lbl={music:'sMusic',sfx:'sSfx',vibe:'sVibe',shake:'sShake'};
   document.querySelectorAll('.mbtn.set').forEach(b=>{const k=b.dataset.k,on=!!settings[k];
@@ -1393,15 +1416,15 @@ document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGai
   hide('treeOver');show('prestigeOver');};
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
-document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree();};
+document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree(false);};
 document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
-  hide('prestigeOver');show('treeOver');buildTree();};
+  hide('prestigeOver');show('treeOver');buildTree(true);};
 document.getElementById('btnAscend').onclick=()=>{sfx.ui();const g=ascendGain(),ns=meta.ascend.shards+g;
   document.getElementById('ascendTxt').innerHTML='Wandelt <b>'+meta.prestige.cores+'</b> Kerne in <b style="color:#ff4de0">'+g+'</b> Splitter.<br>Setzt Kerne, Skill-Baum &amp; Credits zurück.<br>Splitter: <b>'+meta.ascend.shards+'</b> → <b style="color:#ff4de0">'+ns+'</b><br>Permanent: +'+(ns*25)+'% Loot · +'+(ns*8)+' Bohrkraft.';
   hide('treeOver');show('ascendOver');};
-document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree();};
+document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree(false);};
 document.getElementById('btnAscendGo').onclick=()=>{if(doAscend()){sfx.leg();vibe([30,50,30,70,30,120]);updateAbilityButtons();checkAchievements();}
-  hide('ascendOver');show('treeOver');buildTree();};
+  hide('ascendOver');show('treeOver');buildTree(true);};
 document.getElementById('btnHelp').onclick=()=>{sfx.ui();openTut('titleOver');};
 document.getElementById('btnTutNext').onclick=()=>{sfx.ui();if(tutIndex>=TUTSTEPS.length-1)finishTut();else{tutIndex++;renderTut();}};
 document.getElementById('btnTutSkip').onclick=()=>{sfx.ui();finishTut();};
