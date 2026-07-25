@@ -747,6 +747,45 @@ function attachSkillPress(n,s){let t=null,sx=0,sy=0,held=false;
     if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}
     else{sfx.ui();showSkillInfo(s);}                               // can't afford -> explain why
   };}
+/* ---------- pinch-to-zoom ----------
+ * The canvas is scaled visually while a sizer element carries the scaled
+ * dimensions, so the scroll range always matches what you see. The point
+ * between your fingers stays put while you pinch. */
+const ZOOM_MIN=0.45,ZOOM_MAX=1.8;
+let treeZoom=1;const treeBase={w:0,h:0};
+function applyTreeZoom(){
+  const cvs=document.getElementById('treeCanvas'),sz=document.getElementById('treeSizer');
+  if(!cvs||!sz)return;
+  cvs.style.transform='scale('+treeZoom+')';
+  sz.style.width=(treeBase.w*treeZoom)+'px';
+  sz.style.height=(treeBase.h*treeZoom)+'px';}
+// zoom around a point given in viewport coords, keeping that point stationary
+function zoomTreeAt(next,px,py){
+  const sc=document.getElementById('treeScroll'),r=sc.getBoundingClientRect();
+  const z0=treeZoom,z1=clamp(next,ZOOM_MIN,ZOOM_MAX);
+  if(z1===z0)return;
+  const cx=(sc.scrollLeft+px-r.left)/z0, cy=(sc.scrollTop+py-r.top)/z0;   // content point under the fingers
+  treeZoom=z1;applyTreeZoom();
+  sc.scrollLeft=cx*z1-(px-r.left);
+  sc.scrollTop=cy*z1-(py-r.top);}
+(function initTreeZoom(){
+  const sc=document.getElementById('treeScroll');if(!sc)return;
+  let start=null;
+  const dist=(t)=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const mid=(t)=>[(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2];
+  sc.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){const t=[e.touches[0],e.touches[1]];
+      start={d:dist(t)||1,z:treeZoom};e.preventDefault();}},{passive:false});
+  sc.addEventListener('touchmove',e=>{
+    if(start&&e.touches.length===2){const t=[e.touches[0],e.touches[1]],m=mid(t);
+      zoomTreeAt(start.z*(dist(t)/start.d),m[0],m[1]);e.preventDefault();}},{passive:false});
+  const end=e=>{if(!e.touches||e.touches.length<2)start=null;};
+  sc.addEventListener('touchend',end);sc.addEventListener('touchcancel',end);
+  // desktop convenience: ctrl/⌘ + wheel, and trackpad pinch (which arrives as ctrl+wheel)
+  sc.addEventListener('wheel',e=>{
+    if(!e.ctrlKey&&!e.metaKey)return;
+    zoomTreeAt(treeZoom*(e.deltaY<0?1.1:1/1.1),e.clientX,e.clientY);e.preventDefault();},{passive:false});
+})();
 function treeExtent(){const L=layoutTree();let minx=0,maxx=0,miny=0,maxy=0;
   for(const s of SKILLS){const p=L[s.id];
     minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);
@@ -776,25 +815,46 @@ function buildTree(recenter){
   const ex=treeExtent(),L=layoutTree();
   const cw=(ex.maxx-ex.minx)+padX*2,ch=(ex.maxy-ex.miny)+padY*2;
   const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
+  treeBase.w=cw;treeBase.h=ch;
   const ox=(id)=>padX+(L[id].x-ex.minx), oy=(id)=>padY+(L[id].y-ex.miny);
-  // connectors (SVG) — only between visible nodes
-  let lines='';for(const s of SKILLS){if(!visibleSkill(s))continue;for(const r of s.req){const p=SKILLMAP[r];if(!p||!visibleSkill(p))continue;
-    const col=owned(s.id)?'#2de2e6':(owned(r)?'#ffd23f':'#444');
-    lines+='<line x1="'+ox(r)+'" y1="'+oy(r)+'" x2="'+ox(s.id)+'" y2="'+oy(s.id)+'" stroke="'+col+'" stroke-width="3"/>';}}
-  const svg=document.getElementById('treeSvg');svg.setAttribute('width',cw);svg.setAttribute('height',ch);svg.innerHTML=lines;
-  // nodes
+  // nodes first — the connectors need their real measured size to stop at the edge
   [...cvs.querySelectorAll('.node')].forEach(n=>n.remove());
+  const boxes={};
   for(const s of SKILLS){if(!visibleSkill(s))continue;const own=owned(s.id),buy=canBuy(s);
     const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
     n.style.left=ox(s.id)+'px';n.style.top=oy(s.id)+'px';
     n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
     attachSkillPress(n,s);
-    cvs.appendChild(n);}
+    cvs.appendChild(n);boxes[s.id]=n;}
+  // connectors: trimmed to each box's border so no line ever crosses a node
+  const svg=document.getElementById('treeSvg');
+  svg.setAttribute('width',cw);svg.setAttribute('height',ch);
+  const GAP=4;                       // small visible gap between line and border
+  // distance from a node's centre to its border along direction (dx,dy)
+  const edge=(id,dx,dy)=>{const el=boxes[id];
+    const hw=(el?el.offsetWidth:NODE_W)/2+GAP, hh=(el?el.offsetHeight:56)/2+GAP;
+    const ax=Math.abs(dx),ay=Math.abs(dy);
+    if(ax<1e-6)return hh;
+    if(ay<1e-6)return hw;
+    return Math.min(hw/ax,hh/ay);};
+  let lines='';
+  for(const s of SKILLS){if(!visibleSkill(s))continue;
+    for(const r of s.req){const p=SKILLMAP[r];if(!p||!visibleSkill(p))continue;
+      const x1=ox(r),y1=oy(r),x2=ox(s.id),y2=oy(s.id);
+      const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len;
+      const t1=edge(r,ux,uy),t2=edge(s.id,ux,uy);
+      if(t1+t2>=len)continue;        // boxes nearly touch: no room for a line
+      const col=owned(s.id)?'#2de2e6':(owned(r)?'#ffd23f':'#444');
+      lines+='<line x1="'+(x1+ux*t1).toFixed(1)+'" y1="'+(y1+uy*t1).toFixed(1)+
+             '" x2="'+(x2-ux*t2).toFixed(1)+'" y2="'+(y2-uy*t2).toFixed(1)+
+             '" stroke="'+col+'" stroke-width="3" stroke-linecap="round"/>';}}
+  svg.innerHTML=lines;
+  applyTreeZoom();
   requestAnimationFrame(()=>{
     if(recenter){   // only when opening: put the next buyable node in the middle
       const target=SKILLS.find(s=>canBuy(s))||SKILLS.find(s=>visibleSkill(s)&&!owned(s.id))||SKILLS[0];
-      sc.scrollLeft=ox(target.id)-vw/2;
-      sc.scrollTop=oy(target.id)-vh/2;
+      sc.scrollLeft=ox(target.id)*treeZoom-vw/2;
+      sc.scrollTop=oy(target.id)*treeZoom-vh/2;
     }else{          // rebuild: restore the exact scroll position
       sc.scrollLeft=keepL;sc.scrollTop=keepT;
     }});

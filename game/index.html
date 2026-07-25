@@ -147,9 +147,14 @@
   .treetop b{font-weight:900;letter-spacing:.2em;font-size:14px;}
   .treetop .cr{font-weight:900;color:#ffd23f;font-size:15px;}
   #treeScroll{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
-  #treeCanvas{position:relative;margin:0 auto;}
-  #treeSvg{position:absolute;left:0;top:0;pointer-events:none;}
-  .node{position:absolute;width:76px;transform:translate(-50%,-50%);pointer-events:auto;background:#0a0713;
+  /* The sizer carries the *scaled* dimensions so the scrollbars stay correct,
+     while the canvas keeps its natural size and is only visually scaled. */
+  #treeSizer{position:relative;}
+  #treeCanvas{position:absolute;top:0;left:0;transform-origin:0 0;}
+  /* Nodes always paint over the connectors, so a line passing behind a box is
+     hidden by its opaque background instead of appearing to cut through it. */
+  #treeSvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0;}
+  .node{position:absolute;z-index:1;width:76px;transform:translate(-50%,-50%);pointer-events:auto;background:#0a0713;
     border:3px solid #444;color:#fff;font-family:inherit;padding:7px 3px;display:flex;flex-direction:column;
     align-items:center;gap:2px;text-align:center;}
   .node .ni{font-size:20px;line-height:1;}
@@ -259,7 +264,7 @@
 <!-- SKILL TREE -->
 <div class="over" id="treeOver">
   <div class="treetop"><b>SKILL TREE</b><span class="cr" id="treeCash">$0</span></div>
-  <div id="treeScroll"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div>
+  <div id="treeScroll"><div id="treeSizer"><div id="treeCanvas"><svg id="treeSvg"></svg></div></div></div>
   <div id="skillInfo"></div>
   <div class="treebottom">
     <button class="big" id="btnPrestige" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">⚛ Prestige</button>
