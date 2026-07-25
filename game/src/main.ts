@@ -12,8 +12,12 @@ import { App } from "@capacitor/app";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { initCloud, pushSave } from "./cloud";
+import { initPWA } from "./pwa";
 
 async function start(): Promise<void> {
+  // Offline support + ask the browser not to evict the save (web/home-screen).
+  initPWA();
+
   // Light text on the dark neon UI; the canvas draws under the bar.
   StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});

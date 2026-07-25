@@ -1,0 +1,67 @@
+name: Deploy to GitHub Pages
+
+# Builds the game and publishes it, so there is a real URL you can open on a
+# phone and add to the home screen. Runs on every push to the game branch, and
+# can always be started by hand from the Actions tab.
+on:
+  push:
+    branches: [main, claude/mobile-mining-game-6nvt3w]
+    paths:
+      - "game/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; finish the running one first.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify the PWA files made it into the build
+        run: |
+          set -e
+          for f in dist/index.html dist/manifest.webmanifest dist/sw.js dist/icons/icon-512.png; do
+            test -s "$f" || { echo "missing or empty: $f"; exit 1; }
+          done
+          echo "PWA assets present"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: game/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

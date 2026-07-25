@@ -1,4 +1,5 @@
-/* COREBREAKER engine — generated from prototype/trashy/index.html (single source of truth). */
+/* COREBREAKER engine — generated from prototype/trashy/index.html (single source of truth).
+   Do not edit by hand: run tools/sync-from-prototype.cjs instead. */
 
 (function(){
 "use strict";
@@ -1382,6 +1383,9 @@ document.getElementById('btnTree').onclick=()=>{sfx.ui();openTree('titleOver');}
 document.getElementById('btnPlanets').onclick=()=>{sfx.ui();openPlanets('titleOver');};
 document.getElementById('btnTree2').onclick=()=>{sfx.ui();openTree('shopOver');};
 document.getElementById('btnPlanets2').onclick=()=>{sfx.ui();openPlanets('shopOver');};
+document.getElementById('btnModules2').onclick=()=>{sfx.ui();openModules('shopOver');};
+document.getElementById('btnRefine2').onclick=()=>{sfx.ui();openRefinery('shopOver');};
+document.getElementById('btnShopMenu').onclick=()=>{sfx.ui();hide('shopOver');show('titleOver');updateDailyUI();};
 document.getElementById('btnTreeDone').onclick=()=>{sfx.ui();hide('treeOver');show(backTo);};
 document.getElementById('btnPlanetsDone').onclick=()=>{sfx.ui();hide('planetOver');show(backTo);};
 document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGain(),nc=meta.prestige.cores+g;

@@ -4,6 +4,16 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <title>COREBREAKER</title>
+<meta name="description" content="Bohr dich durch runde Planeten bis zum glühenden Kern — Neon-Mining-Arcade im Hochformat."/>
+<meta name="theme-color" content="#0a0713"/>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="icon" href="./icons/icon-192.png"/>
+<!-- iOS home-screen install: fullscreen, dark status bar, app icon -->
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="COREBREAKER"/>
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <style>
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
@@ -42,13 +52,22 @@
   .btn.ability .cd{position:absolute;inset:0;background:rgba(0,0,0,.72);transform-origin:bottom;}
   .btn.ico{min-width:0;font-size:18px;}
 
-  /* overlays */
-  .over{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:24px;background:rgba(8,6,16,.9);z-index:20;
+  /* overlays — scrollable so nothing is ever unreachable on a short screen.
+     The ::before/::after spacers centre the content when it fits and collapse
+     when it doesn't, which avoids the flexbox bug where `justify-content:center`
+     clips the top of overflowing content out of reach. */
+  .over{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    text-align:center;background:rgba(8,6,16,.9);z-index:20;
+    padding:calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 24px);
+    overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
     opacity:0;visibility:hidden;pointer-events:none;transition:opacity .26s ease,visibility .26s;}
-  .over>*{transform:translateY(16px) scale(.985);transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .28s ease;opacity:.4;}
+  .over::before,.over::after{content:"";flex:1 1 0;min-height:0;}
+  .over>*{flex:0 0 auto;transform:translateY(16px) scale(.985);transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .28s ease;opacity:.4;}
   .over.show{opacity:1;visibility:visible;pointer-events:auto;}
   .over.show>*{transform:none;opacity:1;}
+  /* the skill tree pans inside its own container and has fixed chrome */
+  #treeOver{overflow:hidden;padding:0;}
+  #treeOver::before,#treeOver::after{content:none;}
   .logo{font-size:min(17vw,74px);font-weight:900;letter-spacing:-.02em;line-height:.9;color:#fff;
     text-shadow:5px 5px 0 #ff2266,-3px -3px 0 #2de2e6;text-transform:uppercase;text-wrap:balance;}
   /* studio splash */
@@ -217,7 +236,10 @@
   <div class="menubtns">
     <button class="mbtn" id="btnTree2">🌳 Skill Tree</button>
     <button class="mbtn" id="btnPlanets2">🪐 Planeten</button>
-    <button class="mbtn" id="btnSettings2">⚙ Einstellungen</button>
+    <button class="mbtn" id="btnModules2">🔩 Module</button>
+    <button class="mbtn" id="btnRefine2">⚗️ Refinerie</button>
+    <button class="mbtn" id="btnSettings2">⚙ Optionen</button>
+    <button class="mbtn" id="btnShopMenu">🏠 Hauptmenü</button>
   </div>
   <button class="big" id="btnDescend" style="margin-top:16px">Drop In</button>
 </div>
@@ -306,7 +328,7 @@
 <!-- SKINS -->
 <div class="over" id="skinOver">
   <div class="tag" style="color:#ffd23f">// bohrer-skins //</div>
-  <div class="pcards" id="skinList" style="max-height:66vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <div class="pcards" id="skinList" ></div>
   <button class="big" id="btnSkinDone" style="margin-top:16px">Fertig</button>
 </div>
 
@@ -324,7 +346,7 @@
   <div class="tag" style="color:#8a5cff">// bohrer-module //</div>
   <div class="sub" style="max-width:340px">Kaufe Module und lege bis zu 3 in deinen Bohrer ein. Frei kombinierbar für deinen Build.</div>
   <div id="modSlots" style="margin:8px 0;font-size:12px;font-weight:900;letter-spacing:.06em;color:#8a5cff;"></div>
-  <div class="pcards" id="modList" style="max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <div class="pcards" id="modList" ></div>
   <button class="big" id="btnModuleDone" style="margin-top:14px">Fertig</button>
 </div>
 
@@ -335,7 +357,7 @@
   <div id="chalBest" style="margin:6px 0 2px;font-size:13px;font-weight:900;color:#ffd23f;"></div>
   <button class="big" id="btnChalStart" style="background:#ff4de0;color:#fff;">Start</button>
   <div class="tag" style="margin-top:20px;color:#2de2e6">// bestenliste //</div>
-  <div class="pcards" id="chalBoard" style="max-height:34vh;overflow:auto;max-width:340px;"></div>
+  <div class="pcards" id="chalBoard" style="max-width:340px;"></div>
   <div class="menubtns" style="grid-template-columns:1fr;max-width:300px"><button class="mbtn" id="btnChalDone">Zurück</button></div>
 </div>
 
@@ -344,7 +366,7 @@
   <div class="tag" style="color:#12d9b0">// refinerie //</div>
   <div class="sub" style="max-width:340px">Verbau erbeutetes Erz zu <b>dauerhaften</b> Boni. Erz wird nur bei erfolgreicher Extraktion gutgeschrieben.</div>
   <div id="refMats" style="margin:8px 0;font-size:11px;letter-spacing:.05em;font-weight:900;"></div>
-  <div class="pcards" id="refList" style="max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <div class="pcards" id="refList" ></div>
   <button class="big" id="btnRefineDone" style="margin-top:14px">Fertig</button>
 </div>
 
@@ -352,21 +374,21 @@
 <div class="over" id="contractOver">
   <div class="tag" style="color:#ffd23f">// kontrakte //</div>
   <div class="sub" style="max-width:320px">Erfülle Ziele, kassiere Belohnungen. Erledigte Kontrakte werden automatisch durch neue ersetzt.</div>
-  <div class="pcards" id="contractList" style="max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <div class="pcards" id="contractList" ></div>
   <button class="big" id="btnContractDone" style="margin-top:16px">Fertig</button>
 </div>
 
 <!-- COMPENDIUM -->
 <div class="over" id="codexOver">
   <div class="tag" style="color:#2de2e6">// kompendium //</div>
-  <div class="pcards" id="codexList" style="max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch;max-width:360px;"></div>
+  <div class="pcards" id="codexList" style="max-width:360px;"></div>
   <button class="big" id="btnCodexDone" style="margin-top:12px">Fertig</button>
 </div>
 
 <!-- ACHIEVEMENTS -->
 <div class="over" id="achOver">
   <div class="tag" style="color:#2de2e6">// erfolge <span id="achCount"></span> //</div>
-  <div class="pcards" id="achList" style="max-height:66vh;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+  <div class="pcards" id="achList" ></div>
   <button class="big" id="btnAchDone" style="margin-top:16px">Fertig</button>
 </div>
 <script type="module" src="/src/main.ts"></script>
