@@ -189,6 +189,34 @@
   #skillInfo .siList li{font-size:11.5px;line-height:1.45;color:#d7d0e4;}
   #skillInfo .siFoot{margin-top:8px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
 
+  /* Prestige / ascension payoff — the one moment worth a real flourish */
+  #burstFx{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;
+    align-items:center;justify-content:center;flex-direction:column;overflow:hidden;}
+  #burstFx.go{display:flex;}
+  #burstFx .bf-wash{position:absolute;inset:0;opacity:0;
+    animation:bfWash 1.25s cubic-bezier(.2,.8,.3,1) forwards;}
+  #burstFx .bf-ring{position:absolute;left:50%;top:50%;width:20px;height:20px;border-radius:50%;
+    border:4px solid currentColor;transform:translate(-50%,-50%) scale(0);opacity:.95;
+    animation:bfRing 1.05s cubic-bezier(.15,.75,.25,1) forwards;}
+  #burstFx .bf-ring:nth-of-type(3){animation-delay:.13s;border-width:3px;opacity:.6;}
+  #burstFx .bf-ring:nth-of-type(4){animation-delay:.26s;border-width:2px;opacity:.4;}
+  #burstFx .bf-txt{position:relative;text-align:center;transform:scale(.7);opacity:0;
+    animation:bfTxt 1.15s cubic-bezier(.2,1.5,.35,1) forwards;}
+  #burstFx .bf-big{font-family:ui-monospace,Menlo,monospace;font-weight:900;
+    font-size:min(19vw,84px);line-height:.9;color:#fff;letter-spacing:-.02em;
+    text-shadow:0 0 34px currentColor,5px 5px 0 rgba(0,0,0,.55);}
+  #burstFx .bf-sub{margin-top:12px;font-family:ui-monospace,Menlo,monospace;font-size:13px;
+    letter-spacing:.3em;text-transform:uppercase;color:#fff;opacity:.9;}
+  @keyframes bfWash{0%{opacity:0}12%{opacity:.85}100%{opacity:0}}
+  @keyframes bfRing{0%{transform:translate(-50%,-50%) scale(0);opacity:.95}
+    100%{transform:translate(-50%,-50%) scale(46);opacity:0}}
+  @keyframes bfTxt{0%{transform:scale(.7);opacity:0}22%{transform:scale(1.06);opacity:1}
+    72%{transform:scale(1);opacity:1}100%{transform:scale(1.04);opacity:0}}
+  @media (prefers-reduced-motion:reduce){
+    #burstFx .bf-ring{display:none;}
+    #burstFx .bf-txt,#burstFx .bf-wash{animation-duration:.4s;}
+  }
+
   /* planet menu */
   .pcards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:6px;}
   .pcard{pointer-events:auto;display:flex;align-items:center;gap:14px;background:#000;border:3px solid #333;
@@ -206,6 +234,7 @@
 </head>
 <body>
 <div id="wrap"><canvas id="game"></canvas></div>
+<div id="burstFx"></div>
 <div id="achPop"><span class="ai"></span><span class="at"></span></div>
 
 <div class="layer" id="controls">

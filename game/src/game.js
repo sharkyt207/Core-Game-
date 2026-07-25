@@ -591,32 +591,45 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
 function drillTile(ring,sec,dmg){mineTile(ring,sec,dmg);
   if(S.wide){const n=secCount(ring);mineTile(ring,(sec+1)%n,dmg*0.7);mineTile(ring,(sec-1+n)%n,dmg*0.7);}}
 
-function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if(run.energy<22){sfx.ui();return;}
-  run.energy-=22;run.shockCd=5;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=2;
+/* Single source of truth for what an ability costs and how long it locks out.
+   The ability functions, the HUD cooldown bars and the skill-tree explanation
+   all read these numbers, so the displayed cost can never drift from the real one. */
+const ABILITY={
+  blast:   {fuel:22, cd:5},
+  boost:   {fuel:28, cd:12},
+  laser:   {fuel:30, cd:8},
+  magpulse:{fuel:18, cd:10},
+  teleport:{fuel:20, cd:14},
+  freeze:  {fuel:24, cd:18},
+  nuke:    {fuel:42, cd:22},
+};
+
+function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if(run.energy<ABILITY.blast.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.blast.fuel;run.shockCd=ABILITY.blast.cd;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=2;
   for(let dr=-R;dr<=R;dr++){const rg=cr+dr;if(rg<0||rg>=RINGS)continue;const n=secCount(rg),sc=sectorOf(drill.ang,rg);
     for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+1)mineTile(rg,((sc+ds)%n+n)%n,9999);}
   shake=Math.max(shake,16);flash=Math.max(flash,0.55);hitstop=0.05;glitch=0.3;
   sfx.shock();haptic('heavy');burst(W/2,DRILL_SY,T.blob,26,1.6);}
-function boost(){if(!run.active||!S.abilities.boost||run.boostCd>0||run.boostT>0)return;if(run.energy<28){sfx.ui();return;}
-  run.energy-=28;run.boostT=4;run.boostCd=12;flash=Math.max(flash,0.3);shake=Math.max(shake,6);
+function boost(){if(!run.active||!S.abilities.boost||run.boostCd>0||run.boostT>0)return;if(run.energy<ABILITY.boost.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.boost.fuel;run.boostT=4;run.boostCd=ABILITY.boost.cd;flash=Math.max(flash,0.3);shake=Math.max(shake,6);
   sfx.rare();haptic('medium');burst(W/2,DRILL_SY,T.accent,18,1.3);}
-function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run.energy<30){sfx.ui();return;}
-  run.energy-=30;run.laserCd=8;const cr=clamp(ringOf(drill.rad),0,RINGS-1);
+function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run.energy<ABILITY.laser.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.laser.fuel;run.laserCd=ABILITY.laser.cd;const cr=clamp(ringOf(drill.rad),0,RINGS-1);
   for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,sectorOf(drill.ang,r),9999); // burns a shaft toward the core
   shake=Math.max(shake,14);flash=Math.max(flash,0.5);glitch=0.3;sfx.shock();vibe([15,30,15]);
   laserFx=0.18;}
-function magpulse(){if(!run.active||!S.abilities.magpulse||run.magCd>0)return;if(run.energy<18){sfx.ui();return;}
-  run.energy-=18;run.magCd=10;for(const dp of drops)dp.got=true;    // yank all loot to the drill
+function magpulse(){if(!run.active||!S.abilities.magpulse||run.magCd>0)return;if(run.energy<ABILITY.magpulse.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.magpulse.fuel;run.magCd=ABILITY.magpulse.cd;for(const dp of drops)dp.got=true;    // yank all loot to the drill
   shake=Math.max(shake,6);sfx.rare();vibe([10,20]);burst(W/2,DRILL_SY,'#12d9b0',20,1.4);}
-function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(run.energy<20){sfx.ui();return;}
-  run.energy-=20;run.tpCd=14;drill.rad=R_SURF+320;snapCamera();       // warp back to orbit (escape heat/danger)
+function teleport(){if(!run.active||!S.abilities.teleport||run.tpCd>0)return;if(run.energy<ABILITY.teleport.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.teleport.fuel;run.tpCd=ABILITY.teleport.cd;drill.rad=R_SURF+320;snapCamera();       // warp back to orbit (escape heat/danger)
   flash=Math.max(flash,0.6);shake=Math.max(shake,10);glitch=0.4;sfx.shock();vibe([20,30,20]);}
-function freeze(){if(!run.active||!S.abilities.freeze||run.freezeCd>0)return;if(run.energy<24){sfx.ui();return;}
-  run.energy-=24;run.freezeCd=18;run.freezeT=5;run.heat=0;          // flush heat + suppress it for a few seconds
+function freeze(){if(!run.active||!S.abilities.freeze||run.freezeCd>0)return;if(run.energy<ABILITY.freeze.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.freeze.fuel;run.freezeCd=ABILITY.freeze.cd;run.freezeT=5;run.heat=0;          // flush heat + suppress it for a few seconds
   flash=Math.max(flash,0.5);glitch=0.2;sfx.rare();vibe([12,24,12]);
   for(let i=0;i<24;i++)burst(W/2+(rnd()-0.5)*60,DRILL_SY+(rnd()-0.5)*60,'#8be9ff',1,1.4);}
-function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.energy<42){sfx.ui();return;}
-  run.energy-=42;run.nukeCd=22;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=4;
+function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.energy<ABILITY.nuke.fuel){sfx.deny();return;}
+  run.energy-=ABILITY.nuke.fuel;run.nukeCd=ABILITY.nuke.cd;const cr=clamp(ringOf(drill.rad),0,RINGS-1),R=4;
   for(let dr=-R;dr<=R;dr++){const rg=cr+dr;if(rg<0||rg>=RINGS)continue;const n=secCount(rg),sc=sectorOf(drill.ang,rg);
     for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+2)mineTile(rg,((sc+ds)%n+n)%n,9999);}
   run.haul+=120*lootMul();                                          // detonation bonus
@@ -764,6 +777,11 @@ function skillEffLines(s){const de=settings.lang!=='en',e=s.eff||{},L=[];
     freeze:['Fähigkeit: Hitze sofort auf 0 für 5 Sek.','Ability: heat to zero for 5s'],
     nuke:['Fähigkeit: gewaltige Detonation + Loot-Bonus','Ability: huge detonation + loot bonus']};
   if(e.ability&&ab[e.ability])L.push(de?ab[e.ability][0]:ab[e.ability][1]);
+  // what using it actually costs — straight from the ABILITY table
+  if(e.ability&&ABILITY[e.ability]){const A=ABILITY[e.ability];
+    L.push('⛽ '+(de?'Kostet ':'Costs ')+A.fuel+' '+(de?'Sprit':'fuel')+
+           ' · ⏱ '+A.cd+(de?' Sek. Abklingzeit':'s cooldown'));
+    if(e.ability==='freeze')L.push('❄ '+(de?'Setzt die Hitze auf 0':'Resets heat to 0'));}
   return L;}
 function showSkillInfo(s){const de=settings.lang!=='en',own=owned(s.id);
   const box=document.getElementById('skillInfo');
@@ -1652,13 +1670,13 @@ let last=performance.now();
 function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   tickQuality(dt);
   if(hitstop>0)hitstop-=dt;else update(dt);draw();
-  shockCdEl.style.transform='scaleY('+(run.shockCd/5)+')';
-  boostCdEl.style.transform='scaleY('+(run.boostCd/12)+')';
-  laserCdEl.style.transform='scaleY('+(run.laserCd/8)+')';
-  magCdEl.style.transform='scaleY('+(run.magCd/10)+')';
-  tpCdEl.style.transform='scaleY('+(run.tpCd/14)+')';
-  freezeCdEl.style.transform='scaleY('+(run.freezeCd/18)+')';
-  nukeCdEl.style.transform='scaleY('+(run.nukeCd/22)+')';requestAnimationFrame(frame);}
+  shockCdEl.style.transform='scaleY('+(run.shockCd/ABILITY.blast.cd)+')';
+  boostCdEl.style.transform='scaleY('+(run.boostCd/ABILITY.boost.cd)+')';
+  laserCdEl.style.transform='scaleY('+(run.laserCd/ABILITY.laser.cd)+')';
+  magCdEl.style.transform='scaleY('+(run.magCd/ABILITY.magpulse.cd)+')';
+  tpCdEl.style.transform='scaleY('+(run.tpCd/ABILITY.teleport.cd)+')';
+  freezeCdEl.style.transform='scaleY('+(run.freezeCd/ABILITY.freeze.cd)+')';
+  nukeCdEl.style.transform='scaleY('+(run.nukeCd/ABILITY.nuke.cd)+')';requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 
 /* ===================== UI ===================== */
@@ -1763,13 +1781,37 @@ document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGai
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree(false);};
-document.getElementById('btnPrestigeGo').onclick=()=>{if(doPrestige()){sfx.leg();vibe([20,40,20,60,120]);updateAbilityButtons();checkAchievements();}
+/* Prestige and ascension wipe the whole tree — the one moment that has earned a
+   proper flourish. Shockwave rings, a colour wash and what you gained, then the
+   tree reappears already reset behind it. */
+function burstFx(color,big,sub){
+  const el=document.getElementById('burstFx');
+  el.style.color=color;
+  el.innerHTML='<div class="bf-wash" style="background:radial-gradient(circle at 50% 50%,'+color+' 0%,rgba(0,0,0,0) 62%)"></div>'+
+    '<div class="bf-ring"></div><div class="bf-ring"></div><div class="bf-ring"></div>'+
+    '<div class="bf-txt"><div class="bf-big">'+big+'</div><div class="bf-sub">'+sub+'</div></div>';
+  el.classList.remove('go');void el.offsetWidth;   // restart the animations
+  el.classList.add('go');
+  clearTimeout(burstFx._t);
+  burstFx._t=setTimeout(()=>{el.classList.remove('go');el.innerHTML='';},1300);
+}
+document.getElementById('btnPrestigeGo').onclick=()=>{
+  const de=settings.lang!=='en',before=meta.prestige.cores;
+  if(doPrestige()){const gained=meta.prestige.cores-before;
+    sfx.leg();haptic('epic');
+    burstFx('#8a5cff','+'+gained+' ⚛',de?'Core Overload':'Core Overload');
+    updateAbilityButtons();checkAchievements();}
   hide('prestigeOver');show('treeOver');buildTree(true);};
 document.getElementById('btnAscend').onclick=()=>{sfx.ui();const g=ascendGain(),ns=meta.ascend.shards+g;
   document.getElementById('ascendTxt').innerHTML='Wandelt <b>'+meta.prestige.cores+'</b> Kerne in <b style="color:#ff4de0">'+g+'</b> Splitter.<br>Setzt Kerne, Skill-Baum &amp; Credits zurück.<br>Splitter: <b>'+meta.ascend.shards+'</b> → <b style="color:#ff4de0">'+ns+'</b><br>Permanent: +'+(ns*25)+'% Loot · +'+(ns*8)+' Bohrkraft.';
   hide('treeOver');show('ascendOver');};
 document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree(false);};
-document.getElementById('btnAscendGo').onclick=()=>{if(doAscend()){sfx.leg();vibe([30,50,30,70,30,120]);updateAbilityButtons();checkAchievements();}
+document.getElementById('btnAscendGo').onclick=()=>{
+  const de=settings.lang!=='en',before=(meta.ascend&&meta.ascend.shards)||0;
+  if(doAscend()){const gained=meta.ascend.shards-before;
+    sfx.leg();haptic('epic');
+    burstFx('#ff4de0','+'+gained+' ✦',de?'Singularität':'Singularity');
+    updateAbilityButtons();checkAchievements();}
   hide('ascendOver');show('treeOver');buildTree(true);};
 document.getElementById('btnHelp').onclick=()=>{sfx.ui();openTut('titleOver');};
 document.getElementById('btnTutNext').onclick=()=>{sfx.ui();if(tutIndex>=TUTSTEPS.length-1)finishTut();else{tutIndex++;renderTut();}};
