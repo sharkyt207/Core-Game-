@@ -30,21 +30,21 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:26, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:600,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
+ {id:'magmar', name:'MAGMAR',  unlock:900,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
- {id:'cryonis',name:'CRYONIS', unlock:2200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
+ {id:'cryonis',name:'CRYONIS', unlock:4200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
- {id:'ferro',  name:'FERRO',   unlock:3200, rings:33, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
+ {id:'ferro',  name:'FERRO',   unlock:7500, rings:33, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
- {id:'mechon', name:'MECHON',  unlock:4500, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
+ {id:'mechon', name:'MECHON',  unlock:13000, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:9000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
+ {id:'abyss',  name:'ABYSS',   unlock:38000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
- {id:'neon',   name:'NEON',    unlock:5500, rings:34, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
+ {id:'neon',   name:'NEON',    unlock:21000, rings:34, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
- {id:'verdant',name:'VERDANT', unlock:14000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
+ {id:'verdant',name:'VERDANT', unlock:70000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
- {id:'obscura',name:'OBSCURA', unlock:22000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
+ {id:'obscura',name:'OBSCURA', unlock:130000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
    ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
@@ -286,15 +286,15 @@ const RECIPES=[
 const RMAP={};RECIPES.forEach(r=>RMAP[r.id]=r);
 // Drill modules: buyable gear equipped into 3 slots for build variety.
 const MODULES=[
- {id:'m_titan', ic:'⛏️', de:'Titan-Spitze',  en:'Titan Bit',    cost:1200, col:'#c9cdd4', eff:{dp:35}},
- {id:'m_turbo', ic:'🚀', de:'Turbolader',    en:'Turbocharger', cost:1200, col:'#2de2e6', eff:{ds:90}},
- {id:'m_tank',  ic:'🛢️', de:'Großtank',      en:'Mega Tank',    cost:1400, col:'#ff8a3d', eff:{de:120,dr:6}},
- {id:'m_cryo',  ic:'❄️', de:'Kühlfinne',     en:'Cooling Fin',  cost:1600, col:'#8be9ff', eff:{dh:3,dc:8}},
- {id:'m_mag',   ic:'🧲', de:'Magnetkern',    en:'Magnet Core',  cost:1500, col:'#12d9b0', eff:{dm:110}},
- {id:'m_luck',  ic:'🍀', de:'Glückschip',    en:'Lucky Chip',   cost:2400, col:'#3fd977', eff:{luck:0.06,dv:0.2}},
- {id:'m_crit',  ic:'🎯', de:'Krit-Modul',    en:'Crit Module',  cost:2600, col:'#ff4de0', eff:{crit:0.7}},
- {id:'m_drone', ic:'🛸', de:'Drohnen-Bay',   en:'Drone Bay',    cost:3200, col:'#8a5cff', eff:{drone:1,dv:0.3}},
- {id:'m_prism', ic:'💎', de:'Wert-Prisma',   en:'Value Prism',  cost:4200, col:'#ffd23f', eff:{dv:0.5}},
+ {id:'m_titan', ic:'⛏️', de:'Titan-Spitze',  en:'Titan Bit',    cost:6000, col:'#c9cdd4', eff:{dp:35}},
+ {id:'m_turbo', ic:'🚀', de:'Turbolader',    en:'Turbocharger', cost:6000, col:'#2de2e6', eff:{ds:90}},
+ {id:'m_tank',  ic:'🛢️', de:'Großtank',      en:'Mega Tank',    cost:7000, col:'#ff8a3d', eff:{de:120,dr:6}},
+ {id:'m_cryo',  ic:'❄️', de:'Kühlfinne',     en:'Cooling Fin',  cost:8000, col:'#8be9ff', eff:{dh:3,dc:8}},
+ {id:'m_mag',   ic:'🧲', de:'Magnetkern',    en:'Magnet Core',  cost:7500, col:'#12d9b0', eff:{dm:110}},
+ {id:'m_luck',  ic:'🍀', de:'Glückschip',    en:'Lucky Chip',   cost:12000, col:'#3fd977', eff:{luck:0.06,dv:0.2}},
+ {id:'m_crit',  ic:'🎯', de:'Krit-Modul',    en:'Crit Module',  cost:13000, col:'#ff4de0', eff:{crit:0.7}},
+ {id:'m_drone', ic:'🛸', de:'Drohnen-Bay',   en:'Drone Bay',    cost:16000, col:'#8a5cff', eff:{drone:1,dv:0.3}},
+ {id:'m_prism', ic:'💎', de:'Wert-Prisma',   en:'Value Prism',  cost:21000, col:'#ffd23f', eff:{dv:0.5}},
 ];
 const MMAP={};MODULES.forEach(m=>MMAP[m.id]=m);
 function stats(){
@@ -629,10 +629,128 @@ function updateAbilityButtons(){const a=stats().abilities;
   document.getElementById('btnNuke').style.display=a.nuke?'flex':'none';}
 
 /* ---------- SKILL TREE (graphical, pannable, hidden until reachable) ---------- */
-const COLW=96,ROWH=104;
-function treeExtent(){let minx=0,maxx=0,miny=0,maxy=0;
-  for(const s of SKILLS){minx=Math.min(minx,s.pos[0]);maxx=Math.max(maxx,s.pos[0]);
-    miny=Math.min(miny,s.pos[1]);maxy=Math.max(maxy,s.pos[1]);}
+/* ---------- radial layout ----------
+ * The tree grows outward from the root as concentric rings instead of downward
+ * rows, so it expands in every direction and never runs off the side.
+ * Positions are computed from the prerequisite graph (the hand-placed grid
+ * coordinates are ignored), which makes overlap impossible by construction:
+ * each ring's radius is derived from how many nodes have to fit on it.
+ */
+const NODE_W=76, NODE_GAP=34, RING_MIN=132;   // node box + breathing room
+let TREEPOS=null;                              // id -> {x,y} in px, centre = 0,0
+function layoutTree(){
+  if(TREEPOS)return TREEPOS;
+  // depth = longest path from a root, so a node always sits outside every prereq
+  const dep={};for(const s of SKILLS)dep[s.id]=s.req.length?-1:0;
+  for(let pass=0;pass<SKILLS.length;pass++){let moved=false;
+    for(const s of SKILLS){if(!s.req.length)continue;
+      let d=-1,ready=true;
+      for(const r of s.req){if(dep[r]==null||dep[r]<0){ready=false;break;}d=Math.max(d,dep[r]);}
+      if(ready&&dep[s.id]!==d+1){dep[s.id]=d+1;moved=true;}}
+    if(!moved)break;}
+  for(const s of SKILLS)if(dep[s.id]<0)dep[s.id]=1;   // safety for odd graphs
+
+  // angular slices: each node inherits a slice of its first prerequisite's
+  // slice, sized by how much of the subtree hangs off it — keeps branches together
+  const kids={};for(const s of SKILLS)kids[s.id]=[];
+  const roots=[];
+  for(const s of SKILLS){const p=s.req[0];if(p&&kids[p])kids[p].push(s.id);else roots.push(s.id);}
+  const weight={};
+  const weigh=(id)=>{const c=kids[id];if(!c.length)return weight[id]=1;
+    let w=0;for(const k of c)w+=weigh(k);return weight[id]=w;};
+  roots.forEach(weigh);
+  const ang={};
+  const slice=(id,a0,a1)=>{ang[id]=(a0+a1)/2;const c=kids[id];if(!c.length)return;
+    let a=a0;for(const k of c){const span=(a1-a0)*(weight[k]/weight[id]);slice(k,a,a+span);a+=span;}};
+  const rootTotal=roots.reduce((t,r)=>t+weight[r],0);
+  let a0=-Math.PI/2;   // start the first branch pointing up
+  for(const r of roots){const span=TAU*(weight[r]/rootTotal);slice(r,a0,a0+span);a0+=span;}
+
+  // ring radius: big enough that every node on that ring fits side by side
+  const perRing={};for(const s of SKILLS)(perRing[dep[s.id]]=perRing[dep[s.id]]||[]).push(s.id);
+  const radius={};let prev=0;
+  for(const d of Object.keys(perRing).map(Number).sort((x,y)=>x-y)){
+    if(d===0){radius[0]=0;prev=0;continue;}
+    const need=(perRing[d].length*(NODE_W+NODE_GAP))/TAU;   // circumference -> radius
+    radius[d]=Math.max(prev+RING_MIN,d*RING_MIN,need);prev=radius[d];}
+
+  TREEPOS={};
+  for(const s of SKILLS){const r=radius[dep[s.id]],t=ang[s.id]||0;
+    TREEPOS[s.id]={x:Math.cos(t)*r,y:Math.sin(t)*r,depth:dep[s.id]};}
+  return TREEPOS;
+}
+/* Progression curve.
+ * The authored cost of each skill is its *base*; how deep it sits in the tree
+ * decides what it really costs. Early nodes stay cheap so the first runs feel
+ * rewarding, while the outer rings become a long-term goal instead of something
+ * finished in a handful of runs. */
+const COST_CURVE=[1,1,1.8,2.8,4.2,6,8.5,12,16];
+(function scaleSkillCosts(){const L=layoutTree();
+  for(const s of SKILLS){const m=COST_CURVE[Math.min(L[s.id].depth,COST_CURVE.length-1)];
+    s.cost=Math.round(s.cost*m/10)*10;}})();
+
+/* ---------- skill info on long-press ---------- */
+// Effect text is derived from the skill data itself, so it can never drift
+// out of sync with what the skill actually does.
+function skillEffLines(s){const de=settings.lang!=='en',e=s.eff||{},L=[];
+  const add=(v,dl,el)=>{if(v)L.push((v>0?'+':'')+v+' '+(de?dl:el));};
+  add(e.dp,'Bohrkraft','drill power');
+  add(e.ds,'Speed','speed');
+  add(e.de,'Sprit-Tank','fuel tank');
+  add(e.dr,'Sprit/Sek.','fuel/sec');
+  if(e.dh)L.push('−'+e.dh+' '+(de?'Hitzeaufbau':'heat buildup'));
+  if(e.dc)L.push('+'+e.dc+' '+(de?'Kühlung':'cooling'));
+  add(e.dm,'Magnet-Reichweite','magnet range');
+  if(e.dv)L.push('+'+Math.round(e.dv*100)+'% '+(de?'Loot-Wert':'loot value'));
+  if(e.crit)L.push('+'+Math.round(e.crit*100)+'% '+(de?'Kritisch':'crit'));
+  if(e.luck)L.push('+'+Math.round(e.luck*100)+'% '+(de?'Fundchance':'find chance'));
+  if(e.chain)L.push(de?'Kettenreaktion +1 Stufe':'chain reaction +1 level');
+  if(e.drone)L.push('+'+e.drone+' '+(de?'Drohne(n)':'drone(s)'));
+  if(e.bossPow)L.push('+'+e.bossPow+' '+(de?'Schaden an Wächtern':'guardian damage'));
+  if(e.heatShield)L.push('+'+e.heatShield+' '+(de?'Hitzeschild':'heat shield'));
+  if(e.auto)L.push(de?'sammelt Loot automatisch ein':'auto-collects loot');
+  if(e.wide)L.push(de?'bohrt zusätzlich seitlich':'also drills sideways');
+  if(e.dronemine)L.push(de?'Drohnen bauen selbst ab':'drones mine on their own');
+  if(e.fuelOre)L.push(de?'Erz füllt Sprit nach':'ore refuels the tank');
+  if(e.combo)L.push(de?'Kombo-Streak erhöht den Loot':'combo streak boosts loot');
+  const ab={blast:[ 'Fähigkeit: Schockwelle räumt alles im Umkreis','Ability: shockwave clears the area'],
+    boost:['Fähigkeit: Overdrive — kurzzeitig viel schneller','Ability: overdrive — briefly much faster'],
+    laser:['Fähigkeit: brennt einen Schacht Richtung Kern','Ability: burns a shaft toward the core'],
+    magpulse:['Fähigkeit: zieht alles Loot sofort an','Ability: yanks all loot to you'],
+    teleport:['Fähigkeit: Sprung zurück in den Orbit','Ability: warp back to orbit'],
+    freeze:['Fähigkeit: Hitze sofort auf 0 für 5 Sek.','Ability: heat to zero for 5s'],
+    nuke:['Fähigkeit: gewaltige Detonation + Loot-Bonus','Ability: huge detonation + loot bonus']};
+  if(e.ability&&ab[e.ability])L.push(de?ab[e.ability][0]:ab[e.ability][1]);
+  return L;}
+function showSkillInfo(s){const de=settings.lang!=='en',own=owned(s.id);
+  const box=document.getElementById('skillInfo');
+  const state=own?(de?'✓ Gekauft':'✓ Owned'):(canBuy(s)?(de?'Kaufbar für ':'Buy for ')+s.cost+'$'
+    :(de?'Kostet ':'Costs ')+s.cost+'$'+(meta.credits<s.cost?(de?' — zu wenig Cash':' — not enough cash'):''));
+  box.innerHTML='<div class="siHead"><span class="siIc">'+s.ic+'</span><b>'+s.name+'</b></div>'+
+    '<ul class="siList">'+skillEffLines(s).map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
+    '<div class="siFoot" style="color:'+(own?'#2de2e6':canBuy(s)?'#ffd23f':'#9a90ad')+'">'+state+'</div>';
+  box.classList.add('show');vibe(8);
+  clearTimeout(showSkillInfo._t);
+  showSkillInfo._t=setTimeout(()=>box.classList.remove('show'),3200);}
+// Press and hold a node to read what it does; a normal tap still buys it.
+function attachSkillPress(n,s){let t=null,sx=0,sy=0,held=false;
+  const cancel=()=>{if(t){clearTimeout(t);t=null;}};
+  n.addEventListener('pointerdown',e=>{held=false;sx=e.clientX;sy=e.clientY;
+    cancel();t=setTimeout(()=>{held=true;t=null;showSkillInfo(s);},380);});
+  n.addEventListener('pointermove',e=>{
+    if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>12)cancel();});   // scrolling must not trigger it
+  n.addEventListener('pointerup',cancel);
+  n.addEventListener('pointercancel',()=>{cancel();held=false;});
+  n.addEventListener('pointerleave',cancel);
+  n.onclick=()=>{
+    if(held){held=false;return;}                                  // the hold already showed info
+    if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}
+    else{sfx.ui();showSkillInfo(s);}                               // can't afford -> explain why
+  };}
+function treeExtent(){const L=layoutTree();let minx=0,maxx=0,miny=0,maxy=0;
+  for(const s of SKILLS){const p=L[s.id];
+    minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);
+    miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);}
   return{minx,maxx,miny,maxy};}
 /**
  * recenter=true  -> opening the tree: scroll so the frontier node sits centred
@@ -655,29 +773,28 @@ function buildTree(recenter){
   // including above and left of the root — without the view hitting a hard edge.
   const EXTRA=140;
   const padX=Math.max(180,vw/2+EXTRA),padY=Math.max(180,vh/2+EXTRA);
-  const ex=treeExtent();
-  const cw=(ex.maxx-ex.minx)*COLW+padX*2,ch=(ex.maxy-ex.miny)*ROWH+padY*2;
+  const ex=treeExtent(),L=layoutTree();
+  const cw=(ex.maxx-ex.minx)+padX*2,ch=(ex.maxy-ex.miny)+padY*2;
   const cvs=document.getElementById('treeCanvas');cvs.style.width=cw+'px';cvs.style.height=ch+'px';
-  const ox=(x)=>padX+(x-ex.minx)*COLW, oy=(y)=>padY+(y-ex.miny)*ROWH;
+  const ox=(id)=>padX+(L[id].x-ex.minx), oy=(id)=>padY+(L[id].y-ex.miny);
   // connectors (SVG) — only between visible nodes
   let lines='';for(const s of SKILLS){if(!visibleSkill(s))continue;for(const r of s.req){const p=SKILLMAP[r];if(!p||!visibleSkill(p))continue;
     const col=owned(s.id)?'#2de2e6':(owned(r)?'#ffd23f':'#444');
-    lines+='<line x1="'+ox(p.pos[0])+'" y1="'+oy(p.pos[1])+'" x2="'+ox(s.pos[0])+'" y2="'+oy(s.pos[1])+'" stroke="'+col+'" stroke-width="3"/>';}}
+    lines+='<line x1="'+ox(r)+'" y1="'+oy(r)+'" x2="'+ox(s.id)+'" y2="'+oy(s.id)+'" stroke="'+col+'" stroke-width="3"/>';}}
   const svg=document.getElementById('treeSvg');svg.setAttribute('width',cw);svg.setAttribute('height',ch);svg.innerHTML=lines;
   // nodes
   [...cvs.querySelectorAll('.node')].forEach(n=>n.remove());
   for(const s of SKILLS){if(!visibleSkill(s))continue;const own=owned(s.id),buy=canBuy(s);
     const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
-    n.style.left=ox(s.pos[0])+'px';n.style.top=oy(s.pos[1])+'px';
+    n.style.left=ox(s.id)+'px';n.style.top=oy(s.id)+'px';
     n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
-    // Buying rebuilds the tree but must NOT move the view — you stay where you look.
-    n.onclick=()=>{if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}else{sfx.ui();}};
+    attachSkillPress(n,s);
     cvs.appendChild(n);}
   requestAnimationFrame(()=>{
     if(recenter){   // only when opening: put the next buyable node in the middle
       const target=SKILLS.find(s=>canBuy(s))||SKILLS.find(s=>visibleSkill(s)&&!owned(s.id))||SKILLS[0];
-      sc.scrollLeft=ox(target.pos[0])-vw/2;
-      sc.scrollTop=oy(target.pos[1])-vh/2;
+      sc.scrollLeft=ox(target.id)-vw/2;
+      sc.scrollTop=oy(target.id)-vh/2;
     }else{          // rebuild: restore the exact scroll position
       sc.scrollLeft=keepL;sc.scrollTop=keepT;
     }});
@@ -1241,13 +1358,53 @@ function drawPod(cx,cy,S1){const o=octx,sk=curSkin();
   o.lineWidth=Math.max(1,rad*0.09);
   o.strokeStyle='rgba(255,255,255,0.4)';o.beginPath();o.moveTo(-rad,rad);o.lineTo(-rad,-rad);o.lineTo(rad,-rad);o.stroke();
   o.strokeStyle='rgba(0,0,0,0.4)';o.beginPath();o.moveTo(rad,-rad);o.lineTo(rad,rad);o.lineTo(-rad,rad);o.stroke();
+  /* ---- upgrade-driven hardware: every part below is earned ----
+     Each unlock bolts a visible piece onto the machine, so the drill you are
+     looking at always shows what you have actually built. */
+  // armour plates on the flanks, one pair per tier
+  const plates=Math.min(4,Math.max(0,S.tier-1));
+  if(plates>0){o.fillStyle=tintc(sk.ring,0.75);
+    for(let i=0;i<plates;i++){const py=-rad*0.72+i*(rad*0.46),ph=Math.max(1,rad*0.3);
+      o.fillRect(-rad-rad*0.26,py,rad*0.26,ph);o.fillRect(rad,py,rad*0.26,ph);}}
+  // side thrusters once you have real speed
+  if(S.speed>=320){const th=Math.max(1,rad*0.34),tl=rad*(0.5+moveMag*0.6);
+    o.fillStyle=tintc(sk.ring,0.6);o.fillRect(-rad-rad*0.16,-rad*0.2,rad*0.16,th);o.fillRect(rad,-rad*0.2,rad*0.16,th);
+    o.fillStyle=moveMag>0.15?T.accent:tintc(T.accent,0.4);o.globalAlpha=0.35+moveMag*0.65;
+    o.fillRect(-rad-rad*0.16,-rad*0.2+th,rad*0.16,tl);o.fillRect(rad,-rad*0.2+th,rad*0.16,tl);o.globalAlpha=1;}
+  // cooling fins once cooling is unlocked — they glow with heat
+  if(S.coolRate>=10){const hot=Math.min(1,run.heat/100);
+    o.strokeStyle=mix('#8be9ff','#ff4d4d',hot);o.lineWidth=Math.max(1,rad*0.09);
+    for(let i=-1;i<=1;i++){const fy=-rad*0.55+i*(rad*0.5);
+      o.beginPath();o.moveTo(-rad*0.9,fy);o.lineTo(-rad*1.28,fy);o.stroke();
+      o.beginPath();o.moveTo(rad*0.9,fy);o.lineTo(rad*1.28,fy);o.stroke();}}
+  // magnet coils
+  if(S.magnet>=180){o.strokeStyle='#12d9b0';o.lineWidth=Math.max(1,rad*0.1);o.globalAlpha=0.8;
+    o.beginPath();o.arc(-rad*0.98,rad*0.55,rad*0.26,0,TAU);o.stroke();
+    o.beginPath();o.arc(rad*0.98,rad*0.55,rad*0.26,0,TAU);o.stroke();o.globalAlpha=1;}
+  // heat-shield collar
+  if(S.heatShield>0){o.strokeStyle='#8be9ff';o.globalAlpha=0.55;o.lineWidth=Math.max(1,rad*0.12);
+    o.strokeRect(-rad*1.16,-rad*1.16,rad*2.32,rad*2.32);o.globalAlpha=1;}
+  // sensor antenna once you have find-luck
+  if(S.luck>0){o.strokeStyle='#3fd977';o.lineWidth=Math.max(1,rad*0.08);
+    o.beginPath();o.moveTo(0,-rad);o.lineTo(0,-rad*1.6);o.stroke();
+    o.fillStyle='#3fd977';o.fillRect(-Math.max(1,rad*0.11),-rad*1.75,Math.max(2,rad*0.22),Math.max(2,rad*0.22));}
   // pulsing core square (skin colour)
   const pulse=0.5+Math.sin(performance.now()/220)*0.5,cs=rad*0.5;
   o.fillStyle=sk.blob;o.globalAlpha=0.85+pulse*0.15;o.fillRect(-cs,-cs,cs*2,cs*2);o.globalAlpha=1;
   o.fillStyle=tintc(sk.blob,1.5);o.globalAlpha=0.5+pulse*0.4;o.fillRect((-cs*0.4)|0,(-cs*0.4)|0,Math.max(1,cs*0.8),Math.max(1,cs*0.8));o.globalAlpha=1;
-  // drill teeth (triangles) at the leading edge — longer & hotter the faster you go
+  // crit spikes ring the core once crit is meaningful
+  if(S.crit>=0.5){o.fillStyle=T.dmg;const sp=Math.max(1,rad*0.13);
+    o.fillRect(-sp/2,-cs-sp*1.4,sp,sp);o.fillRect(-sp/2,cs+sp*0.4,sp,sp);
+    o.fillRect(-cs-sp*1.4,-sp/2,sp,sp);o.fillRect(cs+sp*0.4,-sp/2,sp,sp);}
+  // drill teeth — count grows with drill power, length with speed
+  const teeth=S.power>=260?3:S.power>=120?2:1;   // pairs beyond the centre tooth
   o.fillStyle=drilling?T.fuel:'#c8f6ff';const tw=rad*0.6;
-  for(let i=-1;i<=1;i++){o.beginPath();o.moveTo(i*tw,rad);o.lineTo((i+0.5)*tw,rad+rad*imp);o.lineTo((i-0.5)*tw,rad+rad*imp);o.closePath();o.fill();}
+  for(let i=-teeth;i<=teeth;i++){const t2=tw*(teeth>2?0.62:teeth>1?0.78:1);
+    o.beginPath();o.moveTo(i*t2,rad);o.lineTo((i+0.5)*t2,rad+rad*imp);o.lineTo((i-0.5)*t2,rad+rad*imp);o.closePath();o.fill();}
+  // wide-drill outriggers carve the side tiles — show the cutters doing it
+  if(S.wide){o.fillStyle=drilling?T.fuel:tintc(sk.ring,0.9);
+    const ow=Math.max(1,rad*0.2),oh=rad*(0.45+imp*0.25);
+    o.fillRect(-rad*1.32,rad*0.5,ow,oh);o.fillRect(rad*1.12,rad*0.5,ow,oh);}
   o.restore();
   // impact shock square when drilling fast
   if(drilling&&moveMag>0.4){o.strokeStyle=T.fuel;o.globalAlpha=(moveMag-0.4)*0.9;o.lineWidth=1;
