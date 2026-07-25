@@ -406,14 +406,24 @@ function w2s(rad,ang){const d=angDiff(ang,drill.ang),f=-Math.PI/2+d;
   return[pcx+rad*SCALEcur*Math.cos(f),pcy+rad*SCALEcur*Math.sin(f)];}
 
 /* ===================== INPUT (anchor stick) ===================== */
-const input={active:false,ax:0,ay:0,dx:0,dy:0,mag:0};
-const MAXR=92,DEAD=11;
+// Floating anchor stick. Three things make it feel good: the anchor follows
+// your thumb once you pull past the edge (so it never saturates and you can
+// drag as far as you like), the magnitude runs through a smoothstep curve
+// (precise near the centre, full power at the rim), and update() reads a
+// smoothed vector so the machine has weight instead of snapping.
+const input={active:false,ax:0,ay:0,dx:0,dy:0,mag:0,sdx:0,sdy:0,smag:0,tapT:0};
+const MAXR=92,DEAD=9;
 function setInput(px,py){let dx=px-input.ax,dy=py-input.ay;const d=Math.hypot(dx,dy);
-  if(d>MAXR){dx*=MAXR/d;dy*=MAXR/d;}input.dx=dx;input.dy=dy;
-  input.mag=Math.min(1,Math.max(0,(Math.hypot(dx,dy)-DEAD)/(MAXR-DEAD)));}
+  if(d>MAXR){const k=(d-MAXR)/d;input.ax+=dx*k;input.ay+=dy*k;dx*=MAXR/d;dy*=MAXR/d;}
+  input.dx=dx;input.dy=dy;
+  const raw=Math.min(1,Math.max(0,(Math.hypot(dx,dy)-DEAD)/(MAXR-DEAD)));
+  input.mag=raw*raw*(3-2*raw);}
 const cv=document.getElementById('game');
 function ptc(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
-function onDown(e){if(!run.active)return;const t=ptc(e);input.active=true;input.ax=t.x;input.ay=t.y;setInput(t.x,t.y);hideHint();}
+function onDown(e){if(!run.active)return;
+  if(e.touches&&e.touches.length>1)return;            // two fingers is never steering
+  const t=ptc(e);input.active=true;input.ax=t.x;input.ay=t.y;setInput(t.x,t.y);
+  input.tapT=0.14;haptic('sel');hideHint();}
 function onMove(e){if(input.active){const t=ptc(e);setInput(t.x,t.y);e.preventDefault();}}
 function onUp(){input.active=false;input.mag=0;input.dx=input.dy=0;}
 cv.addEventListener('touchstart',onDown,{passive:false});
@@ -458,17 +468,50 @@ function noise(dur,vol){if(!settings.sfx)return;const a=audio();if(!a||!a._maste
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
   const s=a.createBufferSource(),g=a.createGain();s.buffer=n;g.gain.value=vol||0.08;
   s.connect(g);g.connect(a._master);s.start();}
+// Small random detune on repeated sounds: identical playback is the single
+// biggest giveaway of a cheap-sounding game.
+const vary=(f,amt)=>f*(1+(Math.random()-0.5)*(amt||0.06));
 const sfx={tick:()=>noise(0.03,0.05),
-  brk:()=>{blip(170+rnd()*70,0.11,'square',0.11,85,0.004,0.35);blip(58+rnd()*24,0.14,'sine',0.09,40,0.002,0.2);noise(0.05,0.05);},
-  rare:()=>{blip(520,0.11,'triangle',0.16,null,0.01);setTimeout(()=>blip(780,0.13,'triangle',0.18,null,0.01),90);},
+  brk:()=>{blip(vary(190,0.3),0.11,'square',0.11,85,0.004,0.35);blip(vary(64,0.3),0.14,'sine',0.09,40,0.002,0.2);noise(0.05,0.05);},
+  rare:()=>{blip(vary(520),0.11,'triangle',0.16,null,0.01);setTimeout(()=>blip(vary(780),0.13,'triangle',0.18,null,0.01),90);},
   leg:()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>{blip(f,0.24,'sawtooth',0.14,null,0.01,0.7);blip(f*1.5,0.24,'sine',0.05,null,0.02);},i*100));},
   shock:()=>{blip(90,0.4,'sawtooth',0.2,1200,0.002,0.6);noise(0.3,0.12);},
-  ui:()=>blip(640,0.06,'square',0.1,null,0.003,0.25),
-  buy:()=>{blip(520,0.08,'square',0.13,null,0.004);setTimeout(()=>blip(780,0.1,'square',0.13,null,0.004),70);}};
+  // UI: a short two-layer click — body + a bright tick on top, slightly detuned
+  ui:()=>{blip(vary(660,0.05),0.045,'square',0.075,null,0.002,0.2);
+          blip(vary(1750,0.05),0.028,'sine',0.045,null,0.001,0.15);},
+  back:()=>{blip(vary(420,0.04),0.06,'square',0.075,null,0.003,0.2);
+            blip(vary(300,0.04),0.05,'sine',0.04,null,0.002,0.15);},
+  buy:()=>{blip(vary(520),0.08,'square',0.13,null,0.004);setTimeout(()=>blip(vary(790),0.1,'square',0.13,null,0.004),70);},
+  deny:()=>{blip(vary(190,0.03),0.1,'square',0.1,150,0.003,0.15);}};
 function vibe(p){if(!settings.vibe)return;
   const cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
   if(cap){try{const d=Array.isArray(p)?p.reduce((a,b)=>a+b,0):p;cap.vibrate({duration:Math.min(320,d)});return;}catch(e){}}
   if(navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
+/* A named haptic vocabulary instead of raw millisecond patterns.
+ * On device this maps to the OS taptic engine (crisp impacts and notification
+ * patterns, which is what makes a game feel expensive in the hand); on the web
+ * it falls back to the closest vibration pattern. */
+const HAPTICS={
+  sel:    {style:'LIGHT',  web:8},
+  light:  {style:'LIGHT',  web:12},
+  medium: {style:'MEDIUM', web:20},
+  heavy:  {style:'HEAVY',  web:34},
+  success:{notify:'SUCCESS', web:[12,40,18]},
+  warning:{notify:'WARNING', web:[26,44,26]},
+  error:  {notify:'ERROR',   web:[40,60,40]},
+  epic:   {notify:'SUCCESS', web:[24,44,24,60,110]},
+};
+let _hapT=0;
+function haptic(kind){if(!settings.vibe)return;
+  const h=HAPTICS[kind];if(!h)return;
+  const now=performance.now();
+  if(kind==='sel'||kind==='light'){if(now-_hapT<45)return;_hapT=now;}   // don't buzz continuously
+  const cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
+  if(cap){try{
+    if(h.notify&&cap.notification){cap.notification({type:h.notify});return;}
+    if(h.style&&cap.impact){cap.impact({style:h.style});return;}
+  }catch(e){}}
+  vibe(h.web);}
 // Procedural background music — layered (bass + pad + arp), state-aware:
 // calm ambience on the menus, driving as you dig, tense in the boss layer.
 let musicTimer=null,beat=0;
@@ -512,9 +555,9 @@ function dmgNum(x,y,v,color){if(dmgnums.length>40)dmgnums.shift();dmgnums.push({
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
   if(id==='artifact'){run.relicsRun++;meta.stats.relics=(meta.stats.relics||0)+1;}   // contract/achievement tracking
-  if(r.rar==='rare'){sfx.rare();vibe([12,30,12,30,40]);flash=Math.max(flash,0.5);shake=Math.max(shake,10);glitch=0.25;}
-  else if(r.rar==='legendary'){sfx.leg();vibe([20,40,20,40,20,60,120]);flash=Math.max(flash,0.9);shake=Math.max(shake,18);glitch=0.5;}
-  else if(r.rar==='uncommon'){sfx.rare();vibe([8,20,25]);}else vibe(6);}
+  if(r.rar==='rare'){sfx.rare();haptic('success');flash=Math.max(flash,0.5);shake=Math.max(shake,10);glitch=0.25;}
+  else if(r.rar==='legendary'){sfx.leg();haptic('epic');flash=Math.max(flash,0.9);shake=Math.max(shake,18);glitch=0.5;}
+  else if(r.rar==='uncommon'){sfx.rare();haptic('medium');}else haptic('light');}
 let tickAcc=0,chainGuard=0;
 function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return false;t.hp-=dmg;
   const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*dsecOf(ring),ps=w2s(rad_c,ang_c);
@@ -553,10 +596,10 @@ function shockwave(){if(!run.active||!S.abilities.blast||run.shockCd>0)return;if
   for(let dr=-R;dr<=R;dr++){const rg=cr+dr;if(rg<0||rg>=RINGS)continue;const n=secCount(rg),sc=sectorOf(drill.ang,rg);
     for(let ds=-R;ds<=R;ds++)if(dr*dr+ds*ds<=R*R+1)mineTile(rg,((sc+ds)%n+n)%n,9999);}
   shake=Math.max(shake,16);flash=Math.max(flash,0.55);hitstop=0.05;glitch=0.3;
-  sfx.shock();vibe([18,25,60]);burst(W/2,DRILL_SY,T.blob,26,1.6);}
+  sfx.shock();haptic('heavy');burst(W/2,DRILL_SY,T.blob,26,1.6);}
 function boost(){if(!run.active||!S.abilities.boost||run.boostCd>0||run.boostT>0)return;if(run.energy<28){sfx.ui();return;}
   run.energy-=28;run.boostT=4;run.boostCd=12;flash=Math.max(flash,0.3);shake=Math.max(shake,6);
-  sfx.rare();vibe([10,20,10]);burst(W/2,DRILL_SY,T.accent,18,1.3);}
+  sfx.rare();haptic('medium');burst(W/2,DRILL_SY,T.accent,18,1.3);}
 function laser(){if(!run.active||!S.abilities.laser||run.laserCd>0)return;if(run.energy<30){sfx.ui();return;}
   run.energy-=30;run.laserCd=8;const cr=clamp(ringOf(drill.rad),0,RINGS-1);
   for(let r=cr;r>=Math.max(0,cr-7);r--)mineTile(r,sectorOf(drill.ang,r),9999); // burns a shaft toward the core
@@ -601,7 +644,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;document.body.c
   updateDaily('depth',run.depthMax);updateDaily('runs',1);
   updateContracts('runDepth',run.depthMax);updateContracts('relics',run.relicsRun);updateContracts('guardians',run.guardsRun);updateContracts('bestCombo',run.maxCombo);
   if(run.challenge)recordScore();
-  shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();vibe([40,60,40,120]);
+  shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();haptic('error');
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
   document.getElementById('goLost').textContent=Math.round(run.haul);
@@ -744,8 +787,8 @@ function attachSkillPress(n,s){let t=null,sx=0,sy=0,held=false;
   n.addEventListener('pointerleave',cancel);
   n.onclick=()=>{
     if(held){held=false;return;}                                  // the hold already showed info
-    if(buySkill(s.id)){sfx.buy();vibe(14);S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}
-    else{sfx.ui();showSkillInfo(s);}                               // can't afford -> explain why
+    if(buySkill(s.id)){sfx.buy();haptic('success');S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}
+    else{sfx.deny();showSkillInfo(s);}                               // can't afford -> explain why
   };}
 /* ---------- pinch-to-zoom ----------
  * The canvas is scaled visually while a sizer element carries the scaled
@@ -1162,7 +1205,12 @@ function openCompendium(from){backTo=from;hide(from);show('codexOver');buildComp
 let curDt=0.016;
 function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   let vx=0,vy=0,mag=0;const kv=kbVec();
-  if(input.active&&input.mag>0){vx=input.dx;vy=input.dy;mag=input.mag;const d=Math.hypot(vx,vy)||1;vx/=d;vy/=d;}
+  // smooth the stick: the drill eases into motion and coasts out of it
+  const sm=Math.min(1,dt*17);
+  input.sdx+=(input.dx-input.sdx)*sm;input.sdy+=(input.dy-input.sdy)*sm;
+  input.smag+=((input.active?input.mag:0)-input.smag)*sm;
+  if(input.tapT>0)input.tapT=Math.max(0,input.tapT-dt);
+  if(input.smag>0.004){vx=input.sdx;vy=input.sdy;mag=input.smag;const d=Math.hypot(vx,vy)||1;vx/=d;vy/=d;}
   else if(kv){vx=kv.dx;vy=kv.dy;mag=1;}
   run.boostT=Math.max(0,run.boostT-dt);
   const boosting=run.boostT>0;POW=S.power*(1+S.crit)*(boosting?2.6:1);
@@ -1190,8 +1238,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
       if(rnd()<moveMag*0.7)burst(W/2+(rnd()-0.5)*14,DRILL_SY+8+(rnd()-0.5)*10,P.ground[1],2,moveMag*1.3);}}
   // warning haptics when a budget gets critical (fires once per crossing)
-  if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;vibe([30,40,30]);}else if(run.heat<84)run.warnHeat=false;
-  if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;vibe([20,30,20]);}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
+  if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;haptic('warning');}else if(run.heat<84)run.warnHeat=false;
+  if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;haptic('warning');}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
   if(run.energy<=0){run.energy=0;gameOver(t('reasonFuel'));return;}
   if(run.heat>=100){run.heat=100;gameOver(t('reasonHeat'));return;}
   // active core guardian: pulses heat + shockwaves while you fight near the core
@@ -1202,7 +1250,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;
       const heatMul=bt==='inferno'?1.5:bt==='frost'?0.4:1;                        // frost boss burns cold
       run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*heatMul-S.heatShield));
-      shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();vibe([20,45,20]);
+      shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();haptic('heavy');
       if(bt==='frost')run.frostT=Math.max(run.frostT,1.6);                        // frost boss slows the drill
       const suck=bt==='void'?22:14;
       if(ph>=1||bt==='void')drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-suck);   // suction toward the core
@@ -1374,7 +1422,15 @@ function scene(){
       const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
       if(t.res){const R=RES[t.res],cx=(p1[0]+p3[0])/2*S1,cy=(p1[1]+p3[1])/2*S1,s=Math.max(2,TILE*0.24*SCALEcur*S1);
         o.fillStyle=R.color;o.beginPath();o.moveTo(cx,cy-s);o.lineTo(cx+s,cy);o.lineTo(cx,cy+s);o.lineTo(cx-s,cy);o.closePath();o.fill();
-        o.fillStyle=R.glow;o.beginPath();o.moveTo(cx,cy-s*0.55);o.lineTo(cx+s*0.4,cy-s*0.05);o.lineTo(cx-s*0.15,cy+s*0.2);o.closePath();o.fill();}
+        o.fillStyle=R.glow;o.beginPath();o.moveTo(cx,cy-s*0.55);o.lineTo(cx+s*0.4,cy-s*0.05);o.lineTo(cx-s*0.15,cy+s*0.2);o.closePath();o.fill();
+        // rare ore catches the light — a glint that sweeps through, offset per tile
+        if(QUAL.tileDetail&&(R.rar==='rare'||R.rar==='legendary'||R.rar==='uncommon')){
+          const ph=(performance.now()/900+hash(ring,sec)%100/100)%1;
+          if(ph<0.18){const g=Math.sin(ph/0.18*Math.PI);
+            o.save();o.globalCompositeOperation='lighter';o.globalAlpha=g*0.85;
+            o.fillStyle='#ffffff';o.fillRect((cx-s*0.18)|0,(cy-s*1.05)|0,Math.max(1,s*0.36),Math.max(2,s*2.1));
+            o.fillRect((cx-s*1.05)|0,(cy-s*0.18)|0,Math.max(2,s*2.1),Math.max(1,s*0.36));
+            o.restore();}}}
       if(t.gas){const gx=(p1[0]+p3[0])/2*S1,gy=(p1[1]+p3[1])/2*S1,gp=0.5+Math.sin(performance.now()/160+ring)*0.5;
         o.globalAlpha=0.55+gp*0.45;o.fillStyle=T.fuel;o.fillRect((gx-1)|0,(gy-1)|0,3,3);o.globalAlpha=1;}
       if(t.cave){const cx2=(p1[0]+p3[0])/2*S1|0,cy2=(p1[1]+p3[1])/2*S1|0;o.fillStyle='rgba(0,0,0,0.6)';
@@ -1391,8 +1447,15 @@ function scene(){
     o.fillStyle=eye;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);
     o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);}
   // particles
-  for(const p of parts){const a=1-p.age/p.life;o.globalAlpha=a;o.fillStyle=p.color;
-    o.fillRect((p.x*S1)|0,(p.y*S1)|0,p.size,p.size);}o.globalAlpha=1;
+  // Additive blending makes sparks read as light rather than as coloured dots,
+  // and a fresh particle flares brighter before settling.
+  o.globalCompositeOperation='lighter';
+  for(const p of parts){const t=p.age/p.life,a=1-t;
+    o.globalAlpha=a*(t<0.18?1:0.82);
+    o.fillStyle=p.color;const px=(p.x*S1)|0,py=(p.y*S1)|0;
+    o.fillRect(px,py,p.size,p.size);
+    if(t<0.3&&p.size>1){o.globalAlpha=a*0.4;o.fillRect(px-1,py-1,p.size+2,p.size+2);}}
+  o.globalAlpha=1;o.globalCompositeOperation='source-over';
   // laser beam (toward core = straight down from the centred drill)
   if(laserFx>0){const bx=W/2*S1,by=DRILL_SY*S1;o.globalAlpha=Math.min(1,laserFx/0.12);
     o.strokeStyle=T.accent;o.lineWidth=3;o.beginPath();o.moveTo(bx,by);o.lineTo(bx,by+TILE*8*SCALEcur*S1);o.stroke();
@@ -1550,8 +1613,34 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     if(run.freezeT>0)txt(c,'❄ CRYO',W/2,H*0.22,'center','#8be9ff',Math.round(W*0.038));
     if(run.event){const inf=EVENTINFO[run.event.type];
       txt(c,'⚠ '+(settings.lang==='en'?inf.en:inf.de)+' '+Math.ceil(run.event.t)+'s',W/2,H*0.19,'center',inf.col,Math.round(W*0.04));}
+    drawStick(c);
   }
   c.imageSmoothingEnabled=false;}
+/* The thumb stick, drawn where you actually put your finger. Seeing the anchor
+   and how far the knob is pushed is most of what makes touch steering feel
+   responsive rather than vague. */
+function drawStick(c){
+  if(!input.active&&input.smag<0.02)return;
+  const a=input.active?1:Math.min(1,input.smag*6);      // fades out after release
+  const kx=input.ax+input.sdx,ky=input.ay+input.sdy;
+  const pop=input.tapT>0?1+input.tapT*1.4:1;            // little pulse on touch-down
+  c.save();c.lineCap='round';
+  // outer ring
+  c.globalAlpha=0.16*a;c.strokeStyle='#ffffff';c.lineWidth=2;
+  c.beginPath();c.arc(input.ax,input.ay,MAXR*pop,0,TAU);c.stroke();
+  // travelled distance as an arc of accent colour
+  c.globalAlpha=0.5*a;c.strokeStyle=T.accent;c.lineWidth=3;
+  c.beginPath();c.arc(input.ax,input.ay,MAXR*pop,-Math.PI/2,-Math.PI/2+TAU*Math.min(1,input.smag),false);c.stroke();
+  // stem from anchor to knob
+  c.globalAlpha=0.28*a;c.strokeStyle='#ffffff';c.lineWidth=2;
+  c.beginPath();c.moveTo(input.ax,input.ay);c.lineTo(kx,ky);c.stroke();
+  // knob
+  const kr=17+input.smag*7;
+  c.globalAlpha=0.20*a;c.fillStyle=T.accent;c.beginPath();c.arc(kx,ky,kr*1.7,0,TAU);c.fill();
+  c.globalAlpha=0.85*a;c.fillStyle='#0a0713';c.beginPath();c.arc(kx,ky,kr,0,TAU);c.fill();
+  c.globalAlpha=0.95*a;c.strokeStyle=T.accent;c.lineWidth=3;
+  c.beginPath();c.arc(kx,ky,kr,0,TAU);c.stroke();
+  c.globalAlpha=1;c.restore();}
 function money(n){n=Math.round(n);if(n>=1e6)return'$'+(n/1e6).toFixed(3)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n;}
 function mix(a,b,t){const pa=hx(a),pb=hx(b);return'rgb('+Math.round(pa[0]+(pb[0]-pa[0])*t)+','+Math.round(pa[1]+(pb[1]-pa[1])*t)+','+Math.round(pa[2]+(pb[2]-pa[2])*t)+')';}
 function hx(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
@@ -1648,6 +1737,15 @@ document.getElementById('btnTutSkip').onclick=()=>{sfx.ui();finishTut();};
 updateAbilityButtons();
 applyQuality();
 applyLang();
+/* Every button in the game gets the same tactile confirmation, so nothing is
+   ever silently "dead" under a thumb. Capture phase means it fires even where a
+   handler stops propagation, and it never double-fires with a screen's own sfx
+   because the individual handlers no longer play one. */
+document.addEventListener('pointerdown',e=>{
+  const b=e.target&&e.target.closest&&e.target.closest('button');
+  if(!b||b.disabled)return;
+  haptic(b.classList.contains('node')?'light':'sel');
+},{capture:true,passive:true});
 // unlock the audio context on the first interaction and start ambient music
 function unlockAudio(){const a=audio();if(a&&a.state==='suspended')a.resume();if(settings.music)ensureMusic();}
 window.addEventListener('pointerdown',unlockAudio);
