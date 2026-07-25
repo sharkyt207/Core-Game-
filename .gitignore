@@ -42,3 +42,8 @@ Thumbs.db
 key.properties
 google-services.json
 GoogleService-Info.plist
+
+# Capacitor-Projekte werden mit `npx cap add ios|android` erzeugt
+# (inkl. ~9 MB generierter Icons) — nicht ins Repo.
+game/android/
+game/ios/

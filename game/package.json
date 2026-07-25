@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "assets:generate": "capacitor-assets generate --iconBackgroundColor '#0a0713' --iconBackgroundColorDark '#0a0713' --splashBackgroundColor '#0a0713' --splashBackgroundColorDark '#0a0713'",
+    "assets:generate": "capacitor-assets generate --android --ios --iconBackgroundColor '#0a0713' --iconBackgroundColorDark '#0a0713' --splashBackgroundColor '#0a0713' --splashBackgroundColorDark '#0a0713'",
     "cap:sync": "npm run build && cap sync",
     "ios:add": "cap add ios",
     "ios:open": "npm run cap:sync && cap open ios",
@@ -16,9 +16,11 @@
     "android:open": "npm run cap:sync && cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
     "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.1.2",
     "@capacitor/haptics": "^6.0.0",
+    "@capacitor/ios": "^6.2.1",
     "@capacitor/preferences": "^6.0.0",
     "@capacitor/splash-screen": "^6.0.0",
     "@capacitor/status-bar": "^6.0.0"
