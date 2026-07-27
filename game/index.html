@@ -190,6 +190,24 @@
   .node.avail.no{opacity:.45;}
   .node{transition:transform .08s cubic-bezier(.2,.9,.25,1),box-shadow .12s ease,border-color .12s ease;}
   .node:active{transform:translate(-50%,-50%) scale(.9);filter:brightness(1.35);}
+  /* An affordable skill should pull your eye across the whole tree. Owned nodes
+     read as finished hardware, unaffordable ones recede — so the tree answers
+     "what can I buy right now?" at a glance instead of after reading 44 prices. */
+  .node.avail:not(.no){animation:nodeBeckon 2.1s ease-in-out infinite;}
+  @keyframes nodeBeckon{
+    0%,100%{box-shadow:3px 3px 0 rgba(255,210,63,.3),0 0 0 rgba(255,210,63,0);}
+    50%    {box-shadow:3px 3px 0 rgba(255,210,63,.3),0 0 18px rgba(255,210,63,.55);}}
+  .node.owned .ni{filter:drop-shadow(0 0 6px rgba(45,226,230,.7));}
+  /* The purchase itself: a one-shot flare so buying lands as a reward. */
+  .node.bought{animation:nodeBought .55s cubic-bezier(.2,.9,.25,1) 1;}
+  @keyframes nodeBought{
+    0%  {transform:translate(-50%,-50%) scale(1);   box-shadow:0 0 0 rgba(45,226,230,.9);}
+    35% {transform:translate(-50%,-50%) scale(1.28);box-shadow:0 0 34px 10px rgba(45,226,230,.85);}
+    100%{transform:translate(-50%,-50%) scale(1);   box-shadow:0 0 16px rgba(45,226,230,.45);}}
+  @media (prefers-reduced-motion:reduce){
+    .node.avail:not(.no){animation:none;}
+    .node.bought{animation:none;}
+  }
   .treebottom{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 14px);left:0;right:0;display:flex;justify-content:center;z-index:3;}
   /* skill explanation, shown on long-press */
   #skillInfo{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:5;
@@ -284,6 +302,7 @@
   <div id="dailyCard" style="margin-top:12px;max-width:320px;font-size:11px;letter-spacing:.06em;color:#2de2e6;text-transform:uppercase;font-weight:900;"></div>
   <button class="big" id="btnStart">Drop In</button>
   <div class="menubtns">
+    <button class="mbtn wide2" id="btnExpedition" style="border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.25);">🧭 Expedition</button>
     <button class="mbtn wide2" id="btnChallenge" style="border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.25);">🏁 Tages-Challenge</button>
     <button class="mbtn" id="btnTree">🌳 Skills</button>
     <button class="mbtn" id="btnPlanets">🪐 Planeten</button>
@@ -305,6 +324,7 @@
     <div><b id="rHaul">0</b><span>Loot</span></div>
     <div><b id="rCredits">0</b><span>Cash</span></div>
   </div>
+  <div id="rExp" style="display:none;max-width:340px;font-size:11px;letter-spacing:.05em;color:#39ff14;text-transform:uppercase;font-weight:900;margin-top:2px;"></div>
   <div class="menubtns">
     <button class="mbtn" id="btnTree2">🌳 Skill Tree</button>
     <button class="mbtn" id="btnPlanets2">🪐 Planeten</button>
@@ -376,6 +396,35 @@
   <div class="sub" id="goSub">Die Bergungsdrohne rettet 40 % deiner Beute. Extrahierst du selbst, behältst du alles.</div>
   <button class="big" id="btnRetry">Nochmal</button>
   <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
+</div>
+
+<!-- SAFE ZONE: the expedition's trading post -->
+<div class="over" id="zoneOver">
+  <div class="tag" style="color:#39ff14">// sicherer sektor //</div>
+  <div class="logo" style="font-size:min(11vw,46px);text-shadow:4px 4px 0 #12805a;" id="zoneTitle">Sektor 1</div>
+  <div class="sub" id="zoneSub">Tank voll, Bohrer gekühlt. Der Händler nimmt deine Beute — was du hier ausgibst, bringst du nicht nach Hause.</div>
+  <div class="result" style="margin:10px 0 4px;">
+    <div><b id="zoneDepth">0</b><span>Tiefe</span></div>
+    <div><b id="zoneScrip" style="color:#ffd23f">0</b><span>Beute</span></div>
+    <div><b id="zoneTier" style="color:#8a5cff">1</b><span>Schicht</span></div>
+  </div>
+  <div id="zoneOffers" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px;margin-top:6px;"></div>
+  <div id="zoneOwned" style="max-width:340px;font-size:11px;letter-spacing:.05em;color:#9a90ad;margin-top:10px;"></div>
+  <button class="big" id="btnZoneGo">Tiefer</button>
+  <div class="menubtns"><button class="mbtn" id="btnZoneOut">⏏ Hier extrahieren</button></div>
+</div>
+
+<!-- DEEP LAYER: tier cleared, endless continue -->
+<div class="over" id="deepOver">
+  <div class="tag" style="color:#8a5cff">// kern erreicht //</div>
+  <div class="logo" style="font-size:min(12vw,50px);text-shadow:4px 4px 0 #4b2ea8;" id="deepTitle">Schicht 1 geschafft</div>
+  <div class="sub" id="deepSub">Unter dem Kern liegt die nächste Schicht: härter, aber deutlich reicher. Deine Relikte nimmst du mit.</div>
+  <div class="result" style="margin:10px 0;">
+    <div><b id="deepHard">+55%</b><span>Härte</span></div>
+    <div><b id="deepVal" style="color:#ffd23f">+85%</b><span>Erzwert</span></div>
+  </div>
+  <button class="big" id="btnDeepGo">Tiefer vorstoßen</button>
+  <div class="menubtns"><button class="mbtn" id="btnDeepOut">⏏ Mit der Beute raus</button></div>
 </div>
 
 <!-- SETTINGS -->

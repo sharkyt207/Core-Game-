@@ -166,6 +166,14 @@ const ACH=[
  {id:'first',  ic:'🚀', de:['Erster Abstieg','Starte deinen ersten Run'],      en:['First Descent','Start your first run'],       cond:()=>meta.stats.runs>=1},
  {id:'d50',    ic:'⛏️', de:['Tiefgänger','Erreiche 50m Tiefe'],                en:['Digger','Reach 50m depth'],                 cond:()=>meta.stats.bestDepth>=50},
  {id:'d100',   ic:'🔥', de:['Kernnähe','Erreiche 100m Tiefe'],                 en:['Near the Core','Reach 100m depth'],         cond:()=>meta.stats.bestDepth>=100},
+ // --- expedition: long-horizon goals for the roguelike mode ---
+ {id:'exp1',   ic:'🧭', de:['Expedition','Erreiche einen sicheren Sektor'],   en:['Expedition','Reach a safe sector'],         cond:()=>(meta.stats.expSectors||0)>=1},
+ {id:'exp10',  ic:'🗺️', de:['Kartograf','Erreiche 10 Sektoren insgesamt'],    en:['Cartographer','Reach 10 sectors total'],    cond:()=>(meta.stats.expSectors||0)>=10},
+ {id:'exp50',  ic:'🧳', de:['Veteran','Erreiche 50 Sektoren insgesamt'],      en:['Veteran','Reach 50 sectors total'],         cond:()=>(meta.stats.expSectors||0)>=50},
+ {id:'deep2',  ic:'⬇️', de:['Tiefe Schicht','Erreiche Schicht 2'],            en:['Deep Layer','Reach layer 2'],               cond:()=>(meta.stats.expBest||0)>=2},
+ {id:'deep5',  ic:'🕳️', de:['Abgrundtief','Erreiche Schicht 5'],             en:['Bottomless','Reach layer 5'],               cond:()=>(meta.stats.expBest||0)>=5},
+ {id:'relic5', ic:'💠', de:['Sammler','Kaufe 5 Relikte'],                    en:['Collector','Buy 5 relics'],                 cond:()=>(meta.stats.relicsBought||0)>=5},
+ {id:'relic25',ic:'🏺', de:['Reliktjäger','Kaufe 25 Relikte'],               en:['Relic Hunter','Buy 25 relics'],             cond:()=>(meta.stats.relicsBought||0)>=25},
  {id:'rich',   ic:'💰', de:['Reich','Verdiene 10.000 $ gesamt'],              en:['Rich','Earn 10,000 $ total'],               cond:()=>meta.stats.totalEarned>=10000},
  {id:'tycoon', ic:'🏦', de:['Tycoon','Verdiene 100.000 $ gesamt'],           en:['Tycoon','Earn 100,000 $ total'],            cond:()=>meta.stats.totalEarned>=100000},
  {id:'tech5',  ic:'🌳', de:['Techniker','Schalte 5 Skills frei'],            en:['Engineer','Unlock 5 skills'],               cond:()=>meta.skills.length>=5},
@@ -317,8 +325,17 @@ function stats(){
     magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;luck+=e.luck||0;if(e.drone)drones++;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
   const shards=meta.ascend?meta.ascend.shards:0;power+=shards*8;
+  /* Prestige used to be (1 + 0.12·cores)·(1 + 0.25·shards) — linear, unbounded,
+   * and multiplied on top of every other loot source. Measured at 300 cores /
+   * 30 shards that reached x314, so one relic on Obscura in Overdrive paid
+   * $2.9M — six times the price of ALL content in the game ($481k), in a single
+   * pickup. That is where the millions came from.
+   * Square root keeps the early rewards almost identical (10 cores: x2.2 -> x2.7)
+   * while flattening the tail hard (300 cores: x37 -> x10.5), so prestige stays
+   * worth doing forever without ending the economy. */
+  const pMul=(1+0.55*Math.sqrt(cores))*(1+1.2*Math.sqrt(shards));
   return{power,speed,energyMax,energyRegen,coolRate,heatGen:Math.max(3,heatGen),magnet,valueMul,crit,drones,chain,wide,dronemine,bossPow,heatShield,luck,fuelOre,combo,abilities,
-    prestigeMult:(1+cores*0.12)*(1+shards*0.25), tier:Math.min(8,1+Math.floor(meta.skills.length/3)+drones+(shards>0?1:0))};}
+    prestigeMult:pMul, tier:Math.min(8,1+Math.floor(meta.skills.length/3)+drones+(shards>0?1:0))};}
 
 /* ===================== RESOURCES / BLOCKS ===================== */
 const RES={
@@ -341,7 +358,7 @@ const REGEN_CAP=0.7;
 const HEAT_VENT=9;
 function genTile(depthM,ring,sec){
   // core guardian: the innermost rings are a super-hard boss layer with guaranteed loot
-  if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul*cmul('hard');return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
+  if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul*cmul('hard')*expHard();return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
   /* Everything below scales with f = how far down THIS planet's shaft you are,
    * not with absolute metres. The thresholds used to be hard-coded (dark rock
    * past 18 m, relics past 20 m), which was tuned for a 26-ring world; once a
@@ -364,7 +381,7 @@ function genTile(depthM,ring,sec){
     res=f>0.66&&rnd()<0.25?'core':f>0.40&&rnd()<0.6?'crystal':'cuprite';}
   const gas=f>0.13&&rnd()<(P.gasChance||0.018);
   const cave=!gas&&f>0.30&&rnd()<(P.caveChance||0);
-  const hp=HARD[rock]*P.hardMul*cmul('hard');return{rock,res,gas,cave,hp,maxhp:hp};}
+  const hp=HARD[rock]*P.hardMul*cmul('hard')*expHard();return{rock,res,gas,cave,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
 function tilePolar(ring,sec){
   if(ring<0)return{wall:true};           // core
@@ -376,8 +393,9 @@ function tilePolar(ring,sec){
 
 /* ===================== STATE ===================== */
 let S=stats();
+let pendingExp=false;      // set by the EXPEDITION button, consumed by startRun
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,ovr:0,ventT:0,ovrOn:false,critT:0,critMul:1,critFx:0,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,paused:false,exp:null,ovr:0,ventT:0,ovrOn:false,critT:0,critMul:1,critFx:0,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -669,7 +687,7 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     run.combo=Math.min(99,run.combo+1);run.comboT=1.5;if(run.combo>run.maxCombo)run.maxCombo=run.combo;  // streak (loot bonus only with Kombo-Meister)
     sfx.brk(t.rock);vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
-    const dust=DUST[t.rock];if(dust){run.haul+=dust*lootMul();
+    const dust=DUST[t.rock];if(dust){run.haul+=dust*(S.dustMul||1)*lootMul();
       if(rnd()<0.55)burst(ps[0],ps[1],RES.ferrite.glow,2,0.7);}   // a glint, so the payout is visible
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
@@ -743,9 +761,81 @@ function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.en
 // loot multiplier folds in planet, prestige and the live mining combo
 // Overdrive band: hot drill = faster bite and richer ore, up to the red line.
 const OVR_FROM=70,OVR_SPD=0.38,OVR_LOOT=0.75;
-function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(1+OVR_LOOT*(run.ovr||0))*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*expLoot()*(1+OVR_LOOT*(run.ovr||0))*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
 
 /* ===================== RUN ===================== */
+/* ===================== EXPEDITION (roguelike run mode) =====================
+ * A normal run is one dive: go down, come back, spend. Good, but it ends in
+ * under a minute and every dive is the same dive. An Expedition is a *seed*:
+ * you descend through Sectors, and every SECTOR_M metres you break into a Safe
+ * Zone — a carved-out cavern with a station that refuels you, cools you, and
+ * puts a trader in front of you.
+ *
+ * The trader sells RELICS: run-only upgrades that never appear in the skill
+ * tree, paid for out of the very haul you are trying to bring home. That is the
+ * whole decision the mode is built around — every relic you buy is cash you do
+ * NOT bank, so you are always choosing between going home rich and going deeper
+ * dangerous. Relics stack into builds; the pool is drawn from so no two
+ * expeditions play the same.
+ *
+ * Reaching the core finishes a Tier. Then you may take the Deep Layer: the world
+ * regenerates harder AND richer, you keep every relic, and it never stops. That
+ * is the endless mode. */
+const SECTOR_M=12;                 // metres between Safe Zones
+/* The first station sits deeper than the rest. Measured, 12 m of topsoil pays
+   about $30 — you would arrive at the trader unable to afford anything, which
+   teaches the wrong lesson in the one sector that has to teach the mode. At
+   18 m you arrive with roughly $110 and can buy exactly one cheap relic. */
+const SECTOR_FIRST=18;
+const RELIC_PICKS=3;               // offers per station
+const RELICS=[
+ {id:'r_bit',   ic:'⛏️', c:200, de:['Diamantspitze','+45 % Bohrkraft'],            en:['Diamond Bit','+45% drill power'],        mod:S=>S.power*=1.45},
+ {id:'r_servo', ic:'💨', c:180, de:['Servo-Antrieb','+30 % Tempo'],                en:['Servo Drive','+30% speed'],              mod:S=>S.speed*=1.3},
+ {id:'r_tank',  ic:'🛢️', c:170, de:['Zusatztank','+45 % Sprit'],                   en:['Aux Tank','+45% fuel'],                  mod:S=>S.energyMax*=1.45},
+ {id:'r_vent',  ic:'❄️', c:190, de:['Zyklon-Vent','Doppelte Kühlleistung'],        en:['Cyclone Vent','Double cooling'],         mod:S=>S.coolRate=S.coolRate*2+14},
+ {id:'r_crit',  ic:'🎯', c:240, de:['Schlagbolzen','+100 % Krit-Chance'],          en:['Striker Pin','+100% crit chance'],       mod:S=>S.crit+=1},
+ {id:'r_mag',   ic:'🧲', c:150, de:['Feldspule','+150 Magnet'],                    en:['Field Coil','+150 magnet'],              mod:S=>S.magnet+=150},
+ {id:'r_wide',  ic:'↔️', c:260, de:['Breitschneider','Bohrt die Nachbarfelder mit'],en:['Wide Cutter','Also cuts side tiles'],    mod:S=>S.wide=1},
+ {id:'r_chain', ic:'💢', c:300, de:['Kettenzünder','+1 Kettenreaktion'],           en:['Chain Primer','+1 chain reaction'],      mod:S=>S.chain+=1},
+ {id:'r_greed', ic:'💎', c:280, de:['Gierstein','+60 % Erzwert'],                  en:['Greed Stone','+60% ore value'],          mod:S=>S.valueMul+=0.6},
+ {id:'r_luck',  ic:'🍀', c:220, de:['Wünschelrute','+15 % Fundchance'],            en:['Divining Rod','+15% find chance'],       mod:S=>S.luck+=0.15},
+ {id:'r_drone', ic:'🛸', c:250, de:['Begleitdrohne','+1 Drohne, die mitbohrt'],    en:['Escort Drone','+1 mining drone'],        mod:S=>{S.drones++;S.dronemine=1;}},
+ {id:'r_recyc', ic:'🔋', c:210, de:['Recycler','+14 Sprit/Sek. beim Lüften'],      en:['Recycler','+14 fuel/s while venting'],   mod:S=>S.energyRegen+=14},
+ {id:'r_ore',   ic:'⚗️', c:230, de:['Brennkammer','Erz tankt dich auf'],           en:['Burn Chamber','Ore refuels you'],        mod:S=>S.fuelOre=(S.fuelOre||0)+1},
+ {id:'r_shield',ic:'🛡️', c:200, de:['Hitzeschild','−7 Schaden durch Hitzequellen'],en:['Heat Shield','-7 damage from heat'],     mod:S=>S.heatShield+=7},
+ // --- risk/reward: these cost you something real ---
+ {id:'r_reck',  ic:'🔥', c:170, de:['Waghalsig','+80 % Erzwert, +40 % Hitze'],     en:['Reckless','+80% ore value, +40% heat'],  mod:S=>{S.valueMul+=0.8;S.heatGen*=1.4;}},
+ {id:'r_glass', ic:'🩸', c:190, de:['Glaskanone','+90 % Bohrkraft, −30 % Sprit'],  en:['Glass Cannon','+90% power, -30% fuel'],  mod:S=>{S.power*=1.9;S.energyMax*=0.7;}},
+ {id:'r_furn',  ic:'♨️', c:240, de:['Schmelzofen','Overdrive beginnt bei 45 %'],   en:['Furnace','Overdrive starts at 45%'],     mod:S=>S.ovrFrom=45},
+ {id:'r_temper',ic:'🧊', c:200, de:['Vergütet','−35 % Hitze, −15 % Bohrkraft'],    en:['Tempered','-35% heat, -15% power'],      mod:S=>{S.heatGen*=0.65;S.power*=0.85;}},
+ {id:'r_prosp', ic:'🔍', c:260, de:['Prospektor','Relikte & Kerne doppelt wert'],  en:['Prospector','Relics & cores worth 2x'],  mod:S=>S.rareMul=(S.rareMul||1)*2},
+ {id:'r_dust',  ic:'🪨', c:160, de:['Schürfrecht','Dreifacher Schrottstaub'],      en:['Claim Rights','Triple scrap dust'],      mod:S=>S.dustMul=(S.dustMul||1)*3},
+];
+function relicById(id){return RELICS.find(r=>r.id===id);}
+function relicName(r){return (settings.lang==='en'?r.en:r.de)[0];}
+function relicDesc(r){return (settings.lang==='en'?r.en:r.de)[1];}
+/* Price climbs with how deep the station is and which layer you are on, so the
+   trader never becomes pocket change once your haul starts compounding. */
+/* Haul compounds fast down a shaft (measured per sector: $30, $161, $639,
+   $521 — roughly tripling early), so a linear price would be crushing at the
+   first station and pocket change by the fourth. The exponent tracks that
+   curve, keeping the answer to "one strong relic or two cheap ones?" alive
+   at every depth instead of only at the start. */
+function relicPrice(r,zone,tier){
+  return Math.round(r.c*0.18*Math.pow(1+zone,1.35)*(1+(tier-1)*0.9));}
+/* Offers are drawn without replacement from what you do not already own, so a
+   station never wastes a slot on a relic you are already carrying. */
+function rollOffers(){const own=run.exp.relics,pool=RELICS.filter(r=>own.indexOf(r.id)<0);
+  const out=[];for(let i=0;i<RELIC_PICKS&&pool.length;i++)out.push(pool.splice(Math.floor(rnd()*pool.length),1)[0].id);
+  return out;}
+/* Relic effects are applied on top of the freshly computed stats, never baked
+   into the save — an expedition's build exists only for as long as the run does. */
+function applyRelics(){if(!run.exp)return;
+  for(const id of run.exp.relics){const r=relicById(id);if(r&&r.mod)try{r.mod(S);}catch(e){}}}
+function restat(){S=stats();applyRelics();}
+// Deep Layers: each tier past the first makes the rock harder and the ore richer.
+function expHard(){return run.exp?1+(run.exp.tier-1)*0.55:1;}
+function expLoot(){return run.exp?1+(run.exp.tier-1)*0.85:1;}
 function startRun(){S=stats();
   run.challenge=!!pendingChal;
   if(pendingChal){setPlanet(chalPlanet);rnd=chalRng();}   // fixed daily seed + planet
@@ -753,19 +843,79 @@ function startRun(){S=stats();
   pendingChal=false;
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;run.ovrOn=false;run.critT=0;run.critMul=1;run.critFx=0;
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
+  // an expedition carries its own progress: sectors cleared, relics bought, tier reached
+  run.exp=pendingExp?{tier:1,zone:0,nextZone:SECTOR_FIRST,relics:[],spent:0,offers:null,tierDone:false}:null;run.paused=false;
+  pendingExp=false;applyRelics();
+  run.energy=S.energyMax*cmul('fuel');   // recompute: relics can change the tank
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;bossBeam=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   document.body.classList.add('playing');   // reveal the in-run HUD/ability bar
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
+/* ---------- Safe Zone ---------- */
+function enterZone(){const e=run.exp;e.zone++;e.nextZone=run.depthMax+SECTOR_M;run.paused=true;
+  // the station itself is the reward for getting here: full tank, cold drill
+  run.energy=S.energyMax;run.heat=0;run.ventT=0;
+  e.offers=rollOffers();
+  flash=Math.max(flash,0.5);sfx.extract();haptic('success');
+  document.body.classList.remove('playing');
+  renderZone();show('zoneOver');}
+function renderZone(){const e=run.exp,de=settings.lang!=='en';
+  document.getElementById('zoneTitle').textContent=(de?'Sektor ':'Sector ')+e.zone;
+  document.getElementById('zoneDepth').textContent=run.depthMax;
+  document.getElementById('zoneScrip').textContent='$'+Math.round(run.haul);
+  document.getElementById('zoneTier').textContent=e.tier;
+  const box=document.getElementById('zoneOffers');box.innerHTML='';
+  (e.offers||[]).forEach(id=>{
+    const r=relicById(id);if(!r)return;
+    const price=relicPrice(r,e.zone,e.tier),owned=e.relics.indexOf(id)>=0,afford=run.haul>=price;
+    const b=document.createElement('button');
+    b.className='mbtn';b.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;'+
+      (owned?'opacity:.4;':afford?'border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.22);':'opacity:.55;');
+    b.innerHTML='<span style="display:flex;flex-direction:column;gap:3px;">'+
+      '<span style="font-size:12px;">'+r.ic+' '+relicName(r)+'</span>'+
+      '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+relicDesc(r)+'</span></span>'+
+      '<span style="font-size:13px;color:'+(owned?'#9a90ad':afford?'#39ff14':'#ff6a3d')+';">'+(owned?'✓':'$'+price)+'</span>';
+    b.disabled=owned;
+    b.onclick=()=>buyRelic(id);
+    box.appendChild(b);});
+  const own=document.getElementById('zoneOwned');
+  own.textContent=e.relics.length
+    ?(de?'Relikte: ':'Relics: ')+e.relics.map(i=>{const r=relicById(i);return r?r.ic+' '+relicName(r):'';}).join(' · ')
+    :(de?'Noch keine Relikte.':'No relics yet.');}
+function buyRelic(id){const e=run.exp,r=relicById(id);if(!r||e.relics.indexOf(id)>=0)return;
+  const price=relicPrice(r,e.zone,e.tier);
+  if(run.haul<price){sfx.deny();haptic('warning');return;}
+  run.haul-=price;e.spent+=price;e.relics.push(id);
+  restat();
+  run.energy=Math.min(run.energy,S.energyMax);   // a tank-shrinking relic must not leave you over-full
+  sfx.buy();haptic('success');
+  meta.stats.relicsBought=(meta.stats.relicsBought||0)+1;checkAchievements();
+  renderZone();}
+function leaveZone(){hide('zoneOver');run.paused=false;document.body.classList.add('playing');sfx.ui();}
+/* ---------- Deep Layer (endless) ---------- */
+function openDeep(){run.paused=true;document.body.classList.remove('playing');
+  const de=settings.lang!=='en',e=run.exp;
+  document.getElementById('deepTitle').textContent=(de?'Schicht ':'Layer ')+e.tier+(de?' geschafft':' cleared');
+  document.getElementById('deepHard').textContent='+'+Math.round(((1+e.tier*0.55)/expHard()-1)*100)+'%';
+  document.getElementById('deepVal').textContent='+'+Math.round(((1+e.tier*0.85)/expLoot()-1)*100)+'%';
+  flash=Math.max(flash,0.8);sfx.leg();haptic('epic');
+  show('deepOver');}
+function goDeeper(){const e=run.exp;e.tier++;e.tierDone=false;e.zone=0;e.nextZone=SECTOR_FIRST;
+  world.clear();                                   // a fresh, harder, richer layer
+  drill.rad=R_SURF+120;drill.ang=0;drill.face=Math.PI/2;snapCamera();
+  run.depthMax=0;run.energy=S.energyMax;run.heat=0;run.ventT=0;
+  drops.length=0;enemies.length=0;
+  hide('deepOver');run.paused=false;document.body.classList.add('playing');
+  sfx.ovr();haptic('epic');flash=Math.max(flash,0.7);}
 /* Losing a run used to cost 100 % of the haul. Measured, that meant a greedy
  * player died 23 seconds in holding $175 and walked away with nothing — the
  * fastest way to make someone delete a paid game. The salvage drone keeps
  * SALVAGE of the haul (and the matching share of refinery ore), so a bad run
  * still moves you forward while extracting yourself stays clearly better. */
 const SALVAGE=0.4;
-function gameOver(reason){if(!run.active)return;run.active=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
+function gameOver(reason){if(!run.active)return;run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
   const saved=Math.round(run.haul*SALVAGE),lost=Math.round(run.haul)-saved;
   meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
   for(const k in run.matsRun){const keep=Math.floor(run.matsRun[k]*SALVAGE);if(keep>0)meta.mats[k]=(meta.mats[k]||0)+keep;}
@@ -779,7 +929,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;engineSet(0,0);
   document.getElementById('goSaved').textContent=saved;
   document.getElementById('goLost').textContent=lost;
   setTimeout(()=>show('gameoverOver'),480);}
-function extract(){if(!run.active)return;run.active=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
+function extract(){if(!run.active)return;run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   for(const k in run.matsRun)meta.mats[k]=(meta.mats[k]||0)+run.matsRun[k];   // bank refinery ore on success
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
@@ -789,6 +939,18 @@ function extract(){if(!run.active)return;run.active=false;engineSet(0,0);documen
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
+  /* An expedition's real story is not its depth — it is how many layers you
+     survived and what you spent to get there. Show that, or the mode looks
+     exactly like a normal run on the results screen. */
+  const rx=document.getElementById('rExp'),de=settings.lang!=='en';
+  if(run.exp){const e=run.exp;
+    rx.style.display='block';
+    rx.innerHTML='🧭 '+(de?'Schicht ':'Layer ')+e.tier+' · '+e.zone+(de?' Sektoren':' sectors')+
+      (e.relics.length?' · '+e.relics.map(i=>{const r=relicById(i);return r?r.ic:'';}).join(''):'')+
+      (e.spent?'<br><span style="color:#9a90ad">'+(de?'beim Händler gelassen: $':'spent at the trader: $')+e.spent+'</span>':'');
+    meta.stats.expBest=Math.max(meta.stats.expBest||0,e.tier);
+    meta.stats.expSectors=(meta.stats.expSectors||0)+e.zone;
+  }else rx.style.display='none';
   show('shopOver');sfx.extract();haptic('epic');}
 
 /* ability buttons appear only once the matching skill is unlocked */
@@ -922,7 +1084,11 @@ function attachSkillPress(n,s){let t=null,sx=0,sy=0,held=false;
   n.addEventListener('pointerleave',cancel);
   n.onclick=()=>{
     if(held){held=false;return;}                                  // the hold already showed info
-    if(buySkill(s.id)){sfx.buy();haptic('success');S=stats();updateAbilityButtons();buildTree(false);checkAchievements();}
+    if(buySkill(s.id)){sfx.buy();haptic('success');S=stats();updateAbilityButtons();buildTree(false);checkAchievements();
+      /* Re-flag the freshly bought node after the rebuild, so the flare plays on
+         the new element rather than on the one we just threw away. */
+      const fresh=document.getElementById('n_'+s.id);
+      if(fresh){fresh.classList.add('bought');setTimeout(()=>fresh.classList.remove('bought'),600);}}
     else{sfx.deny();showSkillInfo(s);}                               // can't afford -> explain why
   };}
 /* ---------- pinch-to-zoom ----------
@@ -1000,6 +1166,7 @@ function buildTree(recenter){
   const boxes={};
   for(const s of SKILLS){if(!visibleSkill(s))continue;const own=owned(s.id),buy=canBuy(s);
     const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
+    n.id='n_'+s.id;   // lets the purchase flare find the rebuilt node
     n.style.left=ox(s.id)+'px';n.style.top=oy(s.id)+'px';
     n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
     attachSkillPress(n,s);
@@ -1285,8 +1452,10 @@ const TUTSTEPS=[
            en:['Going back up is free','Climbing your own shaft costs nothing. Extract with ⏏ and you keep everything. Die, and the salvage drone recovers just 40%.']},
  {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
            en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
- {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Viel Erfolg!'],
-           en:['Your Goal','Drill deeper through 9 worlds to the molten core — survive bosses, weather and creatures, and become overpowered. Good luck!']},
+ {ic:'🧭', de:['Expedition','Der zweite Modus: Du tauchst durch Sektoren. Alle paar Meter wartet eine Station — Tank voll, Bohrer kalt, und ein Händler mit Relikten, die es im Baum nicht gibt. Bezahlt wird mit deiner Beute, also: mitnehmen oder tiefer gehen?'],
+           en:['Expedition','The second mode: you dive through sectors. Every few metres a station waits — full tank, cold drill, and a trader selling relics the tree never offers. You pay with your haul, so: bank it or go deeper?']},
+ {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Am Kern wartet die nächste Schicht: härter, reicher, endlos.'],
+           en:['Your Goal','Drill deeper through 9 worlds to the molten core — survive bosses, weather and creatures. At the core the next layer waits: harder, richer, endless.']},
 ];
 let tutIndex=0;
 function renderTut(){const de=settings.lang!=='en',s=TUTSTEPS[tutIndex];
@@ -1342,7 +1511,7 @@ function openCompendium(from){backTo=from;hide(from);show('codexOver');buildComp
 
 /* ===================== UPDATE ===================== */
 let curDt=0.016;
-function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
+function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   let vx=0,vy=0,mag=0;const kv=kbVec();
   // smooth the stick: the drill eases into motion and coasts out of it
   const sm=Math.min(1,dt*17);
@@ -1382,7 +1551,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
    * down to your death — a mechanic whose only job was to stop you playing.
    * Now running hot is the greedy line you choose to walk, and the vent is the
    * brake you decide when to pull. Same numbers, opposite feeling. */
-  run.ovr=run.heat>OVR_FROM?Math.min(1,(run.heat-OVR_FROM)/(95-OVR_FROM)):0;
+  const ovrFrom=S.ovrFrom||OVR_FROM;
+  run.ovr=run.heat>ovrFrom?Math.min(1,(run.heat-ovrFrom)/(95-ovrFrom)):0;
   const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1+OVR_SPD*run.ovr)*(boosting?1.4:1)*evSpeed*cmul('speed');
   drilling=false;
   // radial: screen-down (vy>0) digs inward (rad decreases); up flies out
@@ -1452,7 +1622,10 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     if(laserOn){bossBeam+=dt*(bt==='tech'?2.1:1.3);
       if(Math.abs(angDiff(bossBeam,drill.ang))<0.13){run.heat=Math.min(99,run.heat+14*dt);if(rnd()<0.3)burst(W/2,DRILL_SY,P.core,2,1);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
-  const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();}
+  const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();
+    // core first: reaching it outranks a station that would land on the same metre
+    if(run.exp&&!run.exp.tierDone&&dm>=RINGS-(P.bossRings||2)-1){run.exp.tierDone=true;openDeep();}
+    else if(run.exp&&dm>=run.exp.nextZone)enterZone();}
   if(run.shockCd>0)run.shockCd=Math.max(0,run.shockCd-dt);
   if(run.boostCd>0)run.boostCd=Math.max(0,run.boostCd-dt);
   if(run.laserCd>0)run.laserCd=Math.max(0,run.laserCd-dt);
@@ -1483,7 +1656,8 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
     if(dist<S.magnet*evMag||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
-    if(dist<22){const gain=RES[dp.id].value*lootMul();run.haul+=gain;
+    if(dist<22){const rare=RES[dp.id].rar==='rare'||RES[dp.id].rar==='legendary';
+      const gain=RES[dp.id].value*lootMul()*(rare?(S.rareMul||1):1);run.haul+=gain;
       run.matsRun[dp.id]=(run.matsRun[dp.id]||0)+1;                                                 // banked on extract, lost on game over
       if(S.fuelOre)run.energy=Math.min(S.energyMax,run.energy+(2+RES[dp.id].value*0.03)*S.fuelOre);  // Brennzelle: ore refuels
       /* Say what the ore was worth. Picking up a relic and a scrap looked and
@@ -1502,9 +1676,17 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     d.y-=(d.vy||26)*dt;if(d.vy)d.vy*=1-Math.min(0.9,dt*1.6);   // loot text eases to a stop as it fades
     if(d.age>=d.life)dmgnums.splice(i,1);}
   // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
-  if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt*evSpawn){
-    const roll=rnd(),ty=(run.depthMax>60&&roll<0.32)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
-    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0,type:ty,hp:ty==='brute'?2:1});}
+  /* Deep Layers have to bite back, or "harder and richer" is only richer. Each
+     tier raises the cap, the spawn rate and the odds of the nastier species, and
+     gives brutes an extra hit point — so an endless expedition eventually kills
+     you no matter how good your build is. That ending is the point of the mode. */
+  const eT=run.exp?run.exp.tier:1;
+  const eCap=Math.min(12,6+(eT-1)*2),eRate=0.6*(1+(eT-1)*0.35);
+  if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<eCap&&rnd()<eRate*dt*evSpawn){
+    const roll=rnd(),hard=Math.min(0.55,0.32+(eT-1)*0.07);
+    const ty=(run.depthMax>60&&roll<hard)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
+    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0,type:ty,
+      hp:(ty==='brute'?2:1)+Math.floor((eT-1)/2)});}
   const drwx2=drill.rad*Math.cos(drill.ang),drwy2=drill.rad*Math.sin(drill.ang);
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.age+=dt;
     // swift creatures chase hard, brutes lumber
@@ -1854,6 +2036,19 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
         run.ovr>0.7?'#ffe14d':'#ff8a3d',Math.round(W*0.034));
       c.globalAlpha=1;}
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
+    /* Expedition readout: which layer you are on, and how far to the next
+       station. Without the countdown the Safe Zone is a surprise; with it,
+       every metre is a decision about whether you can make it. */
+    if(run.exp){const left=Math.max(0,run.exp.nextZone-run.depthMax);
+      txt(c,(settings.lang==='en'?'LAYER ':'SCHICHT ')+run.exp.tier+' · '+
+            (settings.lang==='en'?'SECTOR ':'SEKTOR ')+run.exp.zone,
+          M,y2+Math.round(W*0.055),'left','#8a5cff',Math.round(W*0.031));
+      const near=left<=3;
+      txt(c,(settings.lang==='en'?'station in ':'Station in ')+left+' m',
+          M,y2+Math.round(W*0.095),'left',near?'#39ff14':'#9a90ad',Math.round(W*0.031));
+      if(run.exp.relics.length)
+        txt(c,run.exp.relics.map(i=>{const r=relicById(i);return r?r.ic:'';}).join(''),
+            W-M,y2+Math.round(W*0.055),'right','#ffffff',Math.round(W*0.036));}
     /* The point of no return used to be invisible: fuel only pays for cutting
        rock, so climbing back up the shaft you already carved is free. New
        players never discovered that and simply died on top of their loot.
@@ -2031,6 +2226,12 @@ document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGai
   hide('treeOver');show('prestigeOver');};
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
+// --- expedition ---
+document.getElementById('btnExpedition').onclick=()=>{sfx.ui();pendingExp=true;startRun();};
+document.getElementById('btnZoneGo').onclick=leaveZone;
+document.getElementById('btnZoneOut').onclick=()=>{hide('zoneOver');extract();};
+document.getElementById('btnDeepGo').onclick=goDeeper;
+document.getElementById('btnDeepOut').onclick=()=>{hide('deepOver');extract();};
 document.getElementById('btnPrestigeCancel').onclick=()=>{sfx.ui();hide('prestigeOver');show('treeOver');buildTree(false);};
 /* Prestige and ascension wipe the whole tree — the one moment that has earned a
    proper flourish. Shockwave rings, a colour wash and what you gained, then the
