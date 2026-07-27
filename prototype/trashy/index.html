@@ -336,9 +336,10 @@
   <div class="tag" id="goReason" style="color:#ff4d4d">ÜBERHITZT</div>
   <div class="result">
     <div><b id="goDepth">0</b><span>Tiefe</span></div>
+    <div><b id="goSaved" style="color:#39ff14">0</b><span id="goSavedLbl">geborgen</span></div>
     <div><b id="goLost" style="color:#ff4d4d">0</b><span id="goLostLbl">Loot verloren</span></div>
   </div>
-  <div class="sub" id="goSub">Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.</div>
+  <div class="sub" id="goSub">Die Bergungsdrohne rettet 40 % deiner Beute. Extrahierst du selbst, behältst du alles.</div>
   <button class="big" id="btnRetry">Nochmal</button>
   <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
 </div>
@@ -473,23 +474,23 @@ let TK='A', T=THEMES.A;
 /* ===================== PLANETS (data-driven world) ===================== */
 // Skin (A/B/C) = trashy look/effects. Planet = own colour world, hardness, size, loot value.
 const PLANETS=[
- {id:'terra',  name:'TERRA',   unlock:0,    rings:26, hardMul:1.0, heatMul:1.0, valueMul:1.0,
+ {id:'terra',  name:'TERRA',   unlock:0,    rings:60, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:900,  rings:30, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
+ {id:'magmar', name:'MAGMAR',  unlock:900,  rings:68, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
- {id:'cryonis',name:'CRYONIS', unlock:4200, rings:34, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
+ {id:'cryonis',name:'CRYONIS', unlock:4200, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
- {id:'ferro',  name:'FERRO',   unlock:7500, rings:33, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
+ {id:'ferro',  name:'FERRO',   unlock:7500, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
- {id:'mechon', name:'MECHON',  unlock:13000, rings:32, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
+ {id:'mechon', name:'MECHON',  unlock:13000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:38000, rings:40, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
+ {id:'abyss',  name:'ABYSS',   unlock:38000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
- {id:'neon',   name:'NEON',    unlock:21000, rings:34, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
+ {id:'neon',   name:'NEON',    unlock:21000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
- {id:'verdant',name:'VERDANT', unlock:70000,rings:44, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
+ {id:'verdant',name:'VERDANT', unlock:70000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
- {id:'obscura',name:'OBSCURA', unlock:130000,rings:46, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
+ {id:'obscura',name:'OBSCURA', unlock:130000,rings:102, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
    ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
@@ -583,10 +584,10 @@ const L={de:{
   titleSub:'Bohr in den runden Planeten. Runter = rein, hoch = raus ins All, seitlich = herumfliegen. Fahr rechtzeitig HOME.',
   hint:'runter = rein · hoch = raus ins All<br>seitlich = um den Planeten',
   sMusic:'Musik', sSfx:'Sounds', sVibe:'Vibration', sShake:'Screen Shake',
-  goSub:'Kein Extract = kein Cash. Sprit &amp; Hitze regenerieren nicht — geh rechtzeitig HOME.',
+  goSub:'Die Bergungsdrohne rettet 40 % deiner Beute. Extrahierst du selbst, behältst du alles.',
   shopSub:'Upgrade die Rostlaube. Dann tiefer.', langBtn:'🌐 Sprache: DE',
   achUnlocked:'Erfolg freigeschaltet', dailyTitle:'Tagesziel', dailyDone:'Tagesziel geschafft!',
-  reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren',
+  reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren', lootSaved:'geborgen',
   tutTitle:'So geht\'s', tut1:'Finger unten aufsetzen & ziehen: RUNTER bohrt rein, HOCH fliegt raus, SEITLICH um den Planeten.',
   tut2:'SPRIT & HITZE regenerieren nicht! Bei leer oder 100% = Game Over. Fahr rechtzeitig HOME (⏏).',
   tut3:'Verkaufe Loot, kauf Skills im Baum, tauch tiefer. Ziel: der glühende Kern.', tutGo:'Los geht\'s', help:'❓ Tutorial'
@@ -596,10 +597,10 @@ const L={de:{
   titleSub:'Drill into the round planet. Down = in, up = out to space, sideways = fly around. Head HOME in time.',
   hint:'down = dig in · up = out to space<br>sideways = around the planet',
   sMusic:'Music', sSfx:'Sounds', sVibe:'Vibration', sShake:'Screen Shake',
-  goSub:'No extract = no cash. Fuel &amp; heat do not regen — head HOME in time.',
+  goSub:'The salvage drone recovers 40% of your haul. Extract yourself and you keep all of it.',
   shopSub:'Upgrade the rustbucket. Then deeper.', langBtn:'🌐 Language: EN',
   achUnlocked:'Achievement unlocked', dailyTitle:'Daily Goal', dailyDone:'Daily goal complete!',
-  reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost',
+  reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost', lootSaved:'salvaged',
   tutTitle:'How to play', tut1:'Touch the lower screen & drag: DOWN drills in, UP flies out, SIDEWAYS around the planet.',
   tut2:'FUEL & HEAT do not regen! Empty or 100% = Game Over. Head HOME (⏏) in time.',
   tut3:'Sell loot, buy skills in the tree, dig deeper. Goal: the glowing core.', tutGo:'Let\'s go', help:'❓ Tutorial'
@@ -743,7 +744,7 @@ const MODULES=[
 ];
 const MMAP={};MODULES.forEach(m=>MMAP[m.id]=m);
 function stats(){
-  let power=30,speed=230,energyMax=200,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
+  let power=30,speed=230,energyMax=260,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0,luck=0,fuelOre=0,combo=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
@@ -780,25 +781,35 @@ const HARD={dirt:16,stone:34,hard:64,dark:96,boss:260};
  * The dust is small on its own but makes the cash counter tick on every break,
  * and it lifts a careful first run from "can't afford anything" to "one upgrade". */
 const DUST={dirt:2,stone:4,hard:7,dark:11};
+// Field recycler ceiling: regen tops the tank up to this share, never past it.
+const REGEN_CAP=0.7;
 // Base cooling once you stop cutting. Kühlung skills add to this via coolRate.
 const HEAT_VENT=9;
 function genTile(depthM,ring,sec){
   // core guardian: the innermost rings are a super-hard boss layer with guaranteed loot
   if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul*cmul('hard');return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
+  /* Everything below scales with f = how far down THIS planet's shaft you are,
+   * not with absolute metres. The thresholds used to be hard-coded (dark rock
+   * past 18 m, relics past 20 m), which was tuned for a 26-ring world; once a
+   * shaft is 60-100 rings deep those constants would turn the whole mid-game
+   * into one uniform slab of the hardest rock with relics in every other tile.
+   * As a fraction, one curve fits every planet and the descent keeps escalating
+   * all the way down: softer and poorer up top, brutal and rich near the core. */
+  const f=depthM/Math.max(1,RINGS-1);
   let rock='dirt';
-  if(depthM>18)rock='dark';else if(depthM>11)rock='hard';else if(depthM>4)rock='stone';
+  if(f>0.62)rock='dark';else if(f>0.38)rock='hard';else if(f>0.15)rock='stone';
   const lk=Math.min(0.4,(typeof S!=='undefined'&&S&&S.luck)||0);   // Glückstreffer: more & rarer finds (capped)
   let res=null;const roll=rnd();
   if(roll<0.15+lk){
-    if(depthM>20&&rnd()<0.05+lk)res='artifact';
-    else if(depthM>13&&rnd()<0.16+lk)res='core';
-    else if(depthM>7&&rnd()<0.30+lk)res='crystal';
-    else if(depthM>3&&rnd()<0.5)res='cuprite'; else res='ferrite';}
+    if(f>0.78&&rnd()<0.05+lk)res='artifact';
+    else if(f>0.55&&rnd()<0.16+lk)res='core';
+    else if(f>0.32&&rnd()<0.30+lk)res='crystal';
+    else if(f>0.13&&rnd()<0.5)res='cuprite'; else res='ferrite';}
   // rich veins: coarse hashed clusters of better ore -> juicy pockets
-  if(!res&&depthM>5&&hash((ring/2)|0,(sec/3)|0)%1000<55){
-    res=depthM>16&&rnd()<0.25?'core':depthM>9&&rnd()<0.6?'crystal':'cuprite';}
-  const gas=depthM>3&&rnd()<(P.gasChance||0.018);
-  const cave=!gas&&depthM>8&&rnd()<(P.caveChance||0);
+  if(!res&&f>0.18&&hash((ring/2)|0,(sec/3)|0)%1000<55){
+    res=f>0.66&&rnd()<0.25?'core':f>0.40&&rnd()<0.6?'crystal':'cuprite';}
+  const gas=f>0.13&&rnd()<(P.gasChance||0.018);
+  const cave=!gas&&f>0.30&&rnd()<(P.caveChance||0);
   const hp=HARD[rock]*P.hardMul*cmul('hard');return{rock,res,gas,cave,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
 function tilePolar(ring,sec){
@@ -812,7 +823,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,ovr:0,ventT:0,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -1091,7 +1102,9 @@ function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.en
   shake=Math.max(shake,26);flash=Math.max(flash,1);hitstop=0.08;glitch=0.6;
   sfx.shock();sfx.leg();vibe([30,50,30,80,120]);burst(W/2,DRILL_SY,P.core,40,2.2);}
 // loot multiplier folds in planet, prestige and the live mining combo
-function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
+// Overdrive band: hot drill = faster bite and richer ore, up to the red line.
+const OVR_FROM=70,OVR_SPD=0.38,OVR_LOOT=0.75;
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*(1+OVR_LOOT*(run.ovr||0))*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
 
 /* ===================== RUN ===================== */
 function startRun(){S=stats();
@@ -1099,7 +1112,7 @@ function startRun(){S=stats();
   if(pendingChal){setPlanet(chalPlanet);rnd=chalRng();}   // fixed daily seed + planet
   else{setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);chalMod=null;}
   pendingChal=false;
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
@@ -1107,15 +1120,25 @@ function startRun(){S=stats();
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   document.body.classList.add('playing');   // reveal the in-run HUD/ability bar
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
+/* Losing a run used to cost 100 % of the haul. Measured, that meant a greedy
+ * player died 23 seconds in holding $175 and walked away with nothing — the
+ * fastest way to make someone delete a paid game. The salvage drone keeps
+ * SALVAGE of the haul (and the matching share of refinery ore), so a bad run
+ * still moves you forward while extracting yourself stays clearly better. */
+const SALVAGE=0.4;
 function gameOver(reason){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */
+  const saved=Math.round(run.haul*SALVAGE),lost=Math.round(run.haul)-saved;
+  meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
+  for(const k in run.matsRun){const keep=Math.floor(run.matsRun[k]*SALVAGE);if(keep>0)meta.mats[k]=(meta.mats[k]||0)+keep;}
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
-  updateDaily('depth',run.depthMax);updateDaily('runs',1);
+  updateDaily('depth',run.depthMax);updateDaily('runs',1);updateDaily('loot',saved);
   updateContracts('runDepth',run.depthMax);updateContracts('relics',run.relicsRun);updateContracts('guardians',run.guardsRun);updateContracts('bestCombo',run.maxCombo);
   if(run.challenge)recordScore();
   shake=Math.max(shake,20);flash=Math.max(flash,0.85);glitch=0.6;sfx.leg();haptic('error');
   document.getElementById('goReason').textContent=reason;
   document.getElementById('goDepth').textContent=run.depthMax;
-  document.getElementById('goLost').textContent=Math.round(run.haul);
+  document.getElementById('goSaved').textContent=saved;
+  document.getElementById('goLost').textContent=lost;
   setTimeout(()=>show('gameoverOver'),480);}
 function extract(){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
@@ -1402,7 +1425,7 @@ function applyLang(){
   set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
   set('btnRetry','retry');set('btnGoMenu','menu');set('btnSkinDone','done');
   set('btnHelp','help');if(document.getElementById('tutOver').classList.contains('show'))renderTut();
-  set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');
+  set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');set('goSavedLbl','lootSaved');
   buildSettings();updateDailyUI();}
 
 /* ===================== DAILY GOAL ===================== */
@@ -1426,7 +1449,7 @@ function updateDaily(kind,val){ensureDaily();const d=meta.daily;if(d.claimed)ret
     saveMeta();}updateDailyUI();}
 /* ===================== CONTRACTS (rolling goals w/ rewards) ===================== */
 const CONTRACTS=[
- {id:'depth', ic:'⛏️', metric:'runDepth', de:'Erreiche %T m in einem Run', en:'Reach %T m in one run',    tiers:[[40,300],[70,700],[110,1500],[160,3200]]},
+ {id:'depth', ic:'⛏️', metric:'runDepth', de:'Erreiche %T m in einem Run', en:'Reach %T m in one run',    tiers:[[30,300],[55,700],[85,1500],[120,3200]]},
  {id:'loot',  ic:'💰', metric:'runLoot',  de:'Verdiene %T $ in einem Run', en:'Earn %T $ in one run',      tiers:[[1500,400],[5000,900],[12000,2000],[30000,4500]]},
  {id:'relic', ic:'🟣', metric:'relics',   de:'Finde %T Relikte',           en:'Find %T relics',            tiers:[[3,500],[8,1200],[18,2600]]},
  {id:'guard', ic:'💠', metric:'guardians',de:'Besiege %T Kern-Wächter',    en:'Defeat %T Core Guardians',  tiers:[[3,600],[8,1500],[16,3200]]},
@@ -1617,8 +1640,10 @@ const TUTSTEPS=[
            en:['Controls','Touch the lower screen and drag: DOWN drills in, UP flies out to space, SIDEWAYS orbits the planet.']},
  {ic:'🔥', de:['Sprit & Hitze','Beides verbraucht sich NUR beim Bohren. Lässt du los, kühlt der Bohrer ab. Leerer Tank oder 100 % Hitze = Run vorbei.'],
            en:['Fuel & Heat','Both are spent ONLY while cutting rock. Ease off and the drill cools down. Empty tank or 100% heat ends the run.']},
- {ic:'⏏', de:['Der Rückweg ist gratis','Hochfahren durch deinen eigenen Schacht kostet nichts. Wird es eng: sofort HOCH und mit ⏏ extrahieren — nur extrahierte Beute wird zu Cash.'],
-           en:['Going back up is free','Climbing your own shaft costs nothing. When it gets tight: go UP and extract with ⏏ — only extracted loot becomes cash.']},
+ {ic:'⚡', de:['Overdrive','Ab 70 % Hitze bohrst du schneller und Erz wird deutlich mehr wert — je heißer, desto besser. Bei 100 % ist der Run vorbei. Das ist die Gier-Entscheidung des Spiels.'],
+           en:['Overdrive','Past 70% heat you cut faster and ore is worth far more — the hotter the better. At 100% the run is over. That trade is the heart of the game.']},
+ {ic:'⏏', de:['Der Rückweg ist gratis','Hochfahren durch deinen eigenen Schacht kostet nichts. Extrahiere mit ⏏ und du behältst alles. Stirbst du, rettet die Bergungsdrohne nur 40 %.'],
+           en:['Going back up is free','Climbing your own shaft costs nothing. Extract with ⏏ and you keep everything. Die, and the salvage drone recovers just 40%.']},
  {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
            en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
  {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Viel Erfolg!'],
@@ -1697,7 +1722,13 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     if(et==='frost'){evSpeed=0.55;evHeat=0;}else if(et==='magma')evHeat=2.2;
     else if(et==='surge')evMag=0;else if(et==='spore')evSpawn=3;}
   if(run.frostT>0)evSpeed=Math.min(evSpeed,0.5);
-  const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1)*(boosting?1.4:1)*evSpeed*cmul('speed');
+  /* OVERDRIVE: past 70 % the drill bites harder and ore is worth more, scaling
+   * all the way to the red line. Heat used to be nothing but a clock counting
+   * down to your death — a mechanic whose only job was to stop you playing.
+   * Now running hot is the greedy line you choose to walk, and the vent is the
+   * brake you decide when to pull. Same numbers, opposite feeling. */
+  run.ovr=run.heat>OVR_FROM?Math.min(1,(run.heat-OVR_FROM)/(95-OVR_FROM)):0;
+  const throttled=run.heat>=95,spd=S.speed*(throttled?0.35:1+OVR_SPD*run.ovr)*(boosting?1.4:1)*evSpeed*cmul('speed');
   drilling=false;
   // radial: screen-down (vy>0) digs inward (rad decreases); up flies out
   moveRadial(-vy*mag*spd*dt);
@@ -1707,7 +1738,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
-  if(drilling){run.energy-=(5+S.power/22)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
+  if(drilling){run.energy-=(3.4+S.power/22)*(1+0.5*run.ovr)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
     // continuous drilling rumble — stronger the faster you go
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
@@ -1726,7 +1757,13 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     run.ventT=(run.ventT||0)+dt;
     const ramp=1+Math.min(1.6,run.ventT*1.3);
     if(run.heat>0)run.heat=Math.max(0,run.heat-(HEAT_VENT+S.coolRate*0.55)*ramp*dt);
-    if(S.energyRegen>0)run.energy=Math.min(S.energyMax,run.energy+S.energyRegen*dt);
+    /* The recycler tops you up to REGEN_CAP of the tank and no further. Left
+       uncapped it refilled a full tank in the field in under a minute, which
+       quietly deleted the only reason to ever go home: fuel stopped being a
+       budget and became scenery. Capped, it buys you one more push and still
+       makes the surface the only place to fill right up. */
+    if(S.energyRegen>0){const lim=S.energyMax*REGEN_CAP;
+      if(run.energy<lim)run.energy=Math.min(lim,run.energy+S.energyRegen*dt);}
   }else run.ventT=0;
   // warning haptics when a budget gets critical (fires once per crossing)
   if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;haptic('warning');}else if(run.heat<84)run.warnHeat=false;
@@ -2056,9 +2093,17 @@ function draw(){scene();
   // cinematic corner vignette — gradient cached, only rebuilt on resize
   if(vignette){ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);}
   if(flash>0){ctx.fillStyle='rgba(255,255,255,'+(flash*0.5)+')';ctx.fillRect(0,0,W,H);}
-  if(run.heat>70){const v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.65);
-    const a=(run.heat-70)/30*0.5;v.addColorStop(0,'rgba(255,50,30,0)');v.addColorStop(1,'rgba(255,40,20,'+a+')');
-    ctx.fillStyle=v;ctx.fillRect(0,0,W,H);}
+  /* Overdrive glow. The old version was flat red from 70 % up, which told the
+     player one thing: you are dying. It now opens amber and only turns red as
+     you close on the red line, with a heartbeat that quickens — so the screen
+     reads "this is the good part, and it is about to stop being the good part". */
+  if(run.ovr>0){const o1=run.ovr,hb=0.86+0.14*Math.sin(performance.now()/(150-70*o1));
+    const v=ctx.createRadialGradient(W/2,H/2,H*(0.30-0.08*o1),W/2,H/2,H*0.68);
+    const r=255,g=Math.round(150-140*o1),bl=Math.round(60-45*o1),a=(0.14+0.42*o1)*hb;
+    v.addColorStop(0,'rgba('+r+','+g+','+bl+',0)');v.addColorStop(1,'rgba('+r+','+g+','+bl+','+a+')');
+    ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+    if(o1>0.25&&QUAL.ca){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(o1-0.25)*0.30*hb;
+      ctx.fillStyle='#ff8a3d';ctx.fillRect(0,0,W,H);ctx.restore();}}
   // boss shockwave ring emanating from the core
   if(run.bossWave>0){const wr=(1-run.bossWave)*Math.max(W,H)*0.6;ctx.strokeStyle=P.core;ctx.globalAlpha=run.bossWave*0.8;
     ctx.lineWidth=3;ctx.beginPath();ctx.arc(pcx,pcy,wr,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
@@ -2102,13 +2147,25 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     txt(c,'HEAT '+Math.round(run.heat)+'%'+(venting?' ▼':''),M,y2,'left',
       venting?'#8be9ff':hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
     if(venting&&hf>0.35)txt(c,settings.lang==='en'?'COOLING':'KÜHLT AB',M+Math.round(W*0.30),y2,'left','#8be9ff',Math.round(W*0.031));
+    /* Overdrive has to read as a prize, not a siren. It sits where the cooling
+       label sits, pulses, and states the loot multiplier outright — the player
+       should be able to see exactly what greed is paying them. */
+    else if(run.ovr>0.02){const op=0.7+0.3*Math.sin(performance.now()/120);
+      c.globalAlpha=op;
+      txt(c,'⚡ OVERDRIVE ×'+(1+OVR_LOOT*run.ovr).toFixed(2),M+Math.round(W*0.30),y2,'left',
+        run.ovr>0.7?'#ffe14d':'#ff8a3d',Math.round(W*0.034));
+      c.globalAlpha=1;}
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
     /* The point of no return used to be invisible: fuel only pays for cutting
        rock, so climbing back up the shaft you already carved is free. New
        players never discovered that and simply died on top of their loot.
        Now the game says it out loud the moment a budget gets tight. */
     if(run.depthMax>4){
-      const lowFuel=ef<0.3, hotNow=hf>0.72;
+      /* The heat warning starts at the red line, not at the top of the Overdrive
+         band. At 0.72 it fired while the HUD was still celebrating "OVERDRIVE
+         x1.28" two lines above — the game shouting "flee" and "push harder" at
+         the same instant. Overdrive owns 70-88 %; above that it is real panic. */
+      const lowFuel=ef<0.3, hotNow=hf>0.88;
       if(lowFuel||hotNow){
         const pulse=0.62+0.38*Math.sin(performance.now()/190);
         const col=lowFuel?'#ff8a3d':'#ff4d4d';
