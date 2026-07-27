@@ -52,6 +52,21 @@
   .over>*{flex:0 0 auto;transform:translateY(16px) scale(.985);transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .28s ease;opacity:.4;}
   .over.show{opacity:1;visibility:visible;pointer-events:auto;}
   .over.show>*{transform:none;opacity:1;}
+  /* Staggered reveal. Every child used to slide in on the exact same frame,
+     which reads as one flat sheet dropping in. Cascading them by ~45 ms makes
+     a screen feel assembled rather than pasted — and costs nothing but CSS.
+     Only the .show state is delayed, so closing a screen stays instant. */
+  .over.show>*:nth-child(1){transition-delay:.02s}
+  .over.show>*:nth-child(2){transition-delay:.06s}
+  .over.show>*:nth-child(3){transition-delay:.10s}
+  .over.show>*:nth-child(4){transition-delay:.14s}
+  .over.show>*:nth-child(5){transition-delay:.18s}
+  .over.show>*:nth-child(6){transition-delay:.22s}
+  .over.show>*:nth-child(n+7){transition-delay:.26s}
+  @media (prefers-reduced-motion:reduce){
+    .over>*{transition-duration:.01s}
+    .over.show>*{transition-delay:0s!important}
+  }
   /* the skill tree pans inside its own container and has fixed chrome */
   #treeOver{overflow:hidden;padding:0;}
   #treeOver::before,#treeOver::after{content:none;}
@@ -1095,6 +1110,10 @@ function killPart(i){const p=parts[i];parts[i]=parts[parts.length-1];parts.pop()
   if(partPool.length<400)partPool.push(p);}
 function dmgNum(x,y,v,color,crit){if(dmgnums.length>40)dmgnums.shift();
   dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
+// Loot payout text. `big` 0/1/2 = common / rare / legendary: rarer ore rises
+// slower, lives longer and is set bigger, so value reads at a glance.
+function lootNum(x,y,txt,color,big){if(dmgnums.length>40)dmgnums.shift();
+  dmgnums.push({x,y,v:txt,age:0,life:0.85+0.35*big,color,loot:true,big:big||0,vy:26+8*big});}
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
@@ -1925,14 +1944,24 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   for(let i=drops.length-1;i>=0;i--){const dp=drops[i];dp.t+=dt;
     const dwx=dp.rad*Math.cos(dp.ang),dwy=dp.rad*Math.sin(dp.ang),dist=Math.hypot(drwx-dwx,drwy-dwy);
     if(dist<S.magnet*evMag||dp.got){dp.got=true;dp.rad+=(drill.rad-dp.rad)*Math.min(1,dt*14);dp.ang+=angDiff(drill.ang,dp.ang)*Math.min(1,dt*14);}
-    if(dist<22){run.haul+=RES[dp.id].value*lootMul();
+    if(dist<22){const gain=RES[dp.id].value*lootMul();run.haul+=gain;
       run.matsRun[dp.id]=(run.matsRun[dp.id]||0)+1;                                                 // banked on extract, lost on game over
       if(S.fuelOre)run.energy=Math.min(S.energyMax,run.energy+(2+RES[dp.id].value*0.03)*S.fuelOre);  // Brennzelle: ore refuels
+      /* Say what the ore was worth. Picking up a relic and a scrap looked and
+         sounded near identical, so the whole value curve — rarity, Overdrive,
+         combo, planet multiplier — was invisible at the exact moment it paid out.
+         Rarer ore floats higher and lives longer. */
+      const rr=RES[dp.id].rar,big=rr==='legendary'?2:rr==='rare'?1:0;
+      // spawn clear of the pod and of the damage numbers, which sit on the tile
+      lootNum(W/2+(rnd()<0.5?-1:1)*(26+rnd()*14),DRILL_SY-30-rnd()*12,
+              '+$'+Math.round(gain),RES[dp.id].glow,big);
       burst(W/2,DRILL_SY,RES[dp.id].glow,7,1.1);drops.splice(i,1);}}
   // particles / dmg numbers (screen space)
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){killPart(i);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
-  for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;d.y-=26*dt;if(d.age>=d.life)dmgnums.splice(i,1);}
+  for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;
+    d.y-=(d.vy||26)*dt;if(d.vy)d.vy*=1-Math.min(0.9,dt*1.6);   // loot text eases to a stop as it fades
+    if(d.age>=d.life)dmgnums.splice(i,1);}
   // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
   if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<6&&rnd()<0.6*dt*evSpawn){
     const roll=rnd(),ty=(run.depthMax>60&&roll<0.32)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
@@ -2104,6 +2133,10 @@ function scene(){
       o.font='bold '+Math.round(14*pop)+'px monospace';
       o.lineWidth=3;o.strokeStyle='rgba(0,0,0,0.75)';
       o.strokeText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}
+    else if(d.loot){const pop=1+0.4*Math.max(0,1-d.age/0.12);
+      o.font='bold '+Math.round((11+d.big*4)*pop)+'px monospace';
+      o.lineWidth=3;o.strokeStyle='rgba(0,0,0,0.7)';
+      o.strokeText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}
     else o.font='bold 9px monospace';
     o.fillStyle=d.color;o.fillText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}
   o.globalAlpha=1;
@@ -2161,15 +2194,27 @@ function drawPod(cx,cy,S1){const o=octx,sk=curSkin();
   if(S.crit>=0.5){o.fillStyle=T.dmg;const sp=Math.max(1,rad*0.13);
     o.fillRect(-sp/2,-cs-sp*1.4,sp,sp);o.fillRect(-sp/2,cs+sp*0.4,sp,sp);
     o.fillRect(-cs-sp*1.4,-sp/2,sp,sp);o.fillRect(cs+sp*0.4,-sp/2,sp,sp);}
-  // drill teeth — count grows with drill power, length with speed
+  /* Drill teeth glow with Overdrive. The machine used to look identical at 5 %
+     and at 94 % heat, so the state you are supposed to be reading off the drill
+     was only ever on the HUD. Cold steel -> orange -> white-hot. */
   const teeth=S.power>=260?3:S.power>=120?2:1;   // pairs beyond the centre tooth
-  o.fillStyle=drilling?T.fuel:'#c8f6ff';const tw=rad*0.6;
+  const ov=run.ovr||0;
+  o.fillStyle=ov>0.02?mix(drilling?T.fuel:'#c8f6ff',ov>0.7?'#fff6d0':'#ff5a1e',Math.min(1,ov*1.25))
+                     :(drilling?T.fuel:'#c8f6ff');
+  if(ov>0.15){o.shadowColor='#ff6a1e';o.shadowBlur=rad*ov*1.2;}
+  const tw=rad*0.6;
   for(let i=-teeth;i<=teeth;i++){const t2=tw*(teeth>2?0.62:teeth>1?0.78:1);
     o.beginPath();o.moveTo(i*t2,rad);o.lineTo((i+0.5)*t2,rad+rad*imp);o.lineTo((i-0.5)*t2,rad+rad*imp);o.closePath();o.fill();}
+  o.shadowBlur=0;
   // wide-drill outriggers carve the side tiles — show the cutters doing it
   if(S.wide){o.fillStyle=drilling?T.fuel:tintc(sk.ring,0.9);
     const ow=Math.max(1,rad*0.2),oh=rad*(0.45+imp*0.25);
     o.fillRect(-rad*1.32,rad*0.5,ow,oh);o.fillRect(rad*1.12,rad*0.5,ow,oh);}
+  // crit strike: the whole chassis flares white for the length of the window
+  if(run.critFx>0){const cf=Math.min(1,run.critFx/0.26);
+    o.globalAlpha=cf*0.55;o.fillStyle='#ffe14d';o.fillRect(-rad*1.1,-rad*1.1,rad*2.2,rad*2.2);
+    o.globalAlpha=cf;o.strokeStyle='#fff6d0';o.lineWidth=Math.max(1,rad*0.16);
+    o.strokeRect(-rad*1.25,-rad*1.25,rad*2.5,rad*2.5);o.globalAlpha=1;}
   o.restore();
   // impact shock square when drilling fast
   if(drilling&&moveMag>0.4){o.strokeStyle=T.fuel;o.globalAlpha=(moveMag-0.4)*0.9;o.lineWidth=1;
