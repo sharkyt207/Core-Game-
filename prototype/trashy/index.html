@@ -540,25 +540,34 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:60, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:900,  rings:68, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno',
+ {id:'magmar', name:'MAGMAR',  unlock:900,  rings:68, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno', lava:0.06,
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
- {id:'cryonis',name:'CRYONIS', unlock:4200, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost',
+ {id:'cryonis',name:'CRYONIS', unlock:4200, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost', regrow:9,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
  {id:'ferro',  name:'FERRO',   unlock:7500, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
  {id:'mechon', name:'MECHON',  unlock:13000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:38000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void',
+ {id:'abyss',  name:'ABYSS',   unlock:38000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void', dark:1,
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
  {id:'neon',   name:'NEON',    unlock:21000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
- {id:'verdant',name:'VERDANT', unlock:70000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive',
+ {id:'verdant',name:'VERDANT', unlock:70000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive', regrow:6,
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
- {id:'obscura',name:'OBSCURA', unlock:130000,rings:102, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void',
+ {id:'obscura',name:'OBSCURA', unlock:130000,rings:102, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void', dark:1, lava:0.04,
    ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
 // short flavour lines shown in the planet-unlock cutscene [de,en]
+/* Each world's own rule, stated plainly on the planet card. A mechanic the
+   player only discovers by dying to it is not depth, it is a trap. */
+const PLANET_RULE={
+ magmar: ['🌋 Lavaadern heizen dich auf','🌋 Lava veins cook the drill'],
+ cryonis:['🧊 Dein Schacht friert wieder zu','🧊 Your shaft freezes shut again'],
+ verdant:['🌿 Ranken wachsen schnell nach','🌿 Vines regrow fast'],
+ abyss:  ['🌑 Dunkelheit — kurze Sicht','🌑 Darkness — short sight'],
+ obscura:['🌑 Dunkelheit + Lavaadern','🌑 Darkness + lava veins'],
+};
 const PLANET_TAG={
  terra:['Wo alles beginnt.','Where it all begins.'],
  magmar:['Ein Planet aus Feuer und Zorn.','A world of fire and fury.'],
@@ -889,15 +898,23 @@ function genTile(depthM,ring,sec){
   // rich veins: coarse hashed clusters of better ore -> juicy pockets
   if(!res&&f>0.18&&hash((ring/2)|0,(sec/3)|0)%1000<55){
     res=f>0.66&&rnd()<0.25?'core':f>0.40&&rnd()<0.6?'crystal':'cuprite';}
+  /* Lava veins (Magmar, Obscura): not an obstacle you can shoot, a pressure you
+     have to route around. Cutting one dumps heat straight into the drill, and
+     merely being next to one keeps cooking you — which on a heat-driven world
+     turns the Overdrive band from a choice into a place you get pushed. */
+  const lava=P.lava&&f>0.20&&rnd()<P.lava;
   const gas=f>0.13&&rnd()<(P.gasChance||0.018);
   const cave=!gas&&f>0.30&&rnd()<(P.caveChance||0);
-  const hp=HARD[rock]*P.hardMul*cmul('hard')*expHard();return{rock,res,gas,cave,hp,maxhp:hp};}
+  const hp=HARD[rock]*P.hardMul*cmul('hard')*expHard();return{rock,res,gas,cave,lava,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
+const regrow=[];   // tiles waiting to close back up (Cryonis / Verdant)
 function tilePolar(ring,sec){
   if(ring<0)return{wall:true};           // core
   if(ring>=RINGS)return null;             // space
   const k=key(ring,sec);if(world.has(k))return world.get(k);
   const depthM=(RINGS-1-ring);
+  // station rings are hollow: the cavern is already there, you just drop into it
+  if(isStationDepth(depthM)){world.set(k,null);return null;}
   const t=depthM===0?{rock:'dirt',res:null,hp:HARD.dirt*0.4*P.hardMul,maxhp:HARD.dirt*0.4*P.hardMul}:genTile(depthM,ring,sec);
   world.set(k,t);return t;}
 
@@ -1202,6 +1219,14 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
       run.haul+=140*lootMul();run.bossKills++;run.guardsRun++;meta.stats.guardian=true;meta.stats.guardianKills=(meta.stats.guardianKills||0)+1;checkAchievements();}
+    // lava vein: cutting it vents molten rock straight into the cabin
+    if(t.lava){run.heat=Math.min(99,run.heat+22-S.heatShield);burst(ps[0],ps[1],'#ffb03d',26,2.0);
+      shake=Math.max(shake,14);flash=Math.max(flash,0.35);sfx.shock();haptic('heavy');}
+    /* Regrowth (Cryonis ice, Verdant vines): the shaft you carved closes behind
+       you. Every other world lets you treat your own tunnel as a free road home;
+       here the road expires, so "how deep dare I go" stops being a fuel sum and
+       becomes a bet on time. */
+    if(P.regrow&&!t.boss)regrow.push({ring,sec,t:P.regrow,rock:t.rock});
     // gas pocket: detonates, spikes heat and blows out neighbours
     if(t.gas){run.heat=Math.min(99,run.heat+16);burst(ps[0],ps[1],T.fuel,22,1.8);
       shake=Math.max(shake,12);flash=Math.max(flash,0.4);sfx.shock();vibe([15,30]);
@@ -1321,6 +1346,14 @@ const RELICS=[
  {id:'r_prosp', ic:'🔍', c:260, de:['Prospektor','Relikte & Kerne doppelt wert'],  en:['Prospector','Relics & cores worth 2x'],  mod:S=>S.rareMul=(S.rareMul||1)*2},
  {id:'r_dust',  ic:'🪨', c:160, de:['Schürfrecht','Dreifacher Schrottstaub'],      en:['Claim Rights','Triple scrap dust'],      mod:S=>S.dustMul=(S.dustMul||1)*3},
 ];
+/* A station used to be an invisible depth trigger: you were drilling ordinary
+ * rock and a menu appeared. Now the station depths are real geography — those
+ * rings are carved open and lit, so you SEE the green band coming through the
+ * stone and can decide whether you have the fuel to reach it. */
+function isStationDepth(depthM){
+  if(!run.exp||depthM<SECTOR_FIRST)return false;
+  return (depthM-SECTOR_FIRST)%SECTOR_M===0;}
+function isStationRing(ring){return isStationDepth(RINGS-1-ring);}
 function relicById(id){return RELICS.find(r=>r.id===id);}
 function relicName(r){return (settings.lang==='en'?r.en:r.de)[0];}
 function relicDesc(r){return (settings.lang==='en'?r.en:r.de)[1];}
@@ -1359,7 +1392,7 @@ function startRun(){S=stats();
   run.energy=S.energyMax*cmul('fuel');   // recompute: relics can change the tank
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
-  drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;bossBeam=0;shake=flash=hitstop=0;
+  drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;regrow.length=0;bossBeam=0;shake=flash=hitstop=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   document.body.classList.add('playing');   // reveal the in-run HUD/ability bar
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
@@ -1413,7 +1446,7 @@ function openDeep(){run.paused=true;document.body.classList.remove('playing');
   flash=Math.max(flash,0.8);sfx.leg();haptic('epic');
   show('deepOver');}
 function goDeeper(){const e=run.exp;e.tier++;e.tierDone=false;e.zone=0;e.nextZone=SECTOR_FIRST;
-  world.clear();                                   // a fresh, harder, richer layer
+  world.clear();regrow.length=0;                   // a fresh, harder, richer layer
   drill.rad=R_SURF+120;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   run.depthMax=0;run.energy=S.energyMax;run.heat=0;run.ventT=0;
   drops.length=0;enemies.length=0;
@@ -1929,6 +1962,7 @@ function buildPlanets(){const g=document.getElementById('planetCards');g.innerHT
     const rec=meta.records[p.id]||0,de=settings.lang!=='en';
     card.innerHTML='<span class="globe" style="'+gstyle+'"></span>'+
       '<span class="pt"><b>'+p.name+'</b><span>'+(de?'Härte':'Hard')+' ×'+p.hardMul.toFixed(1)+' · Loot ×'+p.valueMul.toFixed(1)+
+        (PLANET_RULE[p.id]?'<br><i style="color:'+p.core+';font-style:normal;">'+(de?PLANET_RULE[p.id][0]:PLANET_RULE[p.id][1])+'</i>':'')+
         (rec?'<br>'+(de?'Rekord':'Record')+': '+rec+'m':'')+'</span></span>'+
       '<span class="ps" style="color:'+(sel?'#2de2e6':own?'#12d9b0':'#ffd23f')+'">'+(sel?'★ '+(de?'AKTIV':'ACTIVE'):own?(de?'WÄHLEN':'SELECT'):p.unlock+'$ 🔒')+'</span>';
     card.disabled=!own&&meta.credits<p.unlock;
@@ -1947,7 +1981,8 @@ function showCutscene(p){const de=settings.lang!=='en';
   const gl=document.getElementById('cutGlobe');gl.style.background=globe;
   gl.style.border='3px solid '+p.core;gl.style.boxShadow='inset -14px -14px 26px rgba(0,0,0,.6),0 0 46px '+p.core+'cc';
   const nm=document.getElementById('cutName');nm.textContent=p.name;nm.style.textShadow='4px 4px 0 '+p.core+',-3px -3px 0 #2de2e6';
-  document.getElementById('cutTag').textContent=PLANET_TAG[p.id]?(de?PLANET_TAG[p.id][0]:PLANET_TAG[p.id][1]):'';
+  document.getElementById('cutTag').textContent=(PLANET_TAG[p.id]?(de?PLANET_TAG[p.id][0]:PLANET_TAG[p.id][1]):'')+
+    (PLANET_RULE[p.id]?'  ·  '+(de?PLANET_RULE[p.id][0]:PLANET_RULE[p.id][1]):'');
   sfx.leg();vibe([20,40,20,60,120]);flash=Math.max(flash,0.4);show('cutOver');}
 
 /* ===================== TUTORIAL (multi-step onboarding) ===================== */
@@ -2073,6 +2108,27 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
+  /* Regrowth tick. A tile only closes if the drill is not standing in it —
+     otherwise the world would seal around you and you would be mining your way
+     out of a block you never left. Regrown rock comes back soft (55 % hp) so
+     re-cutting a path home is a cost, not a wall. */
+  if(P.regrow&&regrow.length){
+    const dr=clamp(ringOf(drill.rad),0,RINGS-1),dsec=sectorOf(drill.ang,dr);
+    for(let i=regrow.length-1;i>=0;i--){const g=regrow[i];g.t-=dt;
+      if(g.t>0)continue;
+      regrow.splice(i,1);
+      if(g.ring===dr&&g.sec===dsec)continue;                  // never seal the player in
+      if(isStationRing(g.ring))continue;                      // stations stay open
+      if(world.get(key(g.ring,g.sec))!==null)continue;         // already refilled
+      const hp=HARD[g.rock]*P.hardMul*cmul('hard')*expHard()*0.55;
+      world.set(key(g.ring,g.sec),{rock:g.rock,res:null,hp,maxhp:hp,regrown:true});
+      const pr=w2s(R_CORE+(g.ring+0.5)*TILE,(g.sec+0.5)*dsecOf(g.ring));
+      if(rnd()<0.5)burst(pr[0],pr[1],P.ground[1],3,0.8);}}
+  /* Lava you are standing next to keeps cooking you even if you never cut it. */
+  if(P.lava){const lr=clamp(ringOf(drill.rad),0,RINGS-1),ls=sectorOf(drill.ang,lr);
+    let near=0;for(const nn of neighborsOf(lr,ls)){const nt=world.get(key(nn[0],nn[1]));if(nt&&nt.lava)near++;}
+    if(near){run.heat=Math.min(99,run.heat+near*5.5*dt);
+      if(rnd()<near*0.9*dt*8)burst(W/2+(rnd()-0.5)*30,DRILL_SY+(rnd()-0.5)*24,'#ffb03d',2,1.1);}}
   /* The engine voice follows the drill instead of the drill spraying one-shots.
      It fades in while cutting, fades out the instant you ease off, and its pitch
      and filter ride Overdrive — so the machine audibly strains before the HUD
@@ -2293,6 +2349,29 @@ function scene(){
   const halfA=Math.asin(clamp((W*0.5+40)/Math.max(1,rRef),0,1))+0.20;
   for(let ring=ringLo;ring<=ringHi;ring++){const rin=R_CORE+ring*TILE,rout=rin+TILE;
     const n=secCount(ring),ds=TAU/n,curSec=sectorOf(drill.ang,ring),range=Math.min(n>>1,Math.ceil(halfA/ds)+1);
+    /* Station band: an empty ring painted as a lit corridor. It has to be
+       unmistakable from a long way off — it is the difference between "I can
+       make it" and "I am about to die two metres short of a full tank". */
+    if(isStationRing(ring)){
+      const pulse=0.5+0.5*Math.sin(performance.now()/380+ring);
+      const reached=run.exp&&(RINGS-1-ring)<=run.depthMax;
+      for(let off=-range;off<=range;off++){const sec=((curSec+off)%n+n)%n;
+        const a0=sec*ds,a1=a0+ds;
+        const q1=w2s(rout,a0),q2=w2s(rout,a1),q3=w2s(rin,a1),q4=w2s(rin,a0);
+        if(Math.max(q1[0],q2[0],q3[0],q4[0])<0||Math.min(q1[0],q2[0],q3[0],q4[0])>W)continue;
+        if(Math.max(q1[1],q2[1],q3[1],q4[1])<0||Math.min(q1[1],q2[1],q3[1],q4[1])>H)continue;
+        o.beginPath();o.moveTo(q1[0]*S1,q1[1]*S1);o.lineTo(q2[0]*S1,q2[1]*S1);
+        o.lineTo(q3[0]*S1,q3[1]*S1);o.lineTo(q4[0]*S1,q4[1]*S1);o.closePath();
+        o.globalAlpha=reached?0.10:0.16+0.10*pulse;
+        o.fillStyle=reached?'#2f6b45':'#39ff14';o.fill();o.globalAlpha=1;
+        // floor and ceiling strip lights, brighter every few sectors
+        o.strokeStyle=reached?'rgba(90,150,110,0.5)':'rgba(57,255,20,'+(0.55+0.35*pulse)+')';
+        o.lineWidth=Math.max(1,TILE*0.09*SCALEcur*S1);
+        o.beginPath();o.moveTo(q1[0]*S1,q1[1]*S1);o.lineTo(q2[0]*S1,q2[1]*S1);o.stroke();
+        o.beginPath();o.moveTo(q4[0]*S1,q4[1]*S1);o.lineTo(q3[0]*S1,q3[1]*S1);o.stroke();
+        if(!reached&&(sec&1)===0){const mx=(q1[0]+q3[0])/2*S1,my=(q1[1]+q3[1])/2*S1,ms=Math.max(1,TILE*0.14*SCALEcur*S1);
+          o.globalAlpha=0.55+0.45*pulse;o.fillStyle='#b6ffb0';o.fillRect((mx-ms/2)|0,(my-ms/2)|0,ms|0,ms|0);o.globalAlpha=1;}}
+      continue;}
     for(let off=-range;off<=range;off++){const sec=((curSec+off)%n+n)%n;
       const t=tilePolar(ring,sec);if(!t||t.wall)continue;
       const a0=sec*ds,a1=a0+ds;
@@ -2303,16 +2382,34 @@ function scene(){
       o.fillStyle=shadeFor(ring,sec,t.rock);
       o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);o.lineTo(p3[0]*S1,p3[1]*S1);o.lineTo(p4[0]*S1,p4[1]*S1);o.closePath();o.fill();
       o.strokeStyle='rgba(0,0,0,0.32)';o.lineWidth=1;o.stroke();
+      /* Anything below that wants to fill the tile must lay the quad down again
+         first. The rim-light calls beginPath() to draw its single edge, which
+         replaces the current path with a two-point line — so every later fill()
+         was silently filling that line instead of the tile. That had been
+         quietly eating the boss-tile pulse AND the damage darkening on the high
+         quality tier for as long as the rim-light has existed (on the low tier,
+         where tileDetail is off, both worked — which is why it never showed up
+         in a side-by-side). */
+      const lay=()=>{o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);
+        o.lineTo(p3[0]*S1,p3[1]*S1);o.lineTo(p4[0]*S1,p4[1]*S1);o.closePath();};
       // rim-light on the outer (surface-facing) edge -> tiles read as lit 3D strata
       if(QUAL.tileDetail){o.strokeStyle='rgba(255,255,255,0.12)';o.beginPath();o.moveTo(p1[0]*S1,p1[1]*S1);o.lineTo(p2[0]*S1,p2[1]*S1);o.stroke();}
-      if(t.boss){o.strokeStyle=P.core;o.lineWidth=2;o.stroke();o.globalAlpha=0.3+0.3*Math.sin(performance.now()/200);o.fillStyle=P.core;o.fill();o.globalAlpha=1;}
+      if(t.boss){lay();o.strokeStyle=P.core;o.lineWidth=2;o.stroke();o.globalAlpha=0.3+0.3*Math.sin(performance.now()/200);o.fillStyle=P.core;o.fill();o.globalAlpha=1;}
+      // lava veins glow and breathe — you must be able to plan a route around them
+      if(t.lava){const lp=0.45+0.35*Math.sin(performance.now()/240+ring*0.7+sec);
+        lay();o.globalAlpha=0.55+0.35*lp;o.fillStyle='#ff5a1e';o.fill();
+        o.globalAlpha=0.7*lp;o.fillStyle='#ffd23f';
+        const lx=(p1[0]+p3[0])/2*S1,ly=(p1[1]+p3[1])/2*S1,lsz=Math.max(1,TILE*0.2*SCALEcur*S1);
+        o.fillRect((lx-lsz/2)|0,(ly-lsz/2)|0,lsz|0,lsz|0);o.globalAlpha=1;}
+      // regrown rock reads as newer, paler crust so you can see the shaft closing
+      if(t.regrown){lay();o.globalAlpha=0.30;o.fillStyle=P.ground[1];o.fill();o.globalAlpha=1;}
       // granular texture (stable per tile -> rotates with the planet, no shimmer)
       if(QUAL.tileDetail){
         const hh=hash(ring*7+3,sec*13+5),gx=(p1[0]+p2[0]+p3[0]+p4[0])/4*S1,gy=(p1[1]+p2[1]+p3[1]+p4[1])/4*S1,gs=Math.max(1,TILE*0.3*SCALEcur*S1);
         o.fillStyle=tintc(P.ground[1],1.25);o.fillRect((gx+((hh>>2)%7-3)*gs*0.22)|0,(gy+((hh>>5)%7-3)*gs*0.22)|0,1,1);
         o.fillStyle=tintc(P.ground[2],0.65);o.fillRect((gx+((hh>>8)%7-3)*gs*0.22)|0,(gy+((hh>>11)%7-3)*gs*0.22)|0,1,1);
         o.fillStyle=tintc(P.ground[0],0.9);o.fillRect((gx+((hh>>14)%7-3)*gs*0.22)|0,(gy+((hh>>17)%7-3)*gs*0.22)|0,1,1);}
-      const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
+      const dmgT=1-t.hp/t.maxhp;if(dmgT>0.05){lay();o.fillStyle='rgba(0,0,0,'+(dmgT*0.5)+')';o.fill();}
       if(t.res){const R=RES[t.res],cx=(p1[0]+p3[0])/2*S1,cy=(p1[1]+p3[1])/2*S1,s=Math.max(2,TILE*0.24*SCALEcur*S1);
         o.fillStyle=R.color;o.beginPath();o.moveTo(cx,cy-s);o.lineTo(cx+s,cy);o.lineTo(cx,cy+s);o.lineTo(cx-s,cy);o.closePath();o.fill();
         o.fillStyle=R.glow;o.beginPath();o.moveTo(cx,cy-s*0.55);o.lineTo(cx+s*0.4,cy-s*0.05);o.lineTo(cx-s*0.15,cy+s*0.2);o.closePath();o.fill();
@@ -2480,6 +2577,16 @@ function draw(){scene();
   if(QUAL.noise&&T.noise>0){ctx.globalAlpha=T.noise;for(let i=0;i<55;i++){ctx.fillStyle=Math.random()<0.5?'#fff':'#000';
     ctx.fillRect((Math.random()*W)|0,(Math.random()*H)|0,PIX,PIX);}ctx.globalAlpha=1;}
   if(T.tint){ctx.globalCompositeOperation='overlay';ctx.fillStyle=T.tint;ctx.globalAlpha=0.08;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';}
+  /* ABYSS / OBSCURA: the dark. Your lamp only reaches so far, and it reaches
+     less the deeper you go. It changes how the world is played rather than how
+     it looks — ore you cannot see is ore you drive past, so these worlds reward
+     the magnet and the sensor skills that are merely nice everywhere else. */
+  if(P.dark&&run.active){
+    const deep=Math.min(1,run.depthMax/Math.max(8,RINGS*0.75));
+    const lamp=Math.max(H*0.14,H*(0.42-0.20*deep))*(1+0.03*Math.sin(performance.now()/520));
+    const v=ctx.createRadialGradient(W/2,DRILL_SY,lamp*0.35,W/2,DRILL_SY,lamp);
+    v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(0.72,'rgba(0,0,0,0.55)');v.addColorStop(1,'rgba(0,0,0,0.93)');
+    ctx.fillStyle=v;ctx.fillRect(0,0,W,H);}
   // cinematic corner vignette — gradient cached, only rebuilt on resize
   if(vignette){ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);}
   if(flash>0){ctx.fillStyle='rgba(255,255,255,'+(flash*0.5)+')';ctx.fillRect(0,0,W,H);}
