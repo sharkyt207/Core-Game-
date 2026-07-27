@@ -823,7 +823,7 @@ function tilePolar(ring,sec){
 /* ===================== STATE ===================== */
 let S=stats();
 let POW=S.power;                                 // effective drill power (boost-modulated)
-const run={active:false,ovr:0,ventT:0,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
+const run={active:false,ovr:0,ventT:0,ovrOn:false,critT:0,critMul:1,critFx:0,depthMax:0,haul:0,energy:S.energyMax,heat:0,shockCd:0,boostT:0,boostCd:0,laserCd:0,magCd:0,tpCd:0,freezeT:0,freezeCd:0,nukeCd:0,combo:0,comboT:0,maxCombo:0,relicsRun:0,guardsRun:0,frostT:0,event:null,eventCd:0,matsRun:{},challenge:false,bossPulseT:0,bossWave:0,bossKills:0,inBoss:false};
 const drill={rad:R_SURF+300,ang:0,face:Math.PI/2};
 const drops=[],parts=[],dmgnums=[],enemies=[];
 let bossBeam=0;
@@ -927,19 +927,70 @@ function blip(f,dur,type,vol,slide,atk,send){if(!settings.sfx)return;const a=aud
   o.connect(g);g.connect(a._master);
   if(send!==0){const sg=a.createGain();sg.gain.value=send||0.5;g.connect(sg);sg.connect(a._revIn);}
   o.start(t0);o.stop(t0+dur+0.03);}
-function noise(dur,vol){if(!settings.sfx)return;const a=audio();if(!a||!a._master)return;
-  const n=a.createBuffer(1,(a.sampleRate*dur)|0,a.sampleRate),d=n.getChannelData(0);
+/* Noise with a filter and a reverb send. Unfiltered white noise is the single
+ * cheapest-sounding thing in a game — it made a dirt clod and a shattering slab
+ * of dark rock the exact same hiss. `cut` picks the filter corner: low values
+ * give a body-thud, high values a bright shatter. */
+function noise(dur,vol,cut,send){if(!settings.sfx)return;const a=audio();if(!a||!a._master)return;
+  const n=a.createBuffer(1,Math.max(1,(a.sampleRate*dur)|0),a.sampleRate),d=n.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
   const s=a.createBufferSource(),g=a.createGain();s.buffer=n;g.gain.value=vol||0.08;
-  s.connect(g);g.connect(a._master);s.start();}
+  if(cut){const f=a.createBiquadFilter();f.type=cut<0?'highpass':'lowpass';f.frequency.value=Math.abs(cut);f.Q.value=0.8;
+    s.connect(f);f.connect(g);}else s.connect(g);
+  g.connect(a._master);
+  if(send){const sg=a.createGain();sg.gain.value=send;g.connect(sg);sg.connect(a._revIn);}
+  s.start();}
+/* The drill engine: one continuous voice that lives for the whole run instead of
+ * a machine-gun of one-shots. It tracks Overdrive, so pushing into the red band
+ * is something you HEAR straining before you read it on the HUD. */
+let _eng=null,_engDead=false;
+function engine(){if(_engDead)return null;const a=audio();if(!a||!a._master)return null;
+  // Audio must never be able to take the run down with it: any missing node type
+  // on an old WebView degrades to "no engine hum", not a crash mid-descent.
+  if(!_eng)try{const o=a.createOscillator(),o2=a.createOscillator(),f=a.createBiquadFilter(),g=a.createGain();
+    o.type='sawtooth';o.frequency.value=54;o2.type='square';o2.frequency.value=27;
+    f.type='lowpass';f.frequency.value=380;f.Q.value=6;
+    g.gain.value=0;o.connect(f);o2.connect(f);f.connect(g);g.connect(a._master);
+    o.start();o2.start();
+    _eng={o,o2,f,g};}catch(e){_engDead=true;return null;}
+  return _eng;}
+function engineSet(level,ovr){const a=audio();if(!a)return;const e=engine();if(!e)return;
+  const t=a.currentTime,on=settings.sfx?level:0;
+  e.g.gain.setTargetAtTime(on*(0.05+0.075*ovr),t,0.08);
+  e.o.frequency.setTargetAtTime(54+46*ovr,t,0.12);          // pitch climbs as it strains
+  e.o2.frequency.setTargetAtTime(27+23*ovr,t,0.12);
+  e.f.frequency.setTargetAtTime(380+1500*ovr,t,0.1);}       // and opens up into a snarl
 // Small random detune on repeated sounds: identical playback is the single
 // biggest giveaway of a cheap-sounding game.
 const vary=(f,amt)=>f*(1+(Math.random()-0.5)*(amt||0.06));
-const sfx={tick:()=>noise(0.03,0.05),
-  brk:()=>{blip(vary(190,0.3),0.11,'square',0.11,85,0.004,0.35);blip(vary(64,0.3),0.14,'sine',0.09,40,0.002,0.2);noise(0.05,0.05);},
+// Each rock type gets its own break: [pitch, filter corner, body gain].
+// Dirt crumbles dull and low, dark rock shatters bright and ringing.
+const ROCKSND={dirt:[150,900,0.10],stone:[190,1800,0.11],hard:[240,3200,0.12],dark:[300,5200,0.13],boss:[110,6000,0.16]};
+const sfx={tick:()=>noise(0.03,0.04,1400),
+  brk:(rock)=>{const r=ROCKSND[rock]||ROCKSND.stone;
+    blip(vary(r[0],0.3),0.11,'square',r[2],r[0]*0.45,0.004,0.35);
+    blip(vary(r[0]*0.34,0.3),0.14,'sine',0.09,r[0]*0.2,0.002,0.2);
+    noise(0.05,0.05,r[1],0.15);},
+  /* Crit: a bright metallic strike layered over the break. Scales with how many
+     crit multiples landed, so a triple crit sounds unmistakably bigger. */
+  crit:(hits)=>{const n=Math.min(3,hits||1);
+    blip(vary(880+180*n,0.04),0.09,'square',0.10+0.02*n,vary(1900+400*n),0.001,0.5);
+    blip(vary(1760+360*n,0.04),0.06,'triangle',0.06,null,0.001,0.6);
+    noise(0.05,0.05+0.02*n,-2600,0.3);},
+  /* Extraction: the most rewarding moment in the game used to play the same
+     click as a menu button. Now it is a rising major arpeggio with a bass drop
+     under it — the sound the player is actually working toward. */
+  extract:()=>{[523.25,659.25,783.99,1046.5].forEach((f,i)=>setTimeout(()=>{
+      blip(f,0.5,'triangle',0.13,null,0.008,0.75);
+      blip(f*2,0.34,'sine',0.05,null,0.004,0.8);},i*85));
+    blip(130.81,0.8,'sine',0.13,65,0.01,0.4);
+    setTimeout(()=>noise(0.5,0.05,-1800,0.6),340);},
+  // Entering the Overdrive band: one warning snarl, so the state has an onset.
+  ovr:()=>{blip(vary(150,0.03),0.30,'sawtooth',0.11,330,0.006,0.45);
+           noise(0.22,0.06,700,0.3);},
   rare:()=>{blip(vary(520),0.11,'triangle',0.16,null,0.01);setTimeout(()=>blip(vary(780),0.13,'triangle',0.18,null,0.01),90);},
   leg:()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>{blip(f,0.24,'sawtooth',0.14,null,0.01,0.7);blip(f*1.5,0.24,'sine',0.05,null,0.02);},i*100));},
-  shock:()=>{blip(90,0.4,'sawtooth',0.2,1200,0.002,0.6);noise(0.3,0.12);},
+  shock:()=>{blip(90,0.4,'sawtooth',0.2,1200,0.002,0.6);noise(0.3,0.12,900,0.45);},
   // UI: a short two-layer click — body + a bright tick on top, slightly detuned
   ui:()=>{blip(vary(660,0.05),0.045,'square',0.075,null,0.002,0.2);
           blip(vary(1750,0.05),0.028,'sine',0.045,null,0.001,0.15);},
@@ -978,25 +1029,53 @@ function haptic(kind){if(!settings.vibe)return;
   vibe(h.web);}
 // Procedural background music — layered (bass + pad + arp), state-aware:
 // calm ambience on the menus, driving as you dig, tense in the boss layer.
-let musicTimer=null,beat=0;
-function musicRoot(){const r=[110,98,130.81,146.83,87.31];return r[Math.max(0,PLANETS.indexOf(P))%5];}
+let musicTimer=null,beat=0,musicRate=430;
+/* Each planet gets its own key AND its own colour: nine worlds used to share
+ * five root notes and one identical arrangement, so "area music" was really one
+ * track transposed. [root, pad wave, lead wave, minor-third?] gives each world a
+ * recognisable mood — Cryonis glassy and bright, Abyss low and detuned. */
+const PLANET_SND={
+  terra:  [110,   'sine',    'triangle', 1],
+  magmar: [ 98,   'sawtooth','square',   1],
+  cryonis:[146.83,'sine',    'sine',     0],
+  ferro:  [ 87.31,'triangle','sawtooth', 1],
+  mechon: [130.81,'square',  'square',   0],
+  neon:   [123.47,'sawtooth','triangle', 0],
+  abyss:  [ 73.42,'sine',    'sawtooth', 1],
+  verdant:[103.83,'triangle','sine',     0],
+  obscura:[ 82.41,'sawtooth','sawtooth', 1],
+};
+function planetSnd(){return PLANET_SND[P.id]||PLANET_SND.terra;}
+function musicRoot(){return planetSnd()[0];}
 function musicTick(){if(!settings.music)return;const a=audio();if(!a||!a._master)return;
   const rt=musicRoot(),inRun=run.active,boss=inRun&&run.inBoss;
+  const snd=planetSnd(),padW=snd[1],leadW=snd[2],third=snd[3]?1.189:1.26;  // minor vs major colour
   if(!inRun){                                   // menu ambience — sparse, warm pad
-    if((beat&3)===0){blip(rt,1.7,'sine',0.05,null,0.4);blip(rt*1.5,1.7,'sine',0.032,null,0.5);}
+    if((beat&3)===0){blip(rt,1.7,padW,0.05,null,0.4);blip(rt*1.5,1.7,'sine',0.032,null,0.5);}
     if((beat&7)===4)blip(rt*3,1.0,'triangle',0.02,null,0.35);
     beat++;return;
   }
-  const dT=Math.min(1,run.depthMax/40),root=[rt,rt,rt*1.335,rt*1.19][beat&3];
+  /* Intensity scales with progress through THIS shaft. It used to be
+     depthMax/40 — tuned for a 26-ring world, so on a 102-ring planet the score
+     hit full intensity a third of the way down and then flatlined for the rest
+     of the descent, exactly where it should be building. */
+  const dT=Math.min(1,run.depthMax/Math.max(8,RINGS*0.8));
+  const root=[rt,rt,rt*1.335,rt*third][beat&3];
   blip(root/2,0.55,'triangle',0.06,null,0.02,0.3);          // bass pulse
-  if((beat&1)===0){blip(root,0.6,'sine',0.035,null,0.1,0.5);blip(root*1.5,0.6,'sine',0.024,null,0.12,0.5);}  // pad chord
-  if((beat&1)===0)noise(0.03,0.045);                        // soft hat
-  if(dT>0.3&&(beat&3)===2)blip(root*3,0.22,'sawtooth',0.02+dT*0.03,null,0.01,0.5); // arp
-  if(dT>0.6&&(beat&1))blip(root*4,0.12,'square',0.015+dT*0.02,null,0.005);         // lead sparkle
-  if(boss){blip(rt*1.5,0.15,'sawtooth',0.06,null,0.005,0.4);if((beat&1)===0)blip(rt*0.5,0.45,'square',0.05,null,0.01);noise(0.05,0.04);}
-  beat++;}
+  if((beat&1)===0){blip(root,0.6,padW,0.035,null,0.1,0.5);blip(root*third,0.6,'sine',0.024,null,0.12,0.5);}  // pad chord
+  if((beat&1)===0)noise(0.03,0.045,-3000,0.25);             // soft hat
+  if(dT>0.3&&(beat&3)===2)blip(root*3,0.22,leadW,0.02+dT*0.03,null,0.01,0.5);      // arp
+  if(dT>0.6&&(beat&1))blip(root*4,0.12,leadW,0.015+dT*0.02,null,0.005);            // lead sparkle
+  // Overdrive drops a hard off-beat kick under everything — the score joins in
+  if(run.ovr>0.25){blip(rt*0.5,0.16,'square',0.05+0.05*run.ovr,rt*0.25,0.002,0.15);
+    if(beat&1)noise(0.04,0.03+0.03*run.ovr,-2200,0.2);}
+  if(boss){blip(rt*1.5,0.15,'sawtooth',0.06,null,0.005,0.4);if((beat&1)===0)blip(rt*0.5,0.45,'square',0.05,null,0.01);noise(0.05,0.04,600,0.4);}
+  beat++;
+  // tempo rides depth and Overdrive: the deeper and hotter you are, the harder it drives
+  const want=Math.round(430-150*dT-70*run.ovr);
+  if(musicTimer&&want!==musicRate){musicRate=want;clearInterval(musicTimer);musicTimer=setInterval(musicTick,want);}}
 function ensureMusic(){if(musicTimer)return;const a=audio();if(!a)return;if(a.state==='suspended')a.resume();
-  musicTimer=setInterval(musicTick,430);}
+  musicRate=430;musicTimer=setInterval(musicTick,musicRate);}
 function startMusic(){ensureMusic();}
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
 
@@ -1014,7 +1093,8 @@ function burst(x,y,color,n,spd){const cap=QUAL.parts;
     parts.push(p);}}
 function killPart(i){const p=parts[i];parts[i]=parts[parts.length-1];parts.pop();
   if(partPool.length<400)partPool.push(p);}
-function dmgNum(x,y,v,color){if(dmgnums.length>40)dmgnums.shift();dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:0.7,color});}
+function dmgNum(x,y,v,color,crit){if(dmgnums.length>40)dmgnums.shift();
+  dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
@@ -1025,11 +1105,12 @@ function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false
 let tickAcc=0,chainGuard=0;
 function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return false;t.hp-=dmg;
   const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*dsecOf(ring),ps=w2s(rad_c,ang_c);
-  tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,T.dmg);tickAcc=0;}
+  const critNow=(run.critMul||1)>1;
+  tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,critNow?'#ffe14d':T.dmg,critNow);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     run.combo=Math.min(99,run.combo+1);run.comboT=1.5;if(run.combo>run.maxCombo)run.maxCombo=run.combo;  // streak (loot bonus only with Kombo-Meister)
-    sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
+    sfx.brk(t.rock);vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
     const dust=DUST[t.rock];if(dust){run.haul+=dust*lootMul();
       if(rnd()<0.55)burst(ps[0],ps[1],RES.ferrite.glow,2,0.7);}   // a glint, so the payout is visible
     // core guardian broken: big payoff
@@ -1112,7 +1193,7 @@ function startRun(){S=stats();
   if(pendingChal){setPlanet(chalPlanet);rnd=chalRng();}   // fixed daily seed + planet
   else{setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);chalMod=null;}
   pendingChal=false;
-  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;
+  run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;run.ovrOn=false;run.critT=0;run.critMul=1;run.critFx=0;
   run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
@@ -1126,7 +1207,7 @@ function startRun(){S=stats();
  * SALVAGE of the haul (and the matching share of refinery ore), so a bad run
  * still moves you forward while extracting yourself stays clearly better. */
 const SALVAGE=0.4;
-function gameOver(reason){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */
+function gameOver(reason){if(!run.active)return;run.active=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
   const saved=Math.round(run.haul*SALVAGE),lost=Math.round(run.haul)-saved;
   meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
   for(const k in run.matsRun){const keep=Math.floor(run.matsRun[k]*SALVAGE);if(keep>0)meta.mats[k]=(meta.mats[k]||0)+keep;}
@@ -1140,7 +1221,7 @@ function gameOver(reason){if(!run.active)return;run.active=false;document.body.c
   document.getElementById('goSaved').textContent=saved;
   document.getElementById('goLost').textContent=lost;
   setTimeout(()=>show('gameoverOver'),480);}
-function extract(){if(!run.active)return;run.active=false;document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
+function extract(){if(!run.active)return;run.active=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   for(const k in run.matsRun)meta.mats[k]=(meta.mats[k]||0)+run.matsRun[k];   // bank refinery ore on success
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
@@ -1150,7 +1231,7 @@ function extract(){if(!run.active)return;run.active=false;document.body.classLis
   document.getElementById('rDepth').textContent=run.depthMax;
   document.getElementById('rHaul').textContent=Math.round(run.haul);
   document.getElementById('rCredits').textContent=meta.credits;
-  show('shopOver');sfx.ui();vibe([10,20,40]);}
+  show('shopOver');sfx.extract();haptic('epic');}
 
 /* ability buttons appear only once the matching skill is unlocked */
 function updateAbilityButtons(){const a=stats().abilities;
@@ -1236,7 +1317,7 @@ function skillEffLines(s){const de=settings.lang!=='en',e=s.eff||{},L=[];
   if(e.dc)L.push('+'+e.dc+' '+(de?'Kühlung':'cooling'));
   add(e.dm,'Magnet-Reichweite','magnet range');
   if(e.dv)L.push('+'+Math.round(e.dv*100)+'% '+(de?'Loot-Wert':'loot value'));
-  if(e.crit)L.push('+'+Math.round(e.crit*100)+'% '+(de?'Kritisch':'crit'));
+  if(e.crit)L.push('+'+Math.round(e.crit*100)+'% '+(de?'Krit-Chance (×2 Schaden)':'crit chance (x2 damage)'));
   if(e.luck)L.push('+'+Math.round(e.luck*100)+'% '+(de?'Fundchance':'find chance'));
   if(e.chain)L.push(de?'Kettenreaktion +1 Stufe':'chain reaction +1 level');
   if(e.drone)L.push('+'+e.drone+' '+(de?'Drohne(n)':'drone(s)'));
@@ -1521,7 +1602,7 @@ function toggleModule(id){const s=modSlotIdx(id);
 function effStr(e){const de=settings.lang!=='en';const p=[];
   if(e.dp)p.push('+'+e.dp+' '+(de?'Bohr':'Pow'));if(e.ds)p.push('+'+e.ds+' '+(de?'Speed':'Spd'));
   if(e.de)p.push('+'+e.de+' '+(de?'Sprit':'Fuel'));if(e.dh)p.push('−'+e.dh+' '+(de?'Hitze':'Heat'));
-  if(e.dm)p.push('+'+e.dm+' '+(de?'Magnet':'Mag'));if(e.crit)p.push('+'+Math.round(e.crit*100)+'% Krit');
+  if(e.dm)p.push('+'+e.dm+' '+(de?'Magnet':'Mag'));if(e.crit)p.push('+'+Math.round(e.crit*100)+'% '+(de?'Krit':'crit'));
   if(e.dv)p.push('+'+Math.round(e.dv*100)+'% Loot');if(e.luck)p.push('+'+Math.round(e.luck*100)+'% '+(de?'Glück':'Luck'));
   if(e.drone)p.push('+1 '+(de?'Drohne':'Drone'));return p.join(' · ');}
 function buildModules(){const de=settings.lang!=='en',used=meta.slots.filter(x=>x).length;
@@ -1713,7 +1794,23 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   if(input.smag>0.004){vx=input.sdx;vy=input.sdy;mag=input.smag;const d=Math.hypot(vx,vy)||1;vx/=d;vy/=d;}
   else if(kv){vx=kv.dx;vy=kv.dy;mag=1;}
   run.boostT=Math.max(0,run.boostT-dt);
-  const boosting=run.boostT>0;POW=S.power*(1+S.crit)*(boosting?2.6:1);
+  /* REAL CRITS. `crit` used to be a flat, permanent, invisible damage multiplier
+   * (POW = power × (1 + crit)) while every label in the game promised the player
+   * "+50 % Kritisch" — a mechanic that was advertised and never actually happened.
+   * Now it is rolled on a 0.26 s cadence: each whole point of crit is one extra
+   * damage multiple, the fraction is the chance of one more. Expected damage over
+   * time is identical to the old constant (E[1+hits] = 1+crit), so nothing in the
+   * balance moves — but crits now land as events you see, hear and feel.
+   * The cadence matters: rolling per frame at 60 fps would be a strobe, not a hit. */
+  run.critT=(run.critT||0)-dt;
+  if(run.critT<=0){run.critT=0.26;
+    const c=S.crit,g=Math.floor(c),hits=g+(rnd()<c-g?1:0);
+    run.critMul=1+hits;
+    if(hits>0&&drilling){run.critFx=0.26;sfx.crit(hits);haptic(hits>1?'heavy':'medium');
+      shake=Math.max(shake,3.5+hits*2.2);}
+  }
+  if(run.critFx>0)run.critFx=Math.max(0,run.critFx-dt);
+  const boosting=run.boostT>0;POW=S.power*(boosting?2.6:1)*(run.critMul||1);
   // impact factor: faster movement (incl. Speed-Skills & Boost) = harder hit on the planet
   moveMag=Math.min(1,mag*(boosting?1.5:1)*(0.7+S.speed/700));
   // weather-event modifiers
@@ -1738,7 +1835,15 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
   moveAngular(dAng);
   if(mag>0.05){drill.face=Math.atan2(vy,vx);}
   // FUEL & HEAT are a one-way budget per run — no regen, no cooling.
-  if(drilling){run.energy-=(3.4+S.power/22)*(1+0.5*run.ovr)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.5)sfx.tick();
+  /* The engine voice follows the drill instead of the drill spraying one-shots.
+     It fades in while cutting, fades out the instant you ease off, and its pitch
+     and filter ride Overdrive — so the machine audibly strains before the HUD
+     has to tell you anything. */
+  engineSet(drilling?Math.min(1,0.45+moveMag*0.55):0,run.ovr);
+  // one snarl on crossing INTO the Overdrive band, so the state has an onset
+  if(run.ovr>0.02&&!run.ovrOn){run.ovrOn=true;sfx.ovr();haptic('heavy');}
+  else if(run.ovr<=0.001&&run.ovrOn)run.ovrOn=false;
+  if(drilling){run.energy-=(3.4+S.power/22)*(1+0.5*run.ovr)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.35)sfx.tick();
     // continuous drilling rumble — stronger the faster you go
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
@@ -1840,7 +1945,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     const ewx=e.rad*Math.cos(e.ang),ewy=e.rad*Math.sin(e.ang),ed=Math.hypot(drwx2-ewx,drwy2-ewy);
     if(ed<26){
       if(drilling||run.boostT>0){                         // hit it back
-        e.hp--;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk();vibe(8);
+        e.hp--;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk('hard');vibe(8);
         if(e.hp<=0){run.haul+=(e.type==='brute'?44:22)*lootMul();if(e.type==='brute')meta.stats.bruteKill=true;enemies.splice(i,1);continue;}
         e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.4;           // brute survives one hit, knocked back
       }else{                                               // it bites you
@@ -1991,8 +2096,17 @@ function scene(){
   // drill pod
   drawPod(W/2*S1,DRILL_SY*S1,S1);
   // dmg numbers
-  o.textAlign='center';o.textBaseline='middle';o.font='bold 9px monospace';
-  for(const d of dmgnums){const a=1-d.age/d.life;o.globalAlpha=a;o.fillStyle=d.color;o.fillText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}o.globalAlpha=1;
+  o.textAlign='center';o.textBaseline='middle';
+  /* Crit numbers are bigger, punch outward on impact, and carry a dark outline
+     so they stay legible over bright rock. A crit you cannot read is not a crit. */
+  for(const d of dmgnums){const a=1-d.age/d.life;o.globalAlpha=a;
+    if(d.crit){const pop=1+0.55*Math.max(0,1-d.age/0.13);
+      o.font='bold '+Math.round(14*pop)+'px monospace';
+      o.lineWidth=3;o.strokeStyle='rgba(0,0,0,0.75)';
+      o.strokeText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}
+    else o.font='bold 9px monospace';
+    o.fillStyle=d.color;o.fillText(''+d.v,(d.x*S1)|0,(d.y*S1)|0);}
+  o.globalAlpha=1;
   o.restore();
 }
 function drawPod(cx,cy,S1){const o=octx,sk=curSkin();
