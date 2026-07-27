@@ -298,7 +298,7 @@ const MODULES=[
 ];
 const MMAP={};MODULES.forEach(m=>MMAP[m.id]=m);
 function stats(){
-  let power=30,speed=230,energyMax=140,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
+  let power=30,speed=230,energyMax=200,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0,luck=0,fuelOre=0,combo=0;const abilities={};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
@@ -329,6 +329,14 @@ const RES={
   artifact:{name:'Relic',color:'#8a5cff',glow:'#e6d8ff',value:520,rar:'legendary'},
 };
 const HARD={dirt:16,stone:34,hard:64,dark:96,boss:260};
+/* Scrap dust: every block you break pays a little, scaled by how hard it was.
+ * Only ~1 tile in 10 carries real ore, so without this nine out of ten swings
+ * gave the player nothing at all — the single emptiest thing about the loop.
+ * The dust is small on its own but makes the cash counter tick on every break,
+ * and it lifts a careful first run from "can't afford anything" to "one upgrade". */
+const DUST={dirt:2,stone:4,hard:7,dark:11};
+// Base cooling once you stop cutting. Kühlung skills add to this via coolRate.
+const HEAT_VENT=9;
 function genTile(depthM,ring,sec){
   // core guardian: the innermost rings are a super-hard boss layer with guaranteed loot
   if(ring<(P.bossRings||2)){const bhp=HARD.boss*P.hardMul*cmul('hard');return{rock:'boss',res:ring===0?'artifact':'core',boss:true,hp:bhp,maxhp:bhp};}
@@ -566,6 +574,8 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     run.combo=Math.min(99,run.combo+1);run.comboT=1.5;if(run.combo>run.maxCombo)run.maxCombo=run.combo;  // streak (loot bonus only with Kombo-Meister)
     sfx.brk();vibe(4);if(t.res)collectRes(t.res,rad_c,ang_c);
+    const dust=DUST[t.rock];if(dust){run.haul+=dust*lootMul();
+      if(rnd()<0.55)burst(ps[0],ps[1],RES.ferrite.glow,2,0.7);}   // a glint, so the payout is visible
     // core guardian broken: big payoff
     if(t.boss){flash=Math.max(flash,1);shake=Math.max(shake,22);glitch=0.5;sfx.leg();vibe([30,50,30,80]);
       run.haul+=140*lootMul();run.bossKills++;run.guardsRun++;meta.stats.guardian=true;meta.stats.guardianKills=(meta.stats.guardianKills||0)+1;checkAchievements();}
@@ -1160,8 +1170,10 @@ function showCutscene(p){const de=settings.lang!=='en';
 const TUTSTEPS=[
  {ic:'🕹️', de:['Steuerung','Finger unten aufsetzen und ziehen: RUNTER bohrt in den Planeten, HOCH fliegt raus ins All, SEITLICH fliegt um den Planeten.'],
            en:['Controls','Touch the lower screen and drag: DOWN drills in, UP flies out to space, SIDEWAYS orbits the planet.']},
- {ic:'🔥', de:['Sprit & Hitze','SPRIT und HITZE regenerieren nicht. Leerer Tank oder 100 % Hitze = Run vorbei. Fahr rechtzeitig HOME (⏏) und extrahiere deine Beute.'],
-           en:['Fuel & Heat','FUEL and HEAT never regenerate. Empty tank or 100% heat = run over. Head HOME (⏏) in time and extract your haul.']},
+ {ic:'🔥', de:['Sprit & Hitze','Beides verbraucht sich NUR beim Bohren. Lässt du los, kühlt der Bohrer ab. Leerer Tank oder 100 % Hitze = Run vorbei.'],
+           en:['Fuel & Heat','Both are spent ONLY while cutting rock. Ease off and the drill cools down. Empty tank or 100% heat ends the run.']},
+ {ic:'⏏', de:['Der Rückweg ist gratis','Hochfahren durch deinen eigenen Schacht kostet nichts. Wird es eng: sofort HOCH und mit ⏏ extrahieren — nur extrahierte Beute wird zu Cash.'],
+           en:['Going back up is free','Climbing your own shaft costs nothing. When it gets tight: go UP and extract with ⏏ — only extracted loot becomes cash.']},
  {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
            en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
  {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Viel Erfolg!'],
@@ -1255,6 +1267,22 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active)return;
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
       if(rnd()<moveMag*0.7)burst(W/2+(rnd()-0.5)*14,DRILL_SY+8+(rnd()-0.5)*10,P.ground[1],2,moveMag*1.3);}}
+  /* Recovery while the drill is NOT cutting.
+   * Heat and fuel stay a one-way budget the moment you are drilling — that
+   * tension is the whole game — but easing off lets the machine breathe. This
+   * is what turns a 17-second countdown into a rhythm you can play around, and
+   * it finally makes the Kühlung and Reaktor upgrades do what the tree already
+   * promises: their coolRate/energyRegen were being computed and never applied. */
+  if(!drilling){
+    /* The vent ramps: the longer you stay off the trigger the harder it blows.
+     * Flat cooling made a hot drill cost eight seconds of standing still, which
+     * is dead air on a phone. Ramped, the same recovery takes ~3.5 s and the
+     * bar visibly accelerates, so easing off reads as an action, not a penalty. */
+    run.ventT=(run.ventT||0)+dt;
+    const ramp=1+Math.min(1.6,run.ventT*1.3);
+    if(run.heat>0)run.heat=Math.max(0,run.heat-(HEAT_VENT+S.coolRate*0.55)*ramp*dt);
+    if(S.energyRegen>0)run.energy=Math.min(S.energyMax,run.energy+S.energyRegen*dt);
+  }else run.ventT=0;
   // warning haptics when a budget gets critical (fires once per crossing)
   if(run.heat>=90&&!run.warnHeat){run.warnHeat=true;haptic('warning');}else if(run.heat<84)run.warnHeat=false;
   if(run.energy/S.energyMax<=0.15&&!run.warnFuel){run.warnFuel=true;haptic('warning');}else if(run.energy/S.energyMax>0.2)run.warnFuel=false;
@@ -1624,8 +1652,31 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     txt(c,'FUEL',M,y1,'left',ef<0.2?'#ff4d4d':'#ffffff',fs);
     bar(c,M+lx,y1-1,bw,bh,ef,ef<0.2?'#ff4d4d':T.fuel);
     const y2=y1+bh+6;
-    txt(c,'HEAT '+Math.round(run.heat)+'%',M,y2,'left',hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
+    // Teaching the rhythm: the readout says outright that easing off cools you.
+    const venting=!drilling&&run.heat>0.5;
+    txt(c,'HEAT '+Math.round(run.heat)+'%'+(venting?' ▼':''),M,y2,'left',
+      venting?'#8be9ff':hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
+    if(venting&&hf>0.35)txt(c,settings.lang==='en'?'COOLING':'KÜHLT AB',M+Math.round(W*0.30),y2,'left','#8be9ff',Math.round(W*0.031));
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
+    /* The point of no return used to be invisible: fuel only pays for cutting
+       rock, so climbing back up the shaft you already carved is free. New
+       players never discovered that and simply died on top of their loot.
+       Now the game says it out loud the moment a budget gets tight. */
+    if(run.depthMax>4){
+      const lowFuel=ef<0.3, hotNow=hf>0.72;
+      if(lowFuel||hotNow){
+        const pulse=0.62+0.38*Math.sin(performance.now()/190);
+        const col=lowFuel?'#ff8a3d':'#ff4d4d';
+        const head=lowFuel?(settings.lang==='en'?'FUEL LOW':'SPRIT KNAPP')
+                          :(settings.lang==='en'?'OVERHEATING':'ÜBERHITZT GLEICH');
+        c.globalAlpha=pulse;
+        txt(c,'⚠ '+head,W/2,H*0.335,'center',col,Math.round(W*0.052));
+        txt(c,settings.lang==='en'?'go UP — the way back is free'
+                                  :'HOCH fahren — der Rückweg ist gratis',
+            W/2,H*0.335+Math.round(W*0.058),'center','#ffffff',Math.round(W*0.034));
+        c.globalAlpha=1;
+      }
+    }
     if(S.combo&&run.combo>1){const cc=run.combo>=25?'#ff4de0':run.combo>=10?T.accent:'#8be9ff';
       txt(c,'COMBO ×'+run.combo,W/2,H*0.35,'center',cc,Math.round(W*0.05*(1+Math.min(run.combo,40)*0.006)));}
     if(run.freezeT>0)txt(c,'❄ CRYO',W/2,H*0.22,'center','#8be9ff',Math.round(W*0.038));
