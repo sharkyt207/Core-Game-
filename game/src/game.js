@@ -34,13 +34,13 @@ const PLANETS=[
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
  {id:'cryonis',name:'CRYONIS', unlock:4200, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost', regrow:9,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
- {id:'ferro',  name:'FERRO',   unlock:7500, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05,
+ {id:'ferro',  name:'FERRO',   unlock:7500, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05, veins:1,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
- {id:'mechon', name:'MECHON',  unlock:13000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech',
+ {id:'mechon', name:'MECHON',  unlock:13000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech', sentry:0.022,
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
  {id:'abyss',  name:'ABYSS',   unlock:38000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void', dark:1,
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
- {id:'neon',   name:'NEON',    unlock:21000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1,
+ {id:'neon',   name:'NEON',    unlock:21000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1, resonance:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
  {id:'verdant',name:'VERDANT', unlock:70000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive', regrow:6,
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
@@ -55,6 +55,9 @@ const PLANET_RULE={
  magmar: ['🌋 Lavaadern heizen dich auf','🌋 Lava veins cook the drill'],
  cryonis:['🧊 Dein Schacht friert wieder zu','🧊 Your shaft freezes shut again'],
  verdant:['🌿 Ranken wachsen schnell nach','🌿 Vines regrow fast'],
+ ferro:  ['🧲 Dichte Erzadern, aber Einstürze','🧲 Dense ore veins, but cave-ins'],
+ mechon: ['📡 Wachtürme saugen deinen Sprit ab','📡 Sentries drain your fuel'],
+ neon:   ['🔷 Resonanz: gleiches Gestein zerspringt in Ketten','🔷 Resonance: matching rock shatters in chains'],
  abyss:  ['🌑 Dunkelheit — kurze Sicht','🌑 Darkness — short sight'],
  obscura:['🌑 Dunkelheit + Lavaadern','🌑 Darkness + lava veins'],
 };
@@ -386,16 +389,22 @@ function genTile(depthM,ring,sec){
     else if(f>0.32&&rnd()<0.30+lk)res='crystal';
     else if(f>0.13&&rnd()<0.5)res='cuprite'; else res='ferrite';}
   // rich veins: coarse hashed clusters of better ore -> juicy pockets
-  if(!res&&f>0.18&&hash((ring/2)|0,(sec/3)|0)%1000<55){
+  if(!res&&f>0.18&&hash((ring/2)|0,(sec/3)|0)%1000<(P.veins?130:55)){
     res=f>0.66&&rnd()<0.25?'core':f>0.40&&rnd()<0.6?'crystal':'cuprite';}
   /* Lava veins (Magmar, Obscura): not an obstacle you can shoot, a pressure you
      have to route around. Cutting one dumps heat straight into the drill, and
      merely being next to one keeps cooking you — which on a heat-driven world
      turns the Overdrive band from a choice into a place you get pushed. */
+  /* Sentries (Mechon): dead machines that wake when you get close and siphon
+     fuel until you cut them out. They turn a straight dive into a route
+     problem — the fastest line down is rarely the cheapest one. */
+  const sentry=P.sentry&&f>0.16&&rnd()<P.sentry;
   const lava=P.lava&&f>0.20&&rnd()<P.lava;
   const gas=f>0.13&&rnd()<(P.gasChance||0.018);
   const cave=!gas&&f>0.30&&rnd()<(P.caveChance||0);
-  const hp=HARD[rock]*P.hardMul*cmul('hard')*expHard();return{rock,res,gas,cave,lava,hp,maxhp:hp};}
+  let hp=HARD[rock]*P.hardMul*cmul('hard')*expHard();
+  if(sentry)hp*=1.8;                     // armoured: cutting one out is a real decision
+  return{rock,res,gas,cave,lava,sentry,hp,maxhp:hp};}
 const world=new Map();const key=(ring,sec)=>ring+','+sec;
 const regrow=[];   // tiles waiting to close back up (Cryonis / Verdant)
 function tilePolar(ring,sec){
@@ -730,6 +739,19 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
     // brittle ice (Cryonis): shattering block cracks a random neighbour for free
     if(P.brittle&&chainGuard<1&&rnd()<0.35){chainGuard++;const bn=neighborsOf(ring,sec),pk=bn[Math.floor(rnd()*4)];
       mineTile(pk[0],pk[1],9999);chainGuard--;}
+    /* NEON resonance: the shattered block rings, and every neighbour of the SAME
+       rock type rings with it. Cutting along a stratum cascades; cutting across
+       one does not. It rewards reading the strata instead of holding down and
+       going straight, which is the only world where the line you pick matters
+       more than the drill you brought. */
+    if(P.resonance&&chainGuard<2){chainGuard++;
+      for(const nn of neighborsOf(ring,sec)){
+        const nt=world.get(key(nn[0],nn[1]));
+        if(nt&&!nt.wall&&nt.rock===t.rock&&rnd()<0.62){
+          const np=w2s(R_CORE+(nn[0]+0.5)*TILE,(nn[1]+0.5)*dsecOf(nn[0]));
+          burst(np[0],np[1],P.core,4,1.1);
+          mineTile(nn[0],nn[1],9999);}}
+      chainGuard--;}
     // chain reaction: destroyed blocks detonate neighbours (depth = chain level)
     if(S.chain>0&&chainGuard<S.chain){chainGuard++;
       for(const nn of neighborsOf(ring,sec))if(rnd()<0.6)mineTile(nn[0],nn[1],9999);chainGuard--;}
@@ -1456,12 +1478,112 @@ function buildPlanets(){const g=document.getElementById('planetCards');g.innerHT
         (rec?'<br>'+(de?'Rekord':'Record')+': '+rec+'m':'')+'</span></span>'+
       '<span class="ps" style="color:'+(sel?'#2de2e6':own?'#12d9b0':'#ffd23f')+'">'+(sel?'★ '+(de?'AKTIV':'ACTIVE'):own?(de?'WÄHLEN':'SELECT'):p.unlock+'$ 🔒')+'</span>';
     card.disabled=!own&&meta.credits<p.unlock;
-    card.onclick=()=>{const wasNew=!own&&meta.credits>=p.unlock;
+    /* Long-press opens the dossier — the same gesture the skill tree already
+       uses for "tell me what this actually does", so it needs no teaching. A
+       locked planet can still be inspected: knowing what you are saving up for
+       is the whole reason to save up. */
+    (function(el,pl){let t=null,held=false;
+      const start=()=>{held=false;clearTimeout(t);t=setTimeout(()=>{held=true;haptic('medium');openDossier(pl);},480);};
+      const stop=()=>{clearTimeout(t);};
+      el.addEventListener('pointerdown',start,{passive:true});
+      el.addEventListener('pointerup',stop,{passive:true});
+      el.addEventListener('pointercancel',()=>{stop();held=false;},{passive:true});
+      el.addEventListener('pointerleave',stop,{passive:true});
+      el.addEventListener('pointermove',stop,{passive:true});
+      el._wasHeld=()=>held;})(card,p);
+    card.onclick=()=>{if(card._wasHeld())return;          // the hold opened the dossier
+      const wasNew=!own&&meta.credits>=p.unlock;
       if(own){meta.planet=p.id;}
       else if(meta.credits>=p.unlock){meta.credits-=p.unlock;meta.unlockedPlanets.push(p.id);meta.planet=p.id;}else{sfx.ui();return;}
       saveMeta();sfx.buy();vibe(12);checkAchievements();
       if(wasNew){hide('planetOver');showCutscene(p);}else buildPlanets();};
     g.appendChild(card);});}
+/* ---------- PLANET DOSSIER ----------
+ * Everything here is DERIVED from the planet's own data rather than written out
+ * by hand: the rock table comes from the same f-thresholds genTile uses, the ore
+ * list from the same depth gates, the hazards from the actual flags. A hand
+ * written description would be a second source of truth and would start lying
+ * the first time a number is tuned — which is exactly how the old economy doc
+ * ended up quoting planet prices that had not been real for weeks. */
+const ROCKNAME={dirt:['Erdreich','Topsoil'],stone:['Gestein','Stone'],hard:['Hartgestein','Hard rock'],dark:['Dunkelfels','Darkrock']};
+const CREATURES=[
+ {id:'crawler',ic:'🐛',de:['Krabbler','Beisst 6 Hitze. Stirbt an einem Treffer.'],           en:['Crawler','Bites for 6 heat. Dies in one hit.'],      from:16},
+ {id:'swift',  ic:'🦗',de:['Flitzer','Jagt fast doppelt so schnell. 4 Hitze.'],              en:['Swift','Chases at double speed. 4 heat.'],           from:31},
+ {id:'brute',  ic:'🦂',de:['Brocken','11 Hitze, hält zwei Treffer aus, wirft 44 $ ab.'],     en:['Brute','11 heat, takes two hits, drops $44.'],       from:61},
+];
+const BOSSINFO={
+ inferno:['🔥 Infernus','Brennt 1,5× heisser als andere Wächter.','🔥 Infernus','Burns 1.5x hotter than other guardians.'],
+ frost:  ['❄️ Frostwächter','Brennt kalt (0,4×), friert aber den Bohrer ein.','❄️ Frost Warden','Burns cold (0.4x) but freezes the drill.'],
+ tech:   ['📡 Konstrukt','Dreht seinen Laser doppelt so schnell.','📡 Construct','Sweeps its laser twice as fast.'],
+ void:   ['🌀 Leerenschlund','Zieht dich permanent in den Kern.','🌀 Void Maw','Drags you into the core without pause.'],
+ hive:   ['🐝 Brutstock','Speit bei jedem Puls zwei Kreaturen aus.','🐝 Hive Mind','Spits out two creatures on every pulse.'],
+ core:   ['💠 Kernwächter','Der Standard-Wächter des Kerns.','💠 Core Guardian','The standard guardian of the core.'],
+};
+function dossierRows(p,de){
+  const rows=[];const L=(a,b)=>de?a:b;
+  // --- rock, using the very thresholds genTile applies ---
+  const depth=(f)=>Math.round(f*(p.rings-1));
+  rows.push({h:L('Aufbau','Structure'),lines:[
+    L('Schachttiefe: ','Shaft depth: ')+p.rings+' m',
+    L('Erdreich bis ','Topsoil to ')+depth(0.15)+' m · '+L('Gestein bis ','Stone to ')+depth(0.38)+' m',
+    L('Hartgestein bis ','Hard rock to ')+depth(0.62)+' m · '+L('Dunkelfels ab ','Darkrock from ')+depth(0.62)+' m',
+    L('Wächter-Schicht: die innersten ','Guardian layer: the innermost ')+(p.bossRings||2)+' '+L('Ringe','rings'),
+  ]});
+  rows.push({h:L('Werte','Numbers'),lines:[
+    L('Härte ×','Hardness x')+p.hardMul.toFixed(1)+'  ·  '+L('Hitze ×','Heat x')+p.heatMul.toFixed(1)+'  ·  '+L('Erzwert ×','Ore value x')+p.valueMul.toFixed(1),
+  ]});
+  // --- ore, from the same depth gates genTile uses ---
+  rows.push({h:L('Erz','Ore'),lines:[
+    'Scrap $'+RES.ferrite.value+' · Copper $'+RES.cuprite.value+' '+L('ab ','from ')+depth(0.13)+' m',
+    'Shard $'+RES.crystal.value+' '+L('ab ','from ')+depth(0.32)+' m · Core $'+RES.core.value+' '+L('ab ','from ')+depth(0.55)+' m',
+    'Relic $'+RES.artifact.value+' '+L('ab ','from ')+depth(0.78)+' m',
+    p.veins?L('Adern: doppelt so dicht wie sonst.','Veins: twice as dense as elsewhere.'):'',
+  ].filter(Boolean)});
+  // --- hazards, straight off the flags ---
+  const hz=[];
+  if(p.lava)hz.push(L('🌋 Lavaadern (~'+Math.round(p.lava*100)+' % der Felder): +22 Hitze beim Durchbohren, danebenstehen kocht weiter.',
+                      '🌋 Lava veins (~'+Math.round(p.lava*100)+'% of tiles): +22 heat when cut, standing next to one keeps cooking.'));
+  if(p.regrow)hz.push(L('🧊 Der Schacht wächst nach '+p.regrow+' s wieder zu (weicher, 55 % HP).',
+                        '🧊 The shaft closes again after '+p.regrow+'s (softer, 55% hp).'));
+  if(p.dark)hz.push(L('🌑 Dunkelheit: die Lampe schrumpft mit der Tiefe.','🌑 Darkness: your lamp shrinks as you descend.'));
+  if(p.sentry)hz.push(L('📡 Wachtürme (~'+(p.sentry*100).toFixed(1)+' %): saugen 7 Sprit/Sek. ab, 1,8× gepanzert.',
+                        '📡 Sentries (~'+(p.sentry*100).toFixed(1)+'%): drain 7 fuel/s, 1.8x armoured.'));
+  if(p.resonance)hz.push(L('🔷 Resonanz: gleiches Gestein zerspringt in Ketten mit.','🔷 Resonance: matching rock shatters along with it.'));
+  if(p.brittle)hz.push(L('💎 Sprödes Gestein: 35 % Chance, einen Nachbarn gratis mitzunehmen.','💎 Brittle rock: 35% chance to take a neighbour for free.'));
+  if(p.gasChance)hz.push(L('💨 Gastaschen (~'+Math.round(p.gasChance*100)+' %): +16 Hitze und eine Kettendetonation.',
+                           '💨 Gas pockets (~'+Math.round(p.gasChance*100)+'%): +16 heat and a chain detonation.'));
+  if(p.caveChance)hz.push(L('🪨 Einstürze (~'+Math.round(p.caveChance*100)+' %): +10 Hitze, die Decke fällt nach.',
+                            '🪨 Cave-ins (~'+Math.round(p.caveChance*100)+'%): +10 heat, the ceiling comes down.'));
+  rows.push({h:L('Gefahren','Hazards'),lines:hz.length?hz:[L('Keine besonderen Gefahren — die Lernwelt.','No special hazards — the world you learn on.')]});
+  // --- creatures: they spawn by depth, so say from where ---
+  rows.push({h:L('Kreaturen','Creatures'),lines:CREATURES.map(c=>{
+    const t=de?c.de:c.en;
+    return c.ic+' '+t[0]+' — '+t[1]+' '+L('(ab ','(from ')+c.from+' m)';
+  })});
+  const bi=BOSSINFO[p.bossType||'core'];
+  rows.push({h:L('Wächter','Guardian'),lines:[de?(bi[0]+' — '+bi[1]):(bi[2]+' — '+bi[3])]});
+  return rows;}
+function openDossier(p){const de=settings.lang!=='en';
+  const globe='radial-gradient(circle at 68% 72%, '+p.ground[2]+' 0 7%, transparent 8%),'+
+    'radial-gradient(circle at 44% 62%, '+p.ground[2]+' 0 4%, transparent 5%),'+
+    'radial-gradient(circle at 28% 24%, '+p.ground[1]+' 0 9%, transparent 11%),'+
+    'radial-gradient(circle at 34% 30%, '+p.ground[1]+', '+p.ground[0]+' 52%, '+p.ground[2]+' 100%)';
+  document.getElementById('dosGlobe').style.cssText=
+    'width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:'+globe+
+    ';border:2px solid '+p.core+';box-shadow:inset -7px -7px 12px rgba(0,0,0,.65),0 0 16px '+p.core+'88;';
+  document.getElementById('dosTag').textContent='// '+(de?'dossier':'dossier')+' //';
+  document.getElementById('dosTag').style.color=p.core;
+  document.getElementById('dosName').textContent=p.name;
+  document.getElementById('dosName').style.color=p.core;
+  const tag=PLANET_TAG[p.id];
+  document.getElementById('dosFlavour').textContent=tag?(de?tag[0]:tag[1]):'';
+  const body=document.getElementById('dosBody');body.innerHTML='';
+  for(const r of dossierRows(p,de)){
+    const sec=document.createElement('div');
+    sec.innerHTML='<div style="font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:'+p.core+';margin-bottom:4px;">'+r.h+'</div>'+
+      r.lines.map(l=>'<div style="font-size:11.5px;line-height:1.5;color:#d7d0e4;">'+l+'</div>').join('');
+    body.appendChild(sec);}
+  hide('planetOver');show('dossierOver');sfx.ui();}
 // animated reveal when a new planet is unlocked
 function showCutscene(p){const de=settings.lang!=='en';
   const globe='radial-gradient(circle at 68% 72%, '+p.ground[2]+' 0 7%, transparent 8%),'+
@@ -1614,6 +1736,17 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
       world.set(key(g.ring,g.sec),{rock:g.rock,res:null,hp,maxhp:hp,regrown:true});
       const pr=w2s(R_CORE+(g.ring+0.5)*TILE,(g.sec+0.5)*dsecOf(g.ring));
       if(rnd()<0.5)burst(pr[0],pr[1],P.ground[1],3,0.8);}}
+  /* MECHON sentries: a live sentry next to you siphons fuel every second until
+     you cut it out. Its tile is armoured, so the decision is real — spend the
+     fuel to kill it, or spend the fuel running past it. */
+  if(P.sentry){const sr=clamp(ringOf(drill.rad),0,RINGS-1),ss=sectorOf(drill.ang,sr);
+    let drain=0;
+    for(const nn of neighborsOf(sr,ss)){const nt=world.get(key(nn[0],nn[1]));if(nt&&nt.sentry)drain++;}
+    const here=world.get(key(sr,ss));if(here&&here.sentry)drain++;
+    if(drain){run.energy=Math.max(0,run.energy-drain*7*dt);
+      run.sentryT=(run.sentryT||0)-dt;
+      if(run.sentryT<=0){run.sentryT=0.5;sfx.deny();haptic('warning');
+        burst(W/2+(rnd()-0.5)*26,DRILL_SY+(rnd()-0.5)*20,'#2de2e6',4,1.2);}}}
   /* Lava you are standing next to keeps cooking you even if you never cut it. */
   if(P.lava){const lr=clamp(ringOf(drill.rad),0,RINGS-1),ls=sectorOf(drill.ang,lr);
     let near=0;for(const nn of neighborsOf(lr,ls)){const nt=world.get(key(nn[0],nn[1]));if(nt&&nt.lava)near++;}
@@ -1891,6 +2024,14 @@ function scene(){
         o.globalAlpha=0.7*lp;o.fillStyle='#ffd23f';
         const lx=(p1[0]+p3[0])/2*S1,ly=(p1[1]+p3[1])/2*S1,lsz=Math.max(1,TILE*0.2*SCALEcur*S1);
         o.fillRect((lx-lsz/2)|0,(ly-lsz/2)|0,lsz|0,lsz|0);o.globalAlpha=1;}
+      // sentries: a scanning eye, so you can see the fuel drain coming
+      if(t.sentry){const sp=performance.now()/300+ring+sec;
+        lay();o.globalAlpha=0.30+0.18*Math.sin(sp);o.fillStyle='#2de2e6';o.fill();o.globalAlpha=1;
+        const sx=(p1[0]+p3[0])/2*S1,sy=(p1[1]+p3[1])/2*S1,sz=Math.max(2,TILE*0.26*SCALEcur*S1);
+        o.strokeStyle='#2de2e6';o.lineWidth=Math.max(1,sz*0.16);
+        o.strokeRect((sx-sz/2)|0,(sy-sz/2)|0,sz|0,sz|0);
+        o.fillStyle='#c8ffff';const ez=Math.max(1,sz*0.34);
+        o.fillRect((sx-ez/2+Math.cos(sp)*sz*0.2)|0,(sy-ez/2)|0,ez|0,ez|0);}
       // regrown rock reads as newer, paler crust so you can see the shaft closing
       if(t.regrown){lay();o.globalAlpha=0.30;o.fillStyle=P.ground[1];o.fill();o.globalAlpha=1;}
       // granular texture (stable per tile -> rotates with the planet, no shimmer)
@@ -2335,6 +2476,7 @@ document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
 // --- expedition ---
 document.getElementById('btnExpedition').onclick=()=>{sfx.ui();pendingExp=true;startRun();};
+document.getElementById('btnDosDone').onclick=()=>{sfx.back();hide('dossierOver');show('planetOver');};
 document.getElementById('btnZoneGo').onclick=leaveZone;
 document.getElementById('btnZoneOut').onclick=()=>{hide('zoneOver');extract();};
 document.getElementById('btnDeepGo').onclick=goDeeper;
