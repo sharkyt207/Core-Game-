@@ -1427,7 +1427,7 @@ function startRun(){S=stats();
   else{setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);chalMod=null;}
   pendingChal=false;
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;run.ovrOn=false;run.critT=0;run.critMul=1;run.critFx=0;
-  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;
+  run.warnHeat=false;run.warnFuel=false;run.buzzT=0;run.bossPulseT=0;run.bossWave=0;run.bossKills=0;run.inBoss=false;run.bossTel=false;
   // an expedition carries its own progress: sectors cleared, relics bought, tier reached
   run.exp=pendingExp?{tier:1,zone:0,nextZone:SECTOR_FIRST,relics:[],spent:0,offers:null,tierDone:false}:null;run.paused=false;
   pendingExp=false;applyRelics();
@@ -2093,13 +2093,81 @@ function specLine(id,de){const s=SPECIES[id];if(!s)return '';
   const bits=[s.dmg+(de?' Hitze':' heat'),s.hp+(de?(s.hp>1?' Treffer':' Treffer'):' hit'+(s.hp>1?'s':'')),'$'+s.pay];
   return s.ic+' '+specName(id,de)+' — '+bits.join(' · ')+
     (s.trait?'. '+(de?TRAIT_TXT[s.trait][0]:TRAIT_TXT[s.trait][1]):'.');}
+/* ---------- GUARDIANS ----------
+ * The five types used to share one attack — a periodic heat pulse plus the same
+ * rotating laser — and differed only in a heat multiplier and how fast the beam
+ * span. That made the deepest, most dramatic moment on every world the same
+ * fight in a different palette.
+ *
+ * Each guardian now has a signature that changes what you DO, not just how much
+ * it hurts: Inferno paves your escape route with lava, Frost seals the shaft
+ * behind you, the Construct deploys drones and drains the tank, the Void Maw
+ * throws you around, the Hive floods the room. `pulse` is the telegraphed beat,
+ * `tick` is continuous pressure. */
+function tileAt(ring,sec){if(ring<0||ring>=RINGS)return null;return world.get(key(ring,sec));}
+function bossRingSec(){const r=clamp(ringOf(drill.rad),0,RINGS-1);return [r,sectorOf(drill.ang,r)];}
+// paint a tile molten (Inferno) — it exists as real, dangerous terrain afterwards
+function igniteTile(ring,sec){if(ring<0||ring>=RINGS)return;
+  const t=tilePolar(ring,sec);if(!t||t.wall||t.boss)return;t.lava=true;
+  const ps=w2s(R_CORE+(ring+0.5)*TILE,(sec+0.5)*dsecOf(ring));burst(ps[0],ps[1],'#ffb03d',6,1.5);}
+// slam an ice plug into an already-carved tile (Frost) — never the one you occupy
+function sealTile(ring,sec){if(ring<0||ring>=RINGS)return;
+  const [dr,ds]=bossRingSec();if(ring===dr&&sec===ds)return;
+  if(world.get(key(ring,sec))!==null)return;                  // only refill what was cut
+  const hp=HARD.hard*P.hardMul*cmul('hard')*expHard()*0.6;
+  world.set(key(ring,sec),{rock:'hard',res:null,hp,maxhp:hp,regrown:true});
+  const ps=w2s(R_CORE+(ring+0.5)*TILE,(sec+0.5)*dsecOf(ring));burst(ps[0],ps[1],'#8be9ff',6,1.4);}
+const BOSSES={
+ core:{cd:2.2,heat:1,beam:true,beamFrom:2,beamSpd:1.3,
+   pulse(ph){if(ph>=1)drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-14);}},
+ inferno:{cd:2.0,heat:1.5,beam:false,beamFrom:9,beamSpd:0,
+   /* Eruption: molten rock blooms around you and STAYS. The longer the fight
+      runs the less floor is safe, so Inferno is a fight against the clock in a
+      way none of the others are. */
+   pulse(ph){const [r,s]=bossRingSec();
+     const n=3+ph*2;
+     for(let k=0;k<n;k++){const rr=r+Math.floor(rnd()*5)-2,ss=sectorOf(drill.ang+(rnd()-0.5)*0.5,clamp(rr,0,RINGS-1));
+       igniteTile(clamp(rr,0,RINGS-1),ss);}
+     flash=Math.max(flash,0.45);}},
+ frost:{cd:2.4,heat:0.4,beam:false,beamFrom:9,beamSpd:0,
+   /* Containment: the guardian freezes your own shaft shut. The threat is not
+      damage, it is being walled in — you have to keep cutting a way out while
+      it keeps sealing it. */
+   pulse(ph){run.frostT=Math.max(run.frostT,1.6+ph*0.4);
+     const [r,s]=bossRingSec(),n=4+ph*3;
+     for(let k=0;k<n;k++){const rr=clamp(r+Math.floor(rnd()*7)-3,0,RINGS-1);
+       sealTile(rr,sectorOf(drill.ang+(rnd()-0.5)*0.7,rr));}
+     sfx.rare();}},
+ tech:{cd:2.1,heat:1,beam:true,beamFrom:1,beamSpd:2.1,
+   // Deploys its own drones and browns out your tank on every beat.
+   pulse(ph){run.energy=Math.max(0,run.energy-(18+ph*10));
+     for(let k=0;k<1+ph;k++)spawnCreature('sentinel',1);
+     sfx.deny();lootNum(W/2,DRILL_SY-30,'-'+(18+ph*10)+' Sprit','#2de2e6',0);}},
+ void:{cd:2.3,heat:1,beam:true,beamFrom:2,beamSpd:1.1,
+   // Never stops pulling; at full rage it throws you sideways as well.
+   pulse(ph){drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-26);
+     if(ph>=2){drill.ang+=(rnd()-0.5)*1.1;snapCamera();
+       for(let i=0;i<10;i++)burst(W/2,DRILL_SY,'#8a5cff',2,2);glitch=Math.max(glitch,0.5);}},
+   tick(ph,dt){drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-(6+ph*4)*dt);}},
+ hive:{cd:2.0,heat:1,beam:false,beamFrom:9,beamSpd:0,
+   // Floods the chamber with this world's own fauna instead of hitting you.
+   pulse(ph){const nat=faunaOf();
+     for(let k=0;k<2+ph;k++)spawnCreature(nat&&rnd()<0.6?nat:(rnd()<0.5?'swift':'crawler'),1);}},
+};
+function bossDef(){return BOSSES[P.bossType||'core']||BOSSES.core;}
 const BOSSINFO={
- inferno:['🔥 Infernus','Brennt 1,5× heisser als andere Wächter.','🔥 Infernus','Burns 1.5x hotter than other guardians.'],
- frost:  ['❄️ Frostwächter','Brennt kalt (0,4×), friert aber den Bohrer ein.','❄️ Frost Warden','Burns cold (0.4x) but freezes the drill.'],
- tech:   ['📡 Konstrukt','Dreht seinen Laser doppelt so schnell.','📡 Construct','Sweeps its laser twice as fast.'],
- void:   ['🌀 Leerenschlund','Zieht dich permanent in den Kern.','🌀 Void Maw','Drags you into the core without pause.'],
- hive:   ['🐝 Brutstock','Speit bei jedem Puls zwei Kreaturen aus.','🐝 Hive Mind','Spits out two creatures on every pulse.'],
- core:   ['💠 Kernwächter','Der Standard-Wächter des Kerns.','💠 Core Guardian','The standard guardian of the core.'],
+ inferno:['🔥 Infernus','Lässt bei jedem Puls Lava um dich aufblühen — sie bleibt liegen.',
+          '🔥 Infernus','Blooms lava around you on every pulse — and it stays.'],
+ frost:  ['❄️ Frostwächter','Friert deinen eigenen Schacht zu. Die Gefahr ist das Eingemauertwerden.',
+          '❄️ Frost Warden','Freezes your own shaft shut. The danger is being walled in.'],
+ tech:   ['📡 Konstrukt','Laser ab Phase 1, setzt Wachdrohnen ab und zapft den Tank an.',
+          '📡 Construct','Laser from phase 1, deploys sentinels and taps your tank.'],
+ void:   ['🌀 Leerenschlund','Zieht dich ununterbrochen in den Kern und wirft dich zuletzt herum.',
+          '🌀 Void Maw','Drags you into the core without pause, then throws you around.'],
+ hive:   ['🐝 Brutstock','Flutet die Kammer mit der Fauna dieser Welt.',
+          '🐝 Hive Mind','Floods the chamber with this world\'s own fauna.'],
+ core:   ['💠 Kernwächter','Puls und Sog, ab Phase 2 ein rotierender Laser.',
+          '💠 Core Guardian','Pulse and pull, plus a rotating laser from phase 2.'],
 };
 function dossierRows(p,de){
   const rows=[];const L=(a,b)=>de?a:b;
@@ -2381,20 +2449,22 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   // active core guardian: pulses heat + shockwaves while you fight near the core
   const curR=ringOf(drill.rad),bz=(P.bossRings||2)+4;
   run.inBoss=(drill.rad<R_SURF&&curR>=0&&curR<bz);
-  if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0,bt=P.bossType||'core';   // guardian enrages the more you hit it
+  if(run.inBoss){const ph=run.bossKills>=8?2:run.bossKills>=3?1:0,B=bossDef();
     run.bossPulseT-=dt;
-    if(run.bossPulseT<=0){run.bossPulseT=2.2-ph*0.6;
-      const heatMul=bt==='inferno'?1.5:bt==='frost'?0.4:1;                        // frost boss burns cold
-      run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*heatMul-S.heatShield));
+    /* Telegraph. Every guardian announces its pulse ~0.55 s early with a ring
+       and a rising tone, so being hit is a reaction you lost rather than a die
+       roll you never saw. Without this the fights are just periodic damage. */
+    if(run.bossPulseT<=0.55&&!run.bossTel){run.bossTel=true;
+      run.bossWave=Math.min(run.bossWave,0.35);
+      blip(vary(180,0.04),0.34,'sawtooth',0.08,520,0.01,0.4);haptic('light');}
+    if(run.bossPulseT<=0){run.bossPulseT=B.cd-ph*0.6;run.bossTel=false;
+      run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*B.heat-S.heatShield));
       shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();haptic('heavy');
-      if(bt==='frost')run.frostT=Math.max(run.frostT,1.6);                        // frost boss slows the drill
-      const suck=bt==='void'?22:14;
-      if(ph>=1||bt==='void')drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-suck);   // suction toward the core
-      if(bt==='hive'){const nat=faunaOf();for(let k=0;k<2;k++)spawnCreature(nat&&rnd()<0.5?nat:(rnd()<0.5?'swift':'crawler'),1);}
+      if(B.pulse)B.pulse(ph);
       if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}
-    // rotating laser sweep — tech boss starts it early & spins faster
-    const laserOn=bt==='tech'?ph>=1:ph>=2;
-    if(laserOn){bossBeam+=dt*(bt==='tech'?2.1:1.3);
+    if(B.tick)B.tick(ph,dt);
+    // rotating laser sweep — only the guardians that actually field one
+    if(B.beam&&ph>=B.beamFrom){bossBeam+=dt*B.beamSpd;
       if(Math.abs(angDiff(bossBeam,drill.ang))<0.13){run.heat=Math.min(99,run.heat+14*dt);if(rnd()<0.3)burst(W/2,DRILL_SY,P.core,2,1);}}}
   if(run.bossWave>0)run.bossWave=Math.max(0,run.bossWave-dt*0.8);
   const dm=Math.max(0,Math.round((R_SURF-drill.rad)/TILE));if(dm>run.depthMax){run.depthMax=dm;if(dm>meta.stats.bestDepth)meta.stats.bestDepth=dm;checkAchievements();
