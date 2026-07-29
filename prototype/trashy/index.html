@@ -414,10 +414,11 @@
 <div class="over" id="deepOver">
   <div class="tag" style="color:#8a5cff">// kern erreicht //</div>
   <div class="logo" style="font-size:min(12vw,50px);text-shadow:4px 4px 0 #4b2ea8;" id="deepTitle">Schicht 1 geschafft</div>
-  <div class="sub" id="deepSub">Unter dem Kern liegt die nächste Schicht: härter, aber deutlich reicher. Deine Relikte nimmst du mit.</div>
+  <div class="sub" id="deepSub">Unter dem Kern liegt die nächste Schicht: deutlich härter, etwas reicher, und alles trifft härter. Deine Relikte nimmst du mit.</div>
   <div class="result" style="margin:10px 0;">
-    <div><b id="deepHard">+55%</b><span>Härte</span></div>
-    <div><b id="deepVal" style="color:#ffd23f">+85%</b><span>Erzwert</span></div>
+    <div><b id="deepHard">+85%</b><span>Härte</span></div>
+    <div><b id="deepVal" style="color:#ffd23f">+62%</b><span>Erzwert</span></div>
+    <div><b id="deepThreat" style="color:#ff4d4d">+40%</b><span>Schaden</span></div>
   </div>
   <button class="big" id="btnDeepGo">Tiefer vorstoßen</button>
   <div class="menubtns"><button class="mbtn" id="btnDeepOut">⏏ Mit der Beute raus</button></div>
@@ -1365,6 +1366,15 @@ const SECTOR_M=12;                 // metres between Safe Zones
    18 m you arrive with roughly $110 and can buy exactly one cheap relic. */
 const SECTOR_FIRST=18;
 const RELIC_PICKS=3;               // offers per station
+/* Relic capacity. Measured without it, a greedy expedition owned ALL 20 relics
+ * by layer 3 sector 3 — 64 seconds in — and the haul went $2,799 -> $9,288 ->
+ * $24,962 in three sectors, because every multiplier in the game was stacked at
+ * once. Worse than the numbers: with nothing left to want, the trader stopped
+ * being a decision at all.
+ * Six slots means you can never hold more than a third of the pool, every run
+ * is a different build, and once you are full each purchase costs you something
+ * you already rely on. That is the whole mode in one constraint. */
+const RELIC_SLOTS=6;
 const RELICS=[
  {id:'r_bit',   ic:'⛏️', c:200, de:['Diamantspitze','+45 % Bohrkraft'],            en:['Diamond Bit','+45% drill power'],        mod:S=>S.power*=1.45},
  {id:'r_servo', ic:'💨', c:180, de:['Servo-Antrieb','+30 % Tempo'],                en:['Servo Drive','+30% speed'],              mod:S=>S.speed*=1.3},
@@ -1419,8 +1429,14 @@ function applyRelics(){if(!run.exp)return;
   for(const id of run.exp.relics){const r=relicById(id);if(r&&r.mod)try{r.mod(S);}catch(e){}}}
 function restat(){S=stats();applyRelics();}
 // Deep Layers: each tier past the first makes the rock harder and the ore richer.
-function expHard(){return run.exp?1+(run.exp.tier-1)*0.55:1;}
-function expLoot(){return run.exp?1+(run.exp.tier-1)*0.85:1;}
+/* Threat has to grow FASTER than reward, otherwise every extra layer is a pay
+   rise: at 0.55 hardness against 0.85 value, layer 20 was 1.5x more lucrative
+   per unit of rock than layer 1. Now hardness leads and value follows, so
+   going deeper is a gamble you take, not free money. */
+function expHard(){return run.exp?1+(run.exp.tier-1)*0.85:1;}
+function expLoot(){return run.exp?1+(run.exp.tier-1)*0.62:1;}
+// Everything that hits you scales with the layer as well — see below.
+function expThreat(){return run.exp?1+(run.exp.tier-1)*0.40:1;}
 function startRun(){S=stats();
   run.challenge=!!pendingChal;
   if(pendingChal){setPlanet(chalPlanet);rnd=chalRng();}   // fixed daily seed + planet
@@ -1452,29 +1468,70 @@ function renderZone(){const e=run.exp,de=settings.lang!=='en';
   document.getElementById('zoneScrip').textContent='$'+Math.round(run.haul);
   document.getElementById('zoneTier').textContent=e.tier;
   const box=document.getElementById('zoneOffers');box.innerHTML='';
+  // --- swap mode: pick what to give up ---
+  if(e.swap){const inc=relicById(e.swap),price=relicPrice(inc,e.zone,e.tier);
+    const head=document.createElement('div');
+    head.style.cssText='font-size:11px;letter-spacing:.06em;color:#ffd23f;text-transform:uppercase;font-weight:900;text-align:center;margin-bottom:2px;';
+    head.textContent=(de?'Platz voll — was geht dafür? ':'Full — what goes for ')+inc.ic+' '+relicName(inc)+(de?'':'?');
+    box.appendChild(head);
+    e.relics.forEach(oid=>{const o=relicById(oid);if(!o)return;
+      const bt=document.createElement('button');
+      bt.className='mbtn';bt.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;border-color:#ff6a3d;color:#ff6a3d;box-shadow:4px 4px 0 rgba(255,106,61,.22);';
+      bt.innerHTML='<span style="display:flex;flex-direction:column;gap:3px;">'+
+        '<span style="font-size:12px;">'+o.ic+' '+relicName(o)+'</span>'+
+        '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+relicDesc(o)+'</span></span>'+
+        '<span style="font-size:12px;">'+(de?'ablegen':'drop')+'</span>';
+      bt.onclick=()=>swapRelic(oid);
+      box.appendChild(bt);});
+    const cancel=document.createElement('button');
+    cancel.className='mbtn';cancel.style.cssText='justify-content:center;padding:10px;';
+    cancel.textContent=de?'Abbrechen':'Cancel';
+    cancel.onclick=()=>{e.swap=null;sfx.back();renderZone();};
+    box.appendChild(cancel);
+    document.getElementById('zoneOwned').textContent=
+      (de?'Kosten: $':'Cost: $')+price;
+    return;}
   (e.offers||[]).forEach(id=>{
     const r=relicById(id);if(!r)return;
     const price=relicPrice(r,e.zone,e.tier),owned=e.relics.indexOf(id)>=0,afford=run.haul>=price;
+    const full=e.relics.length>=RELIC_SLOTS;
     const b=document.createElement('button');
     b.className='mbtn';b.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;'+
       (owned?'opacity:.4;':afford?'border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.22);':'opacity:.55;');
     b.innerHTML='<span style="display:flex;flex-direction:column;gap:3px;">'+
       '<span style="font-size:12px;">'+r.ic+' '+relicName(r)+'</span>'+
       '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+relicDesc(r)+'</span></span>'+
-      '<span style="font-size:13px;color:'+(owned?'#9a90ad':afford?'#39ff14':'#ff6a3d')+';">'+(owned?'✓':'$'+price)+'</span>';
+      '<span style="font-size:13px;color:'+(owned?'#9a90ad':afford?(full?'#ffd23f':'#39ff14'):'#ff6a3d')+';">'+
+        (owned?'✓':'$'+price+(afford&&full?'<br><span style="font-size:9px;">'+(de?'tauschen':'swap')+'</span>':''))+'</span>';
     b.disabled=owned;
     b.onclick=()=>buyRelic(id);
     box.appendChild(b);});
   const own=document.getElementById('zoneOwned');
-  own.textContent=e.relics.length
-    ?(de?'Relikte: ':'Relics: ')+e.relics.map(i=>{const r=relicById(i);return r?r.ic+' '+relicName(r):'';}).join(' · ')
-    :(de?'Noch keine Relikte.':'No relics yet.');}
+  const cap=(de?'Frachtraum ':'Cargo ')+e.relics.length+'/'+RELIC_SLOTS;
+  own.innerHTML='<span style="color:'+(e.relics.length>=RELIC_SLOTS?'#ffd23f':'#12d9b0')+';font-weight:900;">'+cap+'</span>'+
+    (e.relics.length?' — '+e.relics.map(i=>{const r=relicById(i);return r?r.ic+' '+relicName(r):'';}).join(' · ')
+                    :' — '+(de?'noch leer':'still empty'));}
 function buyRelic(id){const e=run.exp,r=relicById(id);if(!r||e.relics.indexOf(id)>=0)return;
   const price=relicPrice(r,e.zone,e.tier);
   if(run.haul<price){sfx.deny();haptic('warning');return;}
+  /* At capacity a purchase becomes a trade. Rather than silently refusing (which
+     reads as a bug) or auto-dropping something (which throws away a build the
+     player chose), the panel switches into swap mode and asks what goes. */
+  if(e.relics.length>=RELIC_SLOTS){e.swap=id;sfx.ui();haptic('medium');renderZone();return;}
   run.haul-=price;e.spent+=price;e.relics.push(id);
   restat();
   run.energy=Math.min(run.energy,S.energyMax);   // a tank-shrinking relic must not leave you over-full
+  sfx.buy();haptic('success');
+  meta.stats.relicsBought=(meta.stats.relicsBought||0)+1;checkAchievements();
+  renderZone();}
+function swapRelic(dropId){const e=run.exp,id=e.swap;if(!id)return;
+  const r=relicById(id),price=relicPrice(r,e.zone,e.tier);
+  const i=e.relics.indexOf(dropId);
+  if(i<0||run.haul<price){e.swap=null;sfx.deny();renderZone();return;}
+  run.haul-=price;e.spent+=price;
+  e.relics.splice(i,1);e.relics.push(id);e.swap=null;
+  restat();
+  run.energy=Math.min(run.energy,S.energyMax);
   sfx.buy();haptic('success');
   meta.stats.relicsBought=(meta.stats.relicsBought||0)+1;checkAchievements();
   renderZone();}
@@ -1483,8 +1540,9 @@ function leaveZone(){hide('zoneOver');run.paused=false;document.body.classList.a
 function openDeep(){run.paused=true;document.body.classList.remove('playing');
   const de=settings.lang!=='en',e=run.exp;
   document.getElementById('deepTitle').textContent=(de?'Schicht ':'Layer ')+e.tier+(de?' geschafft':' cleared');
-  document.getElementById('deepHard').textContent='+'+Math.round(((1+e.tier*0.55)/expHard()-1)*100)+'%';
-  document.getElementById('deepVal').textContent='+'+Math.round(((1+e.tier*0.85)/expLoot()-1)*100)+'%';
+  document.getElementById('deepHard').textContent='+'+Math.round(((1+e.tier*0.85)/expHard()-1)*100)+'%';
+  document.getElementById('deepVal').textContent='+'+Math.round(((1+e.tier*0.62)/expLoot()-1)*100)+'%';
+  document.getElementById('deepThreat').textContent='+'+Math.round(((1+e.tier*0.40)/expThreat()-1)*100)+'%';
   flash=Math.max(flash,0.8);sfx.leg();haptic('epic');
   show('deepOver');}
 function goDeeper(){const e=run.exp;e.tier++;e.tierDone=false;e.zone=0;e.nextZone=SECTOR_FIRST;
@@ -1503,6 +1561,13 @@ const SALVAGE=0.4;
 function gameOver(reason){if(!run.active)return;run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
   const saved=Math.round(run.haul*SALVAGE),lost=Math.round(run.haul)-saved;
   meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
+  /* Expedition progress is credited on death too. It used to be written only in
+     extract(), so a player who fought down to layer 6 and died there got no
+     credit for any of it — and "Erreiche Schicht 5" could literally never fire
+     for the players most likely to earn it. Dying deep is the normal end of an
+     endless mode; it has to count. */
+  if(run.exp){meta.stats.expBest=Math.max(meta.stats.expBest||0,run.exp.tier);
+    meta.stats.expSectors=(meta.stats.expSectors||0)+run.exp.zone;}
   for(const k in run.matsRun){const keep=Math.floor(run.matsRun[k]*SALVAGE);if(keep>0)meta.mats[k]=(meta.mats[k]||0)+keep;}
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('runs',1);updateDaily('loot',saved);
@@ -2458,7 +2523,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
       run.bossWave=Math.min(run.bossWave,0.35);
       blip(vary(180,0.04),0.34,'sawtooth',0.08,520,0.01,0.4);haptic('light');}
     if(run.bossPulseT<=0){run.bossPulseT=B.cd-ph*0.6;run.bossTel=false;
-      run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*B.heat-S.heatShield));
+      run.heat=Math.min(99,run.heat+Math.max(1,(8+ph*3)*B.heat*expThreat()-S.heatShield));
       shake=Math.max(shake,14+ph*6);run.bossWave=1;sfx.shock();haptic('heavy');
       if(B.pulse)B.pulse(ph);
       if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}
@@ -2568,10 +2633,10 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
         e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.4;           // survivors get knocked back
       }else{                                               // it bites you
         if(sp.trait==='siphon'){                           // sentinels drink fuel, not heat
-          run.energy=Math.max(0,run.energy-16);
+          run.energy=Math.max(0,run.energy-16*expThreat());
           burst(W/2,DRILL_SY,sp.col,10,1.3);sfx.deny();
         }else{
-          run.heat=Math.min(99,run.heat+Math.max(0,sp.dmg-(sp.trait==='freeze'?0:S.heatShield*0.5)));
+          run.heat=Math.min(99,run.heat+Math.max(0,sp.dmg*expThreat()-(sp.trait==='freeze'?0:S.heatShield*0.5)));
           burst(W/2,DRILL_SY,sp.col,8,1.2);
         }
         if(sp.trait==='freeze')run.frostT=Math.max(run.frostT,1.8);     // frostlings ice the drive

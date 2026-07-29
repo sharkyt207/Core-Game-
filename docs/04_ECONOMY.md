@@ -43,14 +43,21 @@ härtesten Gesteins mit Relikten in jeder zweiten Kachel verwandelt.
 ## Loot-Multiplikator (multiplikativ gebündelt in `lootMul()`)
 ```
 Loot = Erzwert
-     × valueMul(Skills + Refinerie + Module, additiv auf Basis 1)
+     × valueMul(Skills + Refinerie + Module + Relikte, additiv auf Basis 1)
      × Planet.valueMul
-     × prestigeMult((1 + 0.12·Kerne) · (1 + 0.25·Splitter))
+     × prestigeMult((1 + 0.55·√Kerne) · (1 + 1.2·√Splitter))
+     × expLoot(Expedition: 1 + 0.62·(Schicht−1))
      × Overdrive(1 … 1.75)
      × Combo(1 … 1.45, nur mit Kombo-Meister)
      × Event(Erzader ×1.6)
      × Challenge(z. B. Doppelter Loot ×2)
 ```
+Prestige war bis zum Balancing-Pass **linear und unbegrenzt**
+(`(1 + 0.12·Kerne)·(1 + 0.25·Splitter)`). Gemessen bei 300 Kernen / 30 Splittern
+ergab das ×314 — ein einzelnes Relikt auf Obscura im Overdrive war 2,9 Mio. $
+wert, also das Sechsfache **aller** Inhalte des Spiels (481 120 $) in einem
+Griff. Die Wurzelkurve lässt frühe Belohnungen fast unverändert (10 Kerne:
+×2,2 → ×2,7) und flacht den Schwanz hart ab (300 Kerne: ×37 → ×10,5).
 Die Faktoren sind bewusst multiplikativ (Power-Fantasy), aber jede Quelle ist einzeln
 begrenzt oder an Aufwand/Gefahr gekoppelt.
 
@@ -82,6 +89,45 @@ im dreißigsten.
 Die Ringzahl wurde ×2,3 angehoben. Vorher war der tiefste Planet 46 Ringe tief —
 der Erfolg „Erreiche 100 m Tiefe" war damit **auf keinem Planeten erreichbar**,
 ebenso die höchste Kontrakt-Stufe (160 m). Kontrakt-Stufen jetzt 30/55/85/120 m.
+
+## Expedition — gemessener Bogen (Terra, 12 Skills)
+
+| Schicht | Kern geknackt nach | Beute beim Kern |
+|--:|--:|--:|
+| 1 | 26 s | 232 $ |
+| 2 | 74 s | 1 832 $ |
+| 3 | 135 s | 4 652 $ |
+| 4 | 183 s | 10 607 $ |
+| 5 | 250 s | 22 256 $ |
+| 6 | 330 s | 28 062 $ |
+
+Ein Lauf trägt über **6 Minuten** und wird pro Schicht spürbar langsamer.
+Der Beute-Zuwachs bremst sich ein (×7,9 → ×2,5 → ×2,3 → ×2,1 → ×1,3).
+
+Vor dem Balancing-Pass sah derselbe Bogen so aus: Kern 1 nach 29 s, **alle 20
+Relikte nach 64 s**, und die Beute sprang von 2 799 $ auf 24 962 $ in drei
+Sektoren. Ohne Frachtraum-Grenze konnte man jeden Multiplikator gleichzeitig
+besitzen — der Händler hörte auf, eine Entscheidung zu sein.
+
+### Frachtraum
+`RELIC_SLOTS = 6` von 20 Relikten. Ist er voll, wird jeder Kauf zum **Tausch**:
+das Menü fragt, was dafür geht. Damit ist jeder Lauf ein anderer Build, und die
+Entscheidung bleibt bis zur letzten Schicht bestehen.
+
+### Schicht-Skalierung
+| | pro Schicht | Schicht 10 |
+|---|--:|--:|
+| Härte (`expHard`) | +85 % | ×8,6 |
+| Erzwert (`expLoot`) | +62 % | ×6,6 |
+| Schaden (`expThreat`) | +40 % | ×4,6 |
+
+Bedrohung wächst **schneller** als Belohnung: bei den alten Werten (Härte +55 %,
+Wert +85 %) war Schicht 20 pro Einheit Gestein 1,5× lukrativer als Schicht 1 —
+tiefer gehen war Gratisgeld statt Risiko. Jetzt liegt das Verhältnis bei 0,75.
+
+`expThreat` skaliert Kreaturenbisse, den Sprit-Entzug der Wachdrohnen und den
+Bosspuls. Vorher skalierte nur die Trefferpunkte-Zahl der Gegner, nicht ihr
+Schaden — ein Krabbler biss auf Schicht 12 genauso hart wie auf Schicht 1.
 
 ## Meta-Sinks (wofür Cash ausgegeben wird)
 Skill-Baum · Planeten-Freischaltung · 9 Bohrer-Module · Skins. Prestige/Aszension und
