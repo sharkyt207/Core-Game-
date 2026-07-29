@@ -2361,25 +2361,52 @@ function buildCompendium(){const de=settings.lang!=='en',st=meta.stats;let h='';
   h+=codexRow('💠','#2de2e6',de?'Wächter besiegt':'Guardians beaten','',st.guardianKills||0);
   h+=codexRow('🔗','#8be9ff',de?'Beste Combo':'Best combo','','×'+(st.maxCombo||0));
   h+=codexRow('🏁','#ff4de0',de?'Challenge-Bestwert':'Challenge best','',meta.challenge.best||0);
+  h+=codexRow('🧭','#39ff14',de?'Tiefste Schicht':'Deepest layer','',(st.expBest||0));
+  h+=codexRow('🗺️','#39ff14',de?'Sektoren erreicht':'Sectors reached','',(st.expSectors||0));
+  h+=codexRow('💠','#8a5cff',de?'Relikte gekauft':'Relics bought','',(st.relicsBought||0));
+  h+=codexRow('⚔️','#ff3b6b',de?'Kreaturen erlegt':'Creatures killed','',(st.kills||0));
   h+=codexHead(de?'Planeten-Rekorde':'Planet records','#12d9b0');
   PLANETS.forEach(p=>{const own=meta.unlockedPlanets.includes(p.id);
     h+=codexRow('🪐',p.core,p.name,own?'':(de?'gesperrt':'locked'),(meta.records[p.id]||0)+'m');});
   h+=codexHead(de?'Erze':'Ores','#ffd23f');
   const rn={common:de?'Gewöhnlich':'Common',uncommon:de?'Ungewöhnlich':'Uncommon',rare:de?'Selten':'Rare',legendary:de?'Legendär':'Legendary'};
   for(const k in RES){const r=RES[k];h+=codexRow('◆',r.color,r.name,rn[r.rar],r.value+'$','#ffd23f');}
-  h+=codexHead(de?'Kreaturen':'Creatures','#ff3b6b');
-  [['Crawler',de?'Jagt gemächlich · Biss +6 Hitze':'Slow hunter · bite +6 heat','#ff3b6b'],
-   ['Flitzer',de?'Schnell & klein · Biss +4':'Fast & small · bite +4','#ffef5c'],
-   ['Brocken',de?'Zäh (2 Treffer) · Biss +11 Hitze':'Tough (2 hits) · bite +11 heat','#ff6a00']
-  ].forEach(c=>h+=codexRow('👾',c[2],c[0],c[1],''));
+  /* Bestiary. Derived from SPECIES, and gated on what you have actually killed:
+     an unmet species shows as a silhouette with only its home world named. That
+     turns the creature list from a wiki page into something you fill in, and it
+     is why the four bestiary achievements have anything to chase.
+     The old version was three hand-written lines that had been wrong since the
+     fauna rework — eleven species described as three, with damage figures that
+     no longer scaled. */
+  const seen=meta.stats.species||{};
+  const known=Object.keys(seen).length;
+  h+=codexHead((de?'Bestiarium':'Bestiary')+' '+known+'/'+Object.keys(SPECIES).length,'#ff3b6b');
+  const homeOf={};for(const k in PLANET_FAUNA)homeOf[PLANET_FAUNA[k]]=k;
+  for(const id in SPECIES){const sp=SPECIES[id],got=seen[id]||0;
+    const home=homeOf[id],pl=home?PLANETS.find(x=>x.id===home):null;
+    if(got){
+      h+=codexRow(sp.ic,sp.col,specName(id,de),
+        sp.dmg+(de?' Hitze · ':' heat · ')+sp.hp+(de?' Treffer · $':' hp · $')+sp.pay+
+        (sp.trait?' · '+(de?TRAIT_TXT[sp.trait][0]:TRAIT_TXT[sp.trait][1]):'')+
+        (pl?' · '+pl.name:''),
+        '×'+got,'#12d9b0');
+    }else{
+      h+=codexRow('❔','#4a4459',de?'Unbekannt':'Unknown',
+        pl?(de?'Nur auf ':'Only on ')+pl.name:(de?'Überall anzutreffen':'Found everywhere'),
+        '—');}}
   h+=codexHead(de?'Kern-Wächter':'Core Guardians','#ff8a3d');
-  [['Standard',de?'Puls & Schockwelle':'Pulse & shockwave','#ff8a3d'],
-   ['Inferno · Magmar',de?'Extra Hitze-Puls':'Extra heat pulse','#ff6a00'],
-   ['Frost · Cryonis',de?'Verlangsamt den Bohrer':'Slows the drill','#8be9ff'],
-   ['Tech · Mechon',de?'Früher, schneller Laser':'Early, faster laser','#2de2e6'],
-   ['Void · Abyss/Obscura',de?'Starker Sog zum Kern':'Strong pull to core','#8a5cff'],
-   ['Hive · Verdant',de?'Spawnt Kreaturen':'Spawns creatures','#3fd977']
-  ].forEach(x=>h+=codexRow('💠',x[2],x[0],x[1],''));
+  const guardHome={};PLANETS.forEach(p2=>{const bt=p2.bossType||'core';(guardHome[bt]=guardHome[bt]||[]).push(p2.name);});
+  for(const bt in BOSSES){const bi=BOSSINFO[bt];if(!bi)continue;
+    const col=bt==='inferno'?'#ff6a00':bt==='frost'?'#8be9ff':bt==='tech'?'#2de2e6':bt==='void'?'#8a5cff':bt==='hive'?'#3fd977':'#ff8a3d';
+    h+=codexRow('💠',col,(de?bi[0]:bi[2])+(guardHome[bt]?' · '+guardHome[bt].join(', '):''),
+      de?bi[1]:bi[3],'');}
+  /* Relics never appeared here at all, so the only way to learn the pool was to
+     meet each one at a trader mid-run and decide on the spot. */
+  h+=codexHead((de?'Relikte':'Relics')+' · '+RELIC_SLOTS+(de?' Plätze':' slots'),'#8a5cff');
+  RELICS.forEach(r=>h+=codexRow(r.ic,'#8a5cff',relicName(r),relicDesc(r),''));
+  h+=codexHead(de?'Welt-Regeln':'World rules','#39ff14');
+  PLANETS.forEach(p2=>{const rl=PLANET_RULE[p2.id];
+    h+=codexRow('🪐',p2.core,p2.name,rl?(de?rl[0]:rl[1]):(de?'Keine Sonderregel':'No special rule'),'');});
   h+=codexHead(de?'Wetter-Events':'Weather events','#c9a24d');
   for(const k in EVENTINFO){const e=EVENTINFO[k];h+=codexRow('⚠',e.col,de?e.de:e.en,'',e.dur+'s',e.col);}
   document.getElementById('codexList').innerHTML=h;}
