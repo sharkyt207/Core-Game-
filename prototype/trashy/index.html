@@ -704,6 +704,10 @@ const ACH=[
  {id:'first',  ic:'🚀', de:['Erster Abstieg','Starte deinen ersten Run'],      en:['First Descent','Start your first run'],       cond:()=>meta.stats.runs>=1},
  {id:'d50',    ic:'⛏️', de:['Tiefgänger','Erreiche 50m Tiefe'],                en:['Digger','Reach 50m depth'],                 cond:()=>meta.stats.bestDepth>=50},
  {id:'d100',   ic:'🔥', de:['Kernnähe','Erreiche 100m Tiefe'],                 en:['Near the Core','Reach 100m depth'],         cond:()=>meta.stats.bestDepth>=100},
+ // --- synergies: reward building rather than hoarding ---
+ {id:'syn1',   ic:'✨', de:['Kombination','Baue eine Relikt-Synergie'],        en:['Combination','Build one relic synergy'],    cond:()=>(meta.stats.synBuilt||0)>=1},
+ {id:'syn2',   ic:'🔮', de:['Doppelbau','Zwei Synergien gleichzeitig'],        en:['Double Build','Two synergies at once'],     cond:()=>(meta.stats.synMax||0)>=2},
+ {id:'synAll', ic:'🌟', de:['Kombinator','Baue alle 8 Synergien (nach und nach)'],en:['Combinator','Build all 8 synergies'],    cond:()=>Object.keys(meta.stats.synSeen||{}).length>=8},
  // --- bestiary: a reason to visit every world's own fauna ---
  {id:'bio4',   ic:'🔬', de:['Feldbiologe','Erlege 4 verschiedene Arten'],      en:['Field Biologist','Kill 4 different species'],  cond:()=>Object.keys(meta.stats.species||{}).length>=4},
  {id:'bio8',   ic:'🧬', de:['Xenologe','Erlege 8 verschiedene Arten'],         en:['Xenologist','Kill 8 different species'],       cond:()=>Object.keys(meta.stats.species||{}).length>=8},
@@ -1283,6 +1287,14 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
           burst(np[0],np[1],P.core,4,1.1);
           mineTile(nn[0],nn[1],9999);}}
       chainGuard--;}
+    /* Shatterstrike: a crit that breaks a block sets off a chain of its own, so
+       the crit build and the chain build stop being alternatives and become one. */
+    if(S.critChain&&(run.critMul||1)>1&&chainGuard<2){chainGuard++;
+      for(const nn of neighborsOf(ring,sec))if(rnd()<0.55){
+        const cp=w2s(R_CORE+(nn[0]+0.5)*TILE,(nn[1]+0.5)*dsecOf(nn[0]));
+        burst(cp[0],cp[1],'#ffe14d',4,1.2);
+        mineTile(nn[0],nn[1],9999);}
+      chainGuard--;}
     // chain reaction: destroyed blocks detonate neighbours (depth = chain level)
     if(S.chain>0&&chainGuard<S.chain){chainGuard++;
       for(const nn of neighborsOf(ring,sec))if(rnd()<0.6)mineTile(nn[0],nn[1],9999);chainGuard--;}
@@ -1290,7 +1302,8 @@ function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return
   return false;}
 // drilling into a tile; Breitbohrer (wide) also carves the two side tiles
 function drillTile(ring,sec,dmg){mineTile(ring,sec,dmg);
-  if(S.wide){const n=secCount(ring);mineTile(ring,(sec+1)%n,dmg*0.7);mineTile(ring,(sec-1+n)%n,dmg*0.7);}}
+  if(S.wide){const n=secCount(ring),side=S.wideFull?dmg:dmg*0.7;
+    mineTile(ring,(sec+1)%n,side);mineTile(ring,(sec-1+n)%n,side);}}
 
 /* Single source of truth for what an ability costs and how long it locks out.
    The ability functions, the HUD cooldown bars and the skill-tree explanation
@@ -1339,7 +1352,7 @@ function nuke(){if(!run.active||!S.abilities.nuke||run.nukeCd>0)return;if(run.en
 // loot multiplier folds in planet, prestige and the live mining combo
 // Overdrive band: hot drill = faster bite and richer ore, up to the red line.
 const OVR_FROM=70,OVR_SPD=0.38,OVR_LOOT=0.75;
-function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*expLoot()*(1+OVR_LOOT*(run.ovr||0))*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
+function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*expLoot()*(1+(S.ovrLoot||OVR_LOOT)*(run.ovr||0))*(S.combo?(1+Math.min(run.combo,30)*0.015):1)*(run.event&&run.event.type==='vein'?1.6:1)*cmul('loot');}
 
 /* ===================== RUN ===================== */
 /* ===================== EXPEDITION (roguelike run mode) =====================
@@ -1406,6 +1419,47 @@ function isStationDepth(depthM){
   if(!run.exp||depthM<SECTOR_FIRST)return false;
   return (depthM-SECTOR_FIRST)%SECTOR_M===0;}
 function isStationRing(ring){return isStationDepth(RINGS-1-ring);}
+/* ---------- SYNERGIES ----------
+ * Six relics used to simply add up, so the cargo decision was always "which is
+ * the biggest number". A pair that does something neither half can do turns it
+ * into "what fits together", and that is the difference between a shopping list
+ * and a build. The station marks an offer that would complete a pair, so the
+ * combination is something you can plan toward rather than stumble into. */
+const SYNERGIES=[
+ {id:'s_pyre', need:['r_furn','r_reck'],  ic:'🔥',
+  de:['Brandopfer','Overdrive zahlt doppelt so viel Bonus'],
+  en:['Pyre','Overdrive pays double its loot bonus'],           mod:S=>S.ovrLoot=(S.ovrLoot||OVR_LOOT)*2},
+ {id:'s_after',need:['r_glass','r_recyc'],ic:'💨',
+  de:['Nachbrenner','Der Recycler läuft auch beim Bohren (halb)'],
+  en:['Afterburner','The recycler runs while drilling too (half)'], mod:S=>S.regenWhileCut=0.5},
+ {id:'s_quarry',need:['r_bit','r_wide'],  ic:'⛏️',
+  de:['Steinbruch','Die Seitenschnitte treffen mit voller Kraft'],
+  en:['Quarry','Side cuts land at full power'],                 mod:S=>S.wideFull=1},
+ {id:'s_cold', need:['r_vent','r_temper'],ic:'🧊',
+  de:['Kaltlauf','Halbe Hitzeentwicklung'],
+  en:['Cold Run','Half the heat build-up'],                     mod:S=>S.heatGen*=0.5},
+ {id:'s_shatter',need:['r_crit','r_chain'],ic:'💢',
+  de:['Splitterschlag','Krits lösen zusätzlich eine Kette aus'],
+  en:['Shatterstrike','Crits also set off a chain'],            mod:S=>S.critChain=1},
+ {id:'s_cycle',need:['r_mag','r_ore'],    ic:'♻️',
+  de:['Sammler-Kreislauf','Erz tankt doppelt so stark auf'],
+  en:['Collector Loop','Ore refuels twice as much'],            mod:S=>S.fuelOre=(S.fuelOre||0)*2},
+ {id:'s_hoard',need:['r_greed','r_prosp'],ic:'💎',
+  de:['Schatzjäger','Seltenes Erz nochmal +60 % wert'],
+  en:['Treasure Hunter','Rare ore worth another +60%'],         mod:S=>S.rareMul=(S.rareMul||1)*1.6},
+ {id:'s_colony',need:['r_drone','r_dust'],ic:'🛸',
+  de:['Bergbaukolonie','Drohnen bohren doppelt so oft'],
+  en:['Mining Colony','Drones mine twice as often'],            mod:S=>S.droneFast=1},
+];
+function activeSyn(){if(!run.exp)return [];
+  const own=run.exp.relics;
+  return SYNERGIES.filter(y=>y.need.every(n=>own.indexOf(n)>=0));}
+// Would taking this relic complete a pair? Used to mark offers in the station.
+function synFor(id){if(!run.exp)return null;
+  const own=run.exp.relics;
+  return SYNERGIES.find(y=>y.need.indexOf(id)>=0&&y.need.every(n=>n===id||own.indexOf(n)>=0))||null;}
+function synName(y){return (settings.lang==='en'?y.en:y.de)[0];}
+function synDesc(y){return (settings.lang==='en'?y.en:y.de)[1];}
 function relicById(id){return RELICS.find(r=>r.id===id);}
 function relicName(r){return (settings.lang==='en'?r.en:r.de)[0];}
 function relicDesc(r){return (settings.lang==='en'?r.en:r.de)[1];}
@@ -1426,8 +1480,26 @@ function rollOffers(){const own=run.exp.relics,pool=RELICS.filter(r=>own.indexOf
 /* Relic effects are applied on top of the freshly computed stats, never baked
    into the save — an expedition's build exists only for as long as the run does. */
 function applyRelics(){if(!run.exp)return;
-  for(const id of run.exp.relics){const r=relicById(id);if(r&&r.mod)try{r.mod(S);}catch(e){}}}
-function restat(){S=stats();applyRelics();}
+  for(const id of run.exp.relics){const r=relicById(id);if(r&&r.mod)try{r.mod(S);}catch(e){}}
+  // synergies land on top of the relics they need, so their maths sees the boosted stats
+  for(const y of activeSyn()){if(y.mod)try{y.mod(S);}catch(e){}}}
+function restat(){S=stats();applyRelics();
+  /* Track what the player has actually assembled. Done here rather than in
+     buyRelic because a SWAP can complete a pair just as well as a purchase, and
+     it can also break one — the achievements should only ever count what really
+     came together. */
+  if(run.exp){const sy=activeSyn();
+    if(sy.length){
+      meta.stats.synBuilt=(meta.stats.synBuilt||0)+0;      // touched below only on new pairs
+      meta.stats.synMax=Math.max(meta.stats.synMax||0,sy.length);
+      meta.stats.synSeen=meta.stats.synSeen||{};
+      let fresh=false;
+      for(const y of sy)if(!meta.stats.synSeen[y.id]){meta.stats.synSeen[y.id]=1;fresh=true;}
+      if(fresh){meta.stats.synBuilt=(meta.stats.synBuilt||0)+1;
+        achQueue.push({ic:sy[sy.length-1].ic,de:['Synergie',synName(sy[sy.length-1])],
+                       en:['Synergy',synName(sy[sy.length-1])]});if(!achTimer)nextAch();
+        sfx.rare();haptic('epic');}
+      saveMeta();checkAchievements();}}}
 // Deep Layers: each tier past the first makes the rock harder and the ore richer.
 /* Threat has to grow FASTER than reward, otherwise every extra layer is a pay
    rise: at 0.55 hardness against 0.85 value, layer 20 was 1.5x more lucrative
@@ -1495,12 +1567,18 @@ function renderZone(){const e=run.exp,de=settings.lang!=='en';
     const r=relicById(id);if(!r)return;
     const price=relicPrice(r,e.zone,e.tier),owned=e.relics.indexOf(id)>=0,afford=run.haul>=price;
     const full=e.relics.length>=RELIC_SLOTS;
+    const syn=owned?null:synFor(id);   // would taking this complete a pair?
     const b=document.createElement('button');
     b.className='mbtn';b.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;'+
-      (owned?'opacity:.4;':afford?'border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.22);':'opacity:.55;');
+      (owned?'opacity:.4;'
+            :afford?(syn?'border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.28);'
+                        :'border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.22);')
+                   :'opacity:.55;');
     b.innerHTML='<span style="display:flex;flex-direction:column;gap:3px;">'+
       '<span style="font-size:12px;">'+r.ic+' '+relicName(r)+'</span>'+
-      '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+relicDesc(r)+'</span></span>'+
+      '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+relicDesc(r)+'</span>'+
+      (syn?'<span style="font-size:10px;letter-spacing:.04em;color:#ff4de0;text-transform:none;">'+
+           syn.ic+' '+(de?'ergibt ':'completes ')+synName(syn)+': '+synDesc(syn)+'</span>':'')+'</span>'+
       '<span style="font-size:13px;color:'+(owned?'#9a90ad':afford?(full?'#ffd23f':'#39ff14'):'#ff6a3d')+';">'+
         (owned?'✓':'$'+price+(afford&&full?'<br><span style="font-size:9px;">'+(de?'tauschen':'swap')+'</span>':''))+'</span>';
     b.disabled=owned;
@@ -1508,9 +1586,12 @@ function renderZone(){const e=run.exp,de=settings.lang!=='en';
     box.appendChild(b);});
   const own=document.getElementById('zoneOwned');
   const cap=(de?'Frachtraum ':'Cargo ')+e.relics.length+'/'+RELIC_SLOTS;
+  const syns=activeSyn();
   own.innerHTML='<span style="color:'+(e.relics.length>=RELIC_SLOTS?'#ffd23f':'#12d9b0')+';font-weight:900;">'+cap+'</span>'+
     (e.relics.length?' — '+e.relics.map(i=>{const r=relicById(i);return r?r.ic+' '+relicName(r):'';}).join(' · ')
-                    :' — '+(de?'noch leer':'still empty'));}
+                    :' — '+(de?'noch leer':'still empty'))+
+    (syns.length?'<br><span style="color:#ff4de0;font-weight:900;">'+
+       syns.map(y=>y.ic+' '+synName(y)).join(' · ')+'</span>':'');}
 function buyRelic(id){const e=run.exp,r=relicById(id);if(!r||e.relics.indexOf(id)>=0)return;
   const price=relicPrice(r,e.zone,e.tier);
   if(run.haul<price){sfx.deny();haptic('warning');return;}
@@ -2404,6 +2485,9 @@ function buildCompendium(){const de=settings.lang!=='en',st=meta.stats;let h='';
      meet each one at a trader mid-run and decide on the spot. */
   h+=codexHead((de?'Relikte':'Relics')+' · '+RELIC_SLOTS+(de?' Plätze':' slots'),'#8a5cff');
   RELICS.forEach(r=>h+=codexRow(r.ic,'#8a5cff',relicName(r),relicDesc(r),''));
+  h+=codexHead(de?'Synergien':'Synergies','#ff4de0');
+  SYNERGIES.forEach(y=>{const parts=y.need.map(n=>{const r=relicById(n);return r?r.ic+' '+relicName(r):n;});
+    h+=codexRow(y.ic,'#ff4de0',synName(y),parts.join(' + ')+' → '+synDesc(y),'');});
   h+=codexHead(de?'Welt-Regeln':'World rules','#39ff14');
   PLANETS.forEach(p2=>{const rl=PLANET_RULE[p2.id];
     h+=codexRow('🪐',p2.core,p2.name,rl?(de?rl[0]:rl[1]):(de?'Keine Sonderregel':'No special rule'),'');});
@@ -2506,7 +2590,9 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   // one snarl on crossing INTO the Overdrive band, so the state has an onset
   if(run.ovr>0.02&&!run.ovrOn){run.ovrOn=true;sfx.ovr();haptic('heavy');}
   else if(run.ovr<=0.001&&run.ovrOn)run.ovrOn=false;
-  if(drilling){run.energy-=(3.4+S.power/22)*(1+0.5*run.ovr)*dt;run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.35)sfx.tick();
+  if(drilling){run.energy-=(3.4+S.power/22)*(1+0.5*run.ovr)*dt;
+    if(S.regenWhileCut&&S.energyRegen>0){const lim=S.energyMax*REGEN_CAP;
+      if(run.energy<lim)run.energy=Math.min(lim,run.energy+S.energyRegen*S.regenWhileCut*dt);}run.heat+=S.heatGen*P.heatMul*evHeat*cmul('heat')*dt*(run.freezeT>0?0:1);if(rnd()<0.35)sfx.tick();
     // continuous drilling rumble — stronger the faster you go
     run.buzzT=(run.buzzT||0)-dt;if(run.buzzT<=0){run.buzzT=0.09;vibe(Math.round(4+moveMag*11));}
     if(moveMag>0.45){shake=Math.max(shake,moveMag*3.2);
@@ -2584,7 +2670,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
     if(run.event.t<=0){run.event=null;run.eventCd=13+rnd()*10;}}
   if(laserFx>0)laserFx=Math.max(0,laserFx-dt);
   // combat drones: periodically auto-mine a nearby tile
-  if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=0.32;
+  if(S.dronemine){run.droneTimer=(run.droneTimer||0)-dt;if(run.droneTimer<=0){run.droneTimer=S.droneFast?0.16:0.32;
     const cr=clamp(ringOf(drill.rad),0,RINGS-1),dr=clamp(cr+(Math.floor(rnd()*5)-2),0,RINGS-1);
     const n=secCount(dr),ds=((sectorOf(drill.ang,dr)+Math.floor(rnd()*5)-2)%n+n)%n;
     mineTile(dr,ds,S.power*0.9);}}
@@ -3098,7 +3184,10 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
           M,y2+Math.round(W*0.095),'left',near?'#39ff14':'#9a90ad',Math.round(W*0.031));
       if(run.exp.relics.length)
         txt(c,run.exp.relics.map(i=>{const r=relicById(i);return r?r.ic:'';}).join(''),
-            W-M,y2+Math.round(W*0.055),'right','#ffffff',Math.round(W*0.036));}
+            W-M,y2+Math.round(W*0.055),'right','#ffffff',Math.round(W*0.036));
+      const sy=activeSyn();
+      if(sy.length)txt(c,sy.map(y=>y.ic).join('')+' '+(settings.lang==='en'?'SYNERGY':'SYNERGIE'),
+        W-M,y2+Math.round(W*0.095),'right','#ff4de0',Math.round(W*0.031));}
     /* The point of no return used to be invisible: fuel only pays for cutting
        rock, so climbing back up the shaft you already carved is free. New
        players never discovered that and simply died on top of their loot.
