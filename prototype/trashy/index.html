@@ -703,6 +703,11 @@ const ACH=[
  {id:'first',  ic:'🚀', de:['Erster Abstieg','Starte deinen ersten Run'],      en:['First Descent','Start your first run'],       cond:()=>meta.stats.runs>=1},
  {id:'d50',    ic:'⛏️', de:['Tiefgänger','Erreiche 50m Tiefe'],                en:['Digger','Reach 50m depth'],                 cond:()=>meta.stats.bestDepth>=50},
  {id:'d100',   ic:'🔥', de:['Kernnähe','Erreiche 100m Tiefe'],                 en:['Near the Core','Reach 100m depth'],         cond:()=>meta.stats.bestDepth>=100},
+ // --- bestiary: a reason to visit every world's own fauna ---
+ {id:'bio4',   ic:'🔬', de:['Feldbiologe','Erlege 4 verschiedene Arten'],      en:['Field Biologist','Kill 4 different species'],  cond:()=>Object.keys(meta.stats.species||{}).length>=4},
+ {id:'bio8',   ic:'🧬', de:['Xenologe','Erlege 8 verschiedene Arten'],         en:['Xenologist','Kill 8 different species'],       cond:()=>Object.keys(meta.stats.species||{}).length>=8},
+ {id:'bioAll', ic:'📚', de:['Bestiarium','Erlege alle 11 Arten'],              en:['Bestiary','Kill all 11 species'],              cond:()=>Object.keys(meta.stats.species||{}).length>=11},
+ {id:'kill100',ic:'⚔️', de:['Schädlingsbekämpfung','Erlege 100 Kreaturen'],    en:['Pest Control','Kill 100 creatures'],           cond:()=>(meta.stats.kills||0)>=100},
  // --- expedition: long-horizon goals for the roguelike mode ---
  {id:'exp1',   ic:'🧭', de:['Expedition','Erreiche einen sicheren Sektor'],   en:['Expedition','Reach a safe sector'],         cond:()=>(meta.stats.expSectors||0)>=1},
  {id:'exp10',  ic:'🗺️', de:['Kartograf','Erreiche 10 Sektoren insgesamt'],    en:['Cartographer','Reach 10 sectors total'],    cond:()=>(meta.stats.expSectors||0)>=10},
@@ -2031,11 +2036,63 @@ function buildPlanets(){const g=document.getElementById('planetCards');g.innerHT
  * the first time a number is tuned — which is exactly how the old economy doc
  * ended up quoting planet prices that had not been real for weeks. */
 const ROCKNAME={dirt:['Erdreich','Topsoil'],stone:['Gestein','Stone'],hard:['Hartgestein','Hard rock'],dark:['Dunkelfels','Darkrock']};
-const CREATURES=[
- {id:'crawler',ic:'🐛',de:['Krabbler','Beisst 6 Hitze. Stirbt an einem Treffer.'],           en:['Crawler','Bites for 6 heat. Dies in one hit.'],      from:16},
- {id:'swift',  ic:'🦗',de:['Flitzer','Jagt fast doppelt so schnell. 4 Hitze.'],              en:['Swift','Chases at double speed. 4 heat.'],           from:31},
- {id:'brute',  ic:'🦂',de:['Brocken','11 Hitze, hält zwei Treffer aus, wirft 44 $ ab.'],     en:['Brute','11 heat, takes two hits, drops $44.'],       from:61},
-];
+/* ---------- CREATURES ----------
+ * One table instead of `e.type==='brute'?11:e.type==='swift'?4:6` scattered
+ * through the update loop, the renderer and the dossier. Three universal
+ * species live everywhere; every world also fields one of its own, and that
+ * local species is the reason its creatures feel different rather than
+ * re-skinned. `trait` is what it does to you beyond biting.
+ *   hp    hits to kill        spd   chase multiplier
+ *   dmg   heat per bite       pay   cash on kill
+ *   life  seconds before it loses interest                                   */
+const SPECIES={
+ crawler:{ic:'🐛',col:'#ff3b6b',eye:'#ff3b6b',sz:0.26,hp:1,spd:1.5,dmg:6, pay:22, life:9,  from:16},
+ swift:  {ic:'🦗',col:'#ff3b6b',eye:'#ffef5c',sz:0.20,hp:1,spd:2.8,dmg:4, pay:22, life:9,  from:31},
+ brute:  {ic:'🦂',col:'#ff6a00',eye:'#ff6a00',sz:0.38,hp:2,spd:0.9,dmg:11,pay:44, life:13, from:61},
+ // --- one native species per world ---
+ ember:  {ic:'🔥',col:'#ffb03d',eye:'#fff2b0',sz:0.28,hp:1,spd:1.8,dmg:8, pay:38, life:10, from:20,trait:'burst'},
+ frostli:{ic:'❄️',col:'#8be9ff',eye:'#e6feff',sz:0.24,hp:1,spd:2.0,dmg:5, pay:36, life:10, from:20,trait:'freeze'},
+ magnet: {ic:'🧲',col:'#b8895a',eye:'#ffae42',sz:0.30,hp:2,spd:1.2,dmg:6, pay:52, life:11, from:20,trait:'thief'},
+ sentinel:{ic:'📡',col:'#2de2e6',eye:'#c8ffff',sz:0.28,hp:2,spd:2.2,dmg:3, pay:56, life:11, from:20,trait:'siphon'},
+ prism:  {ic:'🔷',col:'#4de0ff',eye:'#ff4de0',sz:0.26,hp:1,spd:1.6,dmg:5, pay:30, life:9,  from:20,trait:'split'},
+ stalker:{ic:'👁️',col:'#41537a',eye:'#8a5cff',sz:0.30,hp:2,spd:2.4,dmg:9, pay:70, life:12, from:20,trait:'hidden'},
+ spore:  {ic:'🌿',col:'#3fd977',eye:'#8dff5c',sz:0.22,hp:1,spd:1.2,dmg:4, pay:26, life:14, from:20,trait:'bloom'},
+ wraith: {ic:'🌀',col:'#6b4de0',eye:'#c86bff',sz:0.32,hp:3,spd:1.0,dmg:12,pay:96, life:13, from:20,trait:'blink'},
+};
+const TRAIT_TXT={
+ burst: ['Explodiert beim Sterben und heizt dich auf.','Detonates on death and cooks you.'],
+ freeze:['Der Biss lässt den Bohrer einfrieren.','Its bite freezes the drill.'],
+ thief: ['Reisst dir loses Erz wieder weg.','Rips loose ore back out of your magnet.'],
+ siphon:['Saugt Sprit statt Hitze zu machen.','Siphons fuel instead of adding heat.'],
+ split: ['Zerbricht beim Sterben in zwei kleinere.','Shatters into two smaller ones on death.'],
+ hidden:['Bleibt unsichtbar, bis es fast heran ist.','Stays invisible until it is nearly on you.'],
+ bloom: ['Vermehrt sich, wenn du es leben lässt.','Multiplies if you leave it alive.'],
+ blink: ['Springt in Sprüngen auf dich zu.','Teleports toward you in jumps.'],
+};
+const SPECNAME={
+ crawler:['Krabbler','Crawler'], swift:['Flitzer','Swift'], brute:['Brocken','Brute'],
+ ember:['Glutbalg','Ember'], frostli:['Frostbeisser','Frostling'], magnet:['Magnetit','Magnetite'],
+ sentinel:['Wachdrohne','Sentinel'], prism:['Prismling','Prismling'], stalker:['Schleicher','Stalker'],
+ spore:['Sporenwolke','Spore Cloud'], wraith:['Leerling','Wraith'],
+};
+// Which native species each world fields on top of the universal three.
+const PLANET_FAUNA={magmar:'ember',cryonis:'frostli',ferro:'magnet',mechon:'sentinel',
+  neon:'prism',abyss:'stalker',verdant:'spore',obscura:'wraith'};
+function faunaOf(){return PLANET_FAUNA[P.id]||null;}
+/* One spawn path for every creature, so Deep-Layer scaling and the species
+   table can never drift apart. `near` seeds it next to an existing creature
+   (used by spore blooms and prism shards) instead of out in the rock. */
+function spawnCreature(type,tier,near){
+  const sp=SPECIES[type];if(!sp)return null;
+  const c={type,age:0,hp:sp.hp+Math.floor(((tier||1)-1)/2),
+    rad:clamp((near?near.rad:drill.rad)+(rnd()<0.5?-1:1)*TILE*(near?0.8:2+rnd()*2),R_CORE,R_SURF),
+    ang:(near?near.ang:drill.ang)+(rnd()-0.5)*(near?0.25:0.5)};
+  enemies.push(c);return c;}
+function specName(id,de){const n=SPECNAME[id];return n?(de?n[0]:n[1]):id;}
+function specLine(id,de){const s=SPECIES[id];if(!s)return '';
+  const bits=[s.dmg+(de?' Hitze':' heat'),s.hp+(de?(s.hp>1?' Treffer':' Treffer'):' hit'+(s.hp>1?'s':'')),'$'+s.pay];
+  return s.ic+' '+specName(id,de)+' — '+bits.join(' · ')+
+    (s.trait?'. '+(de?TRAIT_TXT[s.trait][0]:TRAIT_TXT[s.trait][1]):'.');}
 const BOSSINFO={
  inferno:['🔥 Infernus','Brennt 1,5× heisser als andere Wächter.','🔥 Infernus','Burns 1.5x hotter than other guardians.'],
  frost:  ['❄️ Frostwächter','Brennt kalt (0,4×), friert aber den Bohrer ein.','❄️ Frost Warden','Burns cold (0.4x) but freezes the drill.'],
@@ -2080,11 +2137,15 @@ function dossierRows(p,de){
   if(p.caveChance)hz.push(L('🪨 Einstürze (~'+Math.round(p.caveChance*100)+' %): +10 Hitze, die Decke fällt nach.',
                             '🪨 Cave-ins (~'+Math.round(p.caveChance*100)+'%): +10 heat, the ceiling comes down.'));
   rows.push({h:L('Gefahren','Hazards'),lines:hz.length?hz:[L('Keine besonderen Gefahren — die Lernwelt.','No special hazards — the world you learn on.')]});
-  // --- creatures: they spawn by depth, so say from where ---
-  rows.push({h:L('Kreaturen','Creatures'),lines:CREATURES.map(c=>{
-    const t=de?c.de:c.en;
-    return c.ic+' '+t[0]+' — '+t[1]+' '+L('(ab ','(from ')+c.from+' m)';
-  })});
+  /* Creatures: the three universal species plus whatever this world fields of
+     its own. Read straight off SPECIES and PLANET_FAUNA, so adding a species
+     cannot leave the dossier describing a bestiary that no longer exists. */
+  const roster=['crawler','swift','brute'];
+  const native=PLANET_FAUNA[p.id];if(native)roster.push(native);
+  rows.push({h:L('Kreaturen','Creatures'),lines:roster.map(id=>{
+    const sp=SPECIES[id],mark=id===native?' ★':'';
+    return specLine(id,de)+' '+L('(ab ','(from ')+sp.from+' m)'+mark;
+  }).concat(native?[L('★ nur auf dieser Welt','★ only on this world')]:[])});
   const bi=BOSSINFO[p.bossType||'core'];
   rows.push({h:L('Wächter','Guardian'),lines:[de?(bi[0]+' — '+bi[1]):(bi[2]+' — '+bi[3])]});
   return rows;}
@@ -2329,7 +2390,7 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
       if(bt==='frost')run.frostT=Math.max(run.frostT,1.6);                        // frost boss slows the drill
       const suck=bt==='void'?22:14;
       if(ph>=1||bt==='void')drill.rad=Math.max(R_CORE+TILE*0.4,drill.rad-suck);   // suction toward the core
-      if(bt==='hive'){for(let k=0;k<2;k++)enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*2,R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.6,age:0,type:rnd()<0.5?'swift':'crawler',hp:1});}
+      if(bt==='hive'){const nat=faunaOf();for(let k=0;k<2;k++)spawnCreature(nat&&rnd()<0.5?nat:(rnd()<0.5?'swift':'crawler'),1);}
       if(ph>=2){for(let i=0;i<14;i++)burst(W/2+(rnd()-0.5)*40,DRILL_SY+(rnd()-0.5)*40,P.core,1,2);flash=Math.max(flash,0.4);vibe([25,50,25,80]);}}
     // rotating laser sweep — tech boss starts it early & spins faster
     const laserOn=bt==='tech'?ph>=1:ph>=2;
@@ -2397,28 +2458,62 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   const eT=run.exp?run.exp.tier:1;
   const eCap=Math.min(12,6+(eT-1)*2),eRate=0.6*(1+(eT-1)*0.35);
   if(drill.rad<R_SURF&&run.depthMax>15&&enemies.length<eCap&&rnd()<eRate*dt*evSpawn){
-    const roll=rnd(),hard=Math.min(0.55,0.32+(eT-1)*0.07);
-    const ty=(run.depthMax>60&&roll<hard)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
-    enemies.push({rad:clamp(drill.rad+(rnd()<0.5?-1:1)*TILE*(2+rnd()*2),R_CORE,R_SURF),ang:drill.ang+(rnd()-0.5)*0.5,age:0,type:ty,
-      hp:(ty==='brute'?2:1)+Math.floor((eT-1)/2)});}
+    const roll=rnd(),hard=Math.min(0.55,0.32+(eT-1)*0.07),native=faunaOf();
+    // roughly a third of what a world sends at you is its own species
+    let ty;
+    if(native&&rnd()<0.34)ty=native;
+    else ty=(run.depthMax>60&&roll<hard)?'brute':(run.depthMax>30&&roll<0.6)?'swift':'crawler';
+    spawnCreature(ty,eT);}
   const drwx2=drill.rad*Math.cos(drill.ang),drwy2=drill.rad*Math.sin(drill.ang);
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.age+=dt;
-    // swift creatures chase hard, brutes lumber
-    const hs=e.type==='swift'?2.8:e.type==='brute'?0.9:1.5;
-    e.rad+=(drill.rad-e.rad)*Math.min(1,dt*hs);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*hs);
+    const sp=SPECIES[e.type]||SPECIES.crawler;
+    /* Wraiths do not chase, they jump: a blink every ~1.4 s closes most of the
+       gap at once, so you cannot simply out-run one — you have to turn and cut. */
+    if(sp.trait==='blink'){e.blinkT=(e.blinkT||1.4)-dt;
+      if(e.blinkT<=0){e.blinkT=1.4;
+        e.rad+=(drill.rad-e.rad)*0.55;e.ang+=angDiff(drill.ang,e.ang)*0.55;
+        const bp=w2s(e.rad,e.ang);burst(bp[0],bp[1],sp.col,8,1.3);}}
+    else{e.rad+=(drill.rad-e.rad)*Math.min(1,dt*sp.spd);e.ang+=angDiff(drill.ang,e.ang)*Math.min(1,dt*sp.spd);}
+    // spore clouds bud off copies if you ignore them — the cost of running past
+    if(sp.trait==='bloom'){e.budT=(e.budT||3.2)-dt;
+      if(e.budT<=0){e.budT=3.2;if(enemies.length<eCap+2)spawnCreature(e.type,eT,e);}}
     const ewx=e.rad*Math.cos(e.ang),ewy=e.rad*Math.sin(e.ang),ed=Math.hypot(drwx2-ewx,drwy2-ewy);
+    e.near=ed;                                      // the renderer needs this for stalkers
     if(ed<26){
       if(drilling||run.boostT>0){                         // hit it back
-        e.hp--;burst(W/2,DRILL_SY,T.dmg,10,1.4);sfx.brk('hard');vibe(8);
-        if(e.hp<=0){run.haul+=(e.type==='brute'?44:22)*lootMul();if(e.type==='brute')meta.stats.bruteKill=true;enemies.splice(i,1);continue;}
-        e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.4;           // brute survives one hit, knocked back
+        e.hp--;burst(W/2,DRILL_SY,sp.col,10,1.4);sfx.brk('hard');vibe(8);
+        if(e.hp<=0){
+          run.haul+=sp.pay*lootMul();
+          if(e.type==='brute')meta.stats.bruteKill=true;
+          meta.stats.kills=(meta.stats.kills||0)+1;
+          meta.stats.species=meta.stats.species||{};
+          if(!meta.stats.species[e.type]){meta.stats.species[e.type]=1;checkAchievements();}
+          else meta.stats.species[e.type]++;
+          // an ember goes off in your face if you kill it at point blank
+          if(sp.trait==='burst'){run.heat=Math.min(99,run.heat+Math.max(0,14-S.heatShield));
+            burst(W/2,DRILL_SY,'#ffb03d',24,1.9);shake=Math.max(shake,15);flash=Math.max(flash,0.4);sfx.shock();haptic('heavy');}
+          // a prism breaks into two weaker shards
+          if(sp.trait==='split'&&!e.shard&&enemies.length<eCap+2){for(let k=0;k<2;k++){const c=spawnCreature(e.type,1,e);if(c){c.shard=true;c.hp=1;}}}
+          enemies.splice(i,1);continue;}
+        e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.4;           // survivors get knocked back
       }else{                                               // it bites you
-        const hd=e.type==='brute'?11:e.type==='swift'?4:6;
-        run.heat=Math.min(99,run.heat+hd);shake=Math.max(shake,e.type==='brute'?16:10);
-        sfx.shock();vibe([15,30]);burst(W/2,DRILL_SY,T.dmg,8,1.2);
-        if(e.type==='brute'){e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.6;}else{enemies.splice(i,1);continue;}
+        if(sp.trait==='siphon'){                           // sentinels drink fuel, not heat
+          run.energy=Math.max(0,run.energy-16);
+          burst(W/2,DRILL_SY,sp.col,10,1.3);sfx.deny();
+        }else{
+          run.heat=Math.min(99,run.heat+Math.max(0,sp.dmg-(sp.trait==='freeze'?0:S.heatShield*0.5)));
+          burst(W/2,DRILL_SY,sp.col,8,1.2);
+        }
+        if(sp.trait==='freeze')run.frostT=Math.max(run.frostT,1.8);     // frostlings ice the drive
+        if(sp.trait==='thief'){                                          // magnetites rob your magnet
+          let taken=0;
+          for(let k=drops.length-1;k>=0&&taken<3;k--){if(drops[k].got){drops.splice(k,1);taken++;}}
+          if(taken){lootNum(W/2,DRILL_SY-30,'-'+taken+' Erz','#ff6a3d',0);haptic('warning');}}
+        shake=Math.max(shake,sp.hp>1?16:10);
+        sfx.shock();vibe([15,30]);
+        if(sp.hp>1){e.rad+=(e.rad<drill.rad?-1:1)*TILE*1.6;}else{enemies.splice(i,1);continue;}
       }}
-    if(e.age>(e.type==='brute'?13:9))enemies.splice(i,1);}
+    if(e.age>sp.life)enemies.splice(i,1);}
   if(shake>0)shake=Math.max(0,shake-dt*26);
   if(flash>0)flash=Math.max(0,flash-dt*1.6);
   if(glitch>0)glitch=Math.max(0,glitch-dt*1.2);}
@@ -2585,13 +2680,33 @@ function scene(){
   for(const dp of drops){const R=RES[dp.id],ps=w2s(dp.rad,dp.ang),x=ps[0]*S1,y=ps[1]*S1,s=Math.max(2,(3+Math.sin(dp.t*8))|0);
     o.fillStyle=R.glow;o.fillRect(x-s,y-s,s*2,s*2);o.fillStyle=R.color;o.fillRect(x-s+1,y-s+1,s,s);}
   // creatures — angular blob + glowing eyes; size/colour by type
-  for(const e of enemies){const ps=w2s(e.rad,e.ang),x=ps[0]*S1|0,y=ps[1]*S1|0,
-    sc=e.type==='brute'?0.38:e.type==='swift'?0.2:0.26,s=Math.max(3,TILE*sc*SCALEcur*S1),
-    eye=e.type==='swift'?'#ffef5c':e.type==='brute'?'#ff6a00':T.dmg;
+  /* Creatures are drawn from the species table, so a world's own fauna is
+     immediately readable as *not* one of the usual three. Stalkers are the
+     exception that proves the rule: on the dark worlds they are genuinely
+     invisible until they are almost on you, which is what makes Abyss frightening
+     rather than merely dim. */
+  for(const e of enemies){const sp=SPECIES[e.type]||SPECIES.crawler;
+    let vis=1;
+    if(sp.trait==='hidden'){const d0=e.near===undefined?999:e.near;
+      vis=d0>150?0:d0>70?(150-d0)/80*0.5:0.5+(70-d0)/70*0.5;
+      if(vis<=0.02)continue;}
+    const ps=w2s(e.rad,e.ang),x=ps[0]*S1|0,y=ps[1]*S1|0,
+      s=Math.max(3,TILE*sp.sz*SCALEcur*S1*(e.shard?0.7:1));
+    o.globalAlpha=vis;
     o.fillStyle=T.space2;o.fillRect(x-s,y-s,s*2,s*2);
-    o.strokeStyle=e.type==='brute'?'#ff6a00':T.dmg;o.lineWidth=e.type==='brute'?2:1;o.strokeRect(x-s,y-s,s*2,s*2);
-    o.fillStyle=eye;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);
-    o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,e.type==='brute'?2:1,e.type==='brute'?2:1);}
+    o.strokeStyle=sp.col;o.lineWidth=sp.hp>1?2:1;o.strokeRect(x-s,y-s,s*2,s*2);
+    const ed=sp.hp>1?2:1;
+    o.fillStyle=sp.eye;o.fillRect((x-s*0.5)|0,(y-s*0.3)|0,ed,ed);o.fillRect((x+s*0.3)|0,(y-s*0.3)|0,ed,ed);
+    // a small tell per trait, so you can react before it reaches you
+    if(sp.trait==='burst'){const bp=0.5+0.5*Math.sin(performance.now()/140+e.age*9);
+      o.globalAlpha=vis*(0.35+0.4*bp);o.fillStyle='#ffb03d';o.fillRect(x-s,y-s,s*2,s*2);o.globalAlpha=vis;}
+    if(sp.trait==='siphon'){o.strokeStyle=sp.eye;o.globalAlpha=vis*0.7;o.lineWidth=1;
+      o.beginPath();o.moveTo(x,y-s);o.lineTo(x,y-s*2.1);o.stroke();o.globalAlpha=vis;}
+    if(sp.trait==='freeze'){o.strokeStyle=sp.eye;o.globalAlpha=vis*0.8;o.lineWidth=1;
+      o.beginPath();o.moveTo(x-s*1.5,y);o.lineTo(x+s*1.5,y);o.moveTo(x,y-s*1.5);o.lineTo(x,y+s*1.5);o.stroke();o.globalAlpha=vis;}
+    if(sp.trait==='thief'){o.strokeStyle=sp.eye;o.globalAlpha=vis*0.6;o.lineWidth=1;
+      o.beginPath();o.arc(x,y,s*1.7,0,TAU);o.stroke();o.globalAlpha=vis;}
+    o.globalAlpha=1;}
   // particles
   // Additive blending makes sparks read as light rather than as coloured dots,
   // and a fresh particle flares brighter before settling.
