@@ -151,6 +151,14 @@
   .mbtn.danger{border-color:#ff4d4d;color:#ff4d4d;box-shadow:4px 4px 0 rgba(255,77,77,.25);}
   .mbtn.set span{font-size:12px;letter-spacing:.1em;color:#2de2e6;}
   .mbtn.set.off{opacity:.6;} .mbtn.set.off span{color:#9a90ad;}
+  /* Newly unlocked menu entries announce themselves once, then settle down. */
+  .mbtn.fresh{border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.28);}
+  .mbtn.fresh::after{content:"NEU";font-size:8px;letter-spacing:.12em;background:#39ff14;color:#000;
+    padding:2px 4px;margin-left:6px;font-weight:900;}
+  @media (prefers-reduced-motion:no-preference){
+    .mbtn.fresh{animation:freshPulse 1.9s ease-in-out infinite;}
+    @keyframes freshPulse{0%,100%{box-shadow:4px 4px 0 rgba(57,255,20,.28);}
+      50%{box-shadow:4px 4px 0 rgba(57,255,20,.28),0 0 18px rgba(57,255,20,.5);}}}
 
   /* achievement popup */
   /* clears the fuel/heat readout in the top-left instead of covering it */

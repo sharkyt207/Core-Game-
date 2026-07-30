@@ -134,6 +134,14 @@
   .mbtn.danger{border-color:#ff4d4d;color:#ff4d4d;box-shadow:4px 4px 0 rgba(255,77,77,.25);}
   .mbtn.set span{font-size:12px;letter-spacing:.1em;color:#2de2e6;}
   .mbtn.set.off{opacity:.6;} .mbtn.set.off span{color:#9a90ad;}
+  /* Newly unlocked menu entries announce themselves once, then settle down. */
+  .mbtn.fresh{border-color:#39ff14;color:#39ff14;box-shadow:4px 4px 0 rgba(57,255,20,.28);}
+  .mbtn.fresh::after{content:"NEU";font-size:8px;letter-spacing:.12em;background:#39ff14;color:#000;
+    padding:2px 4px;margin-left:6px;font-weight:900;}
+  @media (prefers-reduced-motion:no-preference){
+    .mbtn.fresh{animation:freshPulse 1.9s ease-in-out infinite;}
+    @keyframes freshPulse{0%,100%{box-shadow:4px 4px 0 rgba(57,255,20,.28);}
+      50%{box-shadow:4px 4px 0 rgba(57,255,20,.28),0 0 18px rgba(57,255,20,.5);}}}
 
   /* achievement popup */
   /* clears the fuel/heat readout in the top-left instead of covering it */
@@ -671,7 +679,7 @@ const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.ascend.perks)j.ascend.perks={};if(j.ascend.spent==null)j.ascend.spent=0;if(!j.contracts)j.contracts=[];
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.seenMenu)j.seenMenu={};if(!j.ascend.perks)j.ascend.perks={};if(j.ascend.spent==null)j.ascend.spent=0;if(!j.contracts)j.contracts=[];
   if(!j.mats)j.mats={ferrite:0,cuprite:0,crystal:0,core:0,artifact:0};if(!j.refine)j.refine={};
   if(!j.modules)j.modules=[];if(!j.slots)j.slots=[null,null,null];if(!j.challenge)j.challenge={best:0,bestDate:''};if(!j.scores)j.scores=[];
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'};if(!j.settings.lang)j.settings.lang='de';if(!j.settings.quality)j.settings.quality='auto';
@@ -839,6 +847,52 @@ function perkDesc(d){return (settings.lang==='en'?d.en:d.de)[1];}
 function relicSlots(){return RELIC_SLOTS+perkLvl('a_cargo');}
 function relicPicks(){return RELIC_PICKS+(perkLvl('a_broker')?1:0);}
 function salvageRate(){return perkLvl('a_salv')?0.65:SALVAGE;}
+/* ---------- PROGRESSIVE DISCLOSURE ----------
+ * Measured on a fresh save: the title screen offered THIRTEEN buttons to a
+ * player with $0, one visible skill and one planet. Nine of them led to screens
+ * that were empty, unaffordable, or about systems the player had not met — and
+ * Expedition, the mode built on top of the basic loop, was open before the
+ * first dive. That is not depth, it is a wall.
+ * Each entry now appears the moment it can do something, and announces itself
+ * once. The gates are deliberately generous: nothing is hidden for long, and
+ * everything a player has actually earned is always reachable. */
+const MENU_GATES={
+  btnExpedition:()=>meta.stats.runs>=2,                 // learn the dive first
+  btnChallenge: ()=>meta.stats.runs>=3,
+  btnPlanets:   ()=>meta.stats.runs>=2,
+  btnModules:   ()=>meta.stats.runs>=4||meta.modules.length>0,
+  btnRefine:    ()=>Object.keys(meta.mats||{}).some(k=>meta.mats[k]>0),
+  btnContracts: ()=>meta.stats.runs>=3,
+  btnSkins:     ()=>meta.stats.runs>=5||meta.cosmetics.owned.length>1,
+  btnCodex:     ()=>meta.stats.runs>=2,
+  btnAch:       ()=>meta.stats.runs>=2||meta.achievements.length>0,
+};
+function menuOpen(id){const g=MENU_GATES[id];return !g||!!g();}
+/* A freshly unlocked entry gets a one-time "NEU" badge, so the menu growing is
+   something the player notices rather than something that happens behind them. */
+function refreshMenu(){
+  meta.seenMenu=meta.seenMenu||{};
+  if(meta.stats.runs>4&&!meta.seenMenu.expedTut){meta.seenMenu.expedTut=1;saveMeta();}
+  /* The one unlock that deserves more than a badge: Expedition is a whole second
+     mode, so it gets its tutorial card the moment it opens — once. */
+  /* Only for players who are actually crossing the threshold. Without the upper
+     bound, everyone who already had Expedition open before this build — every
+     existing save — would get an unsolicited tutorial card thrown over the title
+     screen on their next launch, explaining a mode they have been playing. */
+  if(menuOpen('btnExpedition')&&!meta.seenMenu.expedTut&&meta.tutorialSeen&&meta.stats.runs<=4){
+    meta.seenMenu.expedTut=1;saveMeta();
+    setTimeout(()=>openTut('titleOver','exped'),420);}
+  let fresh=false;
+  for(const id in MENU_GATES){
+    const el=document.getElementById(id);if(!el)continue;
+    const open=menuOpen(id);
+    el.style.display=open?'':'none';
+    const isNew=open&&!meta.seenMenu[id];
+    el.classList.toggle('fresh',isNew);
+    if(isNew&&!el._newMark){el._newMark=true;
+      el.addEventListener('click',()=>{meta.seenMenu[id]=1;saveMeta();el.classList.remove('fresh');},{once:true});}
+    if(isNew)fresh=true;}
+  return fresh;}
 function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
 
 // Skill tree — starts with ONE unlockable skill; buying a node reveals its children.
@@ -2107,8 +2161,17 @@ function applyLang(){
 function dayRng(){let s=5;for(const c of new Date().toDateString())s=((s*31+c.charCodeAt(0))>>>0);
   return ()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
 function ensureDaily(){const ds=new Date().toDateString();if(meta.daily&&meta.daily.date===ds)return;
-  const r=dayRng(),kinds=[{type:'depth',target:30+Math.floor(r()*45),reward:250},
-    {type:'loot',target:600+Math.floor(r()*2000),reward:350},{type:'runs',target:3+Math.floor(r()*5),reward:300}];
+  /* Scale the goal to what the player has actually shown they can do. The fixed
+     ranges asked a brand-new account — $0, best depth 0 — to reach 66 m and haul
+     2 000 $, which is the very first thing the title screen says to someone who
+     has never played. A daily goal you cannot reach on day one is not a goal,
+     it is a verdict. The floors keep it meaningful for veterans. */
+  const best=Math.max(12,meta.stats.bestDepth||0);
+  const rich=Math.max(200,Math.round((meta.stats.totalEarned||0)/Math.max(1,meta.stats.runs||1)));
+  const r=dayRng(),kinds=[
+    {type:'depth',target:Math.round(best*(0.75+r()*0.55)),reward:250},
+    {type:'loot', target:Math.round(rich*(1.1+r()*1.6)),  reward:350},
+    {type:'runs', target:2+Math.floor(r()*4),             reward:300}];
   const pick=kinds[Math.floor(r()*kinds.length)];
   meta.daily={date:ds,type:pick.type,target:pick.target,reward:pick.reward,progress:0,claimed:false};saveMeta();}
 function dailyDesc(){const d=meta.daily,de=settings.lang!=='en';if(!d)return'';
@@ -2547,22 +2610,31 @@ const TUTSTEPS=[
            en:['Going back up is free','Climbing your own shaft costs nothing. Extract with ⏏ and you keep everything. Die, and the salvage drone recovers just 40%.']},
  {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
            en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
- {ic:'🧭', de:['Expedition','Der zweite Modus: Du tauchst durch Sektoren. Alle paar Meter wartet eine Station — Tank voll, Bohrer kalt, und ein Händler mit Relikten, die es im Baum nicht gibt. Bezahlt wird mit deiner Beute, also: mitnehmen oder tiefer gehen?'],
+ {ic:'🧭', gate:'exped', de:['Expedition','Der zweite Modus: Du tauchst durch Sektoren. Alle paar Meter wartet eine Station — Tank voll, Bohrer kalt, und ein Händler mit Relikten, die es im Baum nicht gibt. Bezahlt wird mit deiner Beute, also: mitnehmen oder tiefer gehen?'],
            en:['Expedition','The second mode: you dive through sectors. Every few metres a station waits — full tank, cold drill, and a trader selling relics the tree never offers. You pay with your haul, so: bank it or go deeper?']},
  {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Am Kern wartet die nächste Schicht: härter, reicher, endlos.'],
            en:['Your Goal','Drill deeper through 9 worlds to the molten core — survive bosses, weather and creatures. At the core the next layer waits: harder, richer, endless.']},
 ];
-let tutIndex=0;
-function renderTut(){const de=settings.lang!=='en',s=TUTSTEPS[tutIndex];
+let tutIndex=0,tutDeck=TUTSTEPS;
+/* The deck is filtered, not fixed. Teaching Expedition in minute one describes a
+   mode the player cannot open yet and has no frame for — it is noise in the exact
+   moment attention is scarcest. That card is dealt later, on its own, the first
+   time the mode actually unlocks. */
+function tutFor(gate){return TUTSTEPS.filter(s=>!s.gate||s.gate===gate);}
+function renderTut(){const de=settings.lang!=='en',s=tutDeck[tutIndex];
   document.getElementById('tutIcon').textContent=s.ic;
   document.getElementById('tutTitle').textContent=de?s.de[0]:s.en[0];
   document.getElementById('tutBody').textContent=de?s.de[1]:s.en[1];
-  document.getElementById('tutDots').innerHTML=TUTSTEPS.map((_,i)=>
+  document.getElementById('tutDots').innerHTML=tutDeck.map((_,i)=>
     '<span style="width:9px;height:9px;border-radius:50%;background:'+(i===tutIndex?'#ffd23f':'#4a4458')+'"></span>').join('');
-  document.getElementById('btnTutNext').textContent=(tutIndex>=TUTSTEPS.length-1)?(de?'Los geht\'s':'Let\'s go'):(de?'Weiter':'Next');
+  document.getElementById('btnTutNext').textContent=(tutIndex>=tutDeck.length-1)?(de?'Los geht\'s':'Let\'s go'):(de?'Weiter':'Next');
   document.getElementById('btnTutSkip').textContent=de?'Überspringen':'Skip';}
-function openTut(from){backTo=from||'titleOver';hide(backTo);tutIndex=0;renderTut();show('tutOver');}
-function finishTut(){hide('tutOver');show(backTo);meta.tutorialSeen=true;saveMeta();}
+function openTut(from,gate){backTo=from||'titleOver';hide(backTo);
+  tutDeck=gate?TUTSTEPS.filter(s=>s.gate===gate):tutFor(null);
+  if(!tutDeck.length)tutDeck=TUTSTEPS;
+  tutIndex=0;renderTut();show('tutOver');}
+function finishTut(){hide('tutOver');show(backTo);meta.tutorialSeen=true;saveMeta();
+  if(backTo==='titleOver')refreshMenu();}
 
 /* ===================== COMPENDIUM (records + codex) ===================== */
 function codexHead(txt,col){return '<div style="width:100%;margin:12px 0 2px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:'+(col||'#ffd23f')+'">'+txt+'</div>';}
@@ -3523,14 +3595,14 @@ document.getElementById('btnTree2').onclick=()=>{sfx.ui();openTree('shopOver');}
 document.getElementById('btnPlanets2').onclick=()=>{sfx.ui();openPlanets('shopOver');};
 document.getElementById('btnModules2').onclick=()=>{sfx.ui();openModules('shopOver');};
 document.getElementById('btnRefine2').onclick=()=>{sfx.ui();openRefinery('shopOver');};
-document.getElementById('btnShopMenu').onclick=()=>{sfx.ui();hide('shopOver');show('titleOver');updateDailyUI();};
+document.getElementById('btnShopMenu').onclick=()=>{sfx.ui();hide('shopOver');show('titleOver');updateDailyUI();refreshMenu();};
 document.getElementById('btnTreeDone').onclick=()=>{sfx.ui();hide('treeOver');show(backTo);};
 document.getElementById('btnPlanetsDone').onclick=()=>{sfx.ui();hide('planetOver');show(backTo);};
 document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGain(),nc=meta.prestige.cores+g;
   document.getElementById('prestigeTxt').innerHTML='Setzt Skill-Baum &amp; Credits zurück.<br>Kerne: <b>'+meta.prestige.cores+'</b> → <b style="color:#8a5cff">'+nc+'</b> (+'+g+')<br>Permanent: +'+Math.round(nc*12)+'% Loot · +'+(nc*4)+' Bohrkraft.';
   hide('treeOver');show('prestigeOver');};
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
-document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');};
+document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');refreshMenu();};
 // --- expedition ---
 document.getElementById('btnExpedition').onclick=()=>{sfx.ui();pendingExp=true;startRun();};
 document.getElementById('btnDosDone').onclick=()=>{sfx.back();hide('dossierOver');show('planetOver');};
@@ -3593,7 +3665,7 @@ function unlockAudio(){const a=audio();if(a&&a.state==='suspended')a.resume();if
 window.addEventListener('pointerdown',unlockAudio);
 window.addEventListener('keydown',unlockAudio);
 // studio splash -> title (first-launch onboarding waits until after the splash)
-setTimeout(()=>{hide('splashOver');show('titleOver');
+setTimeout(()=>{hide('splashOver');show('titleOver');refreshMenu();
   if(!meta.tutorialSeen)setTimeout(()=>openTut('titleOver'),380);},2400);
 })();
 </script>
