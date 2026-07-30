@@ -1383,12 +1383,37 @@ function burst(x,y,color,n,spd){const cap=QUAL.parts;
     parts.push(p);}}
 function killPart(i){const p=parts[i];parts[i]=parts[parts.length-1];parts.pop();
   if(partPool.length<400)partPool.push(p);}
+/* Floating numbers stack instead of piling up. Crits fire on a 0.26 s cadence
+ * and ore lands whenever it lands, so two or three labels regularly spawned in
+ * the same few pixels at the drill and rendered as one unreadable smear —
+ * exactly where the player is looking. Each new label is nudged clear of the
+ * ones already there: a few pixels of separation is the difference between
+ * "116 damage and +$69" and a golden blur. */
+function slotFor(x,y,h){
+  const near=(ty)=>{
+    /* Check every live label, not just the young ones. An earlier version skipped
+       anything older than 0.35 s on the assumption it had drifted clear — but at
+       26 px/s that is nine pixels, still a direct collision. The list is capped
+       at 40, so scanning all of it costs nothing. */
+    for(const d of dmgnums)if(Math.abs(d.x-x)<34&&Math.abs(d.y-ty)<h)return d;
+    return null;};
+  let ty=y;
+  for(let pass=0;pass<8;pass++){if(!near(ty))return ty;ty-=h;}
+  /* The column is saturated. Bailing out here — which the first version did —
+     silently returns a slot that still overlaps, which is exactly the smear this
+     function exists to prevent. Crits fire every 0.26 s and ore lands whenever it
+     lands, so a hot column genuinely produces more labels than anyone can read.
+     Retire the oldest one in the way and take its place: a bounded, legible
+     stack beats an unbounded pile. */
+  for(let v=near(ty);v;v=near(ty)){const i=dmgnums.indexOf(v);if(i<0)break;dmgnums.splice(i,1);}
+  return ty;}
 function dmgNum(x,y,v,color,crit){if(dmgnums.length>40)dmgnums.shift();
-  dmgnums.push({x:x+(rnd()-0.5)*10,y,v:Math.round(v*10)/10,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
+  const px=x+(rnd()-0.5)*10;
+  dmgnums.push({x:px,y:slotFor(px,y,crit?15:11),v:Math.round(v*10)/10,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
 // Loot payout text. `big` 0/1/2 = common / rare / legendary: rarer ore rises
 // slower, lives longer and is set bigger, so value reads at a glance.
 function lootNum(x,y,txt,color,big){if(dmgnums.length>40)dmgnums.shift();
-  dmgnums.push({x,y,v:txt,age:0,life:0.85+0.35*big,color,loot:true,big:big||0,vy:26+8*big});}
+  dmgnums.push({x,y:slotFor(x,y,13+(big||0)*4),v:txt,age:0,life:0.85+0.35*big,color,loot:true,big:big||0});}
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});
@@ -1400,7 +1425,12 @@ let tickAcc=0,chainGuard=0;
 function mineTile(ring,sec,dmg){const t=tilePolar(ring,sec);if(!t||t.wall)return false;t.hp-=dmg;
   const rad_c=R_CORE+(ring+0.5)*TILE,ang_c=(sec+0.5)*dsecOf(ring),ps=w2s(rad_c,ang_c);
   const critNow=(run.critMul||1)>1;
-  tickAcc+=dmg;if(tickAcc>7){dmgNum(ps[0],ps[1]-6,tickAcc,critNow?'#ffe14d':T.dmg,critNow);tickAcc=0;}
+  /* The threshold scales with drill power, so the RATE of floating numbers stays
+     roughly constant instead of multiplying with your build. At a fixed 7 a
+     late-game drill spat out a number several times per tile and turned the
+     column into a tower of near-identical values. */
+  tickAcc+=dmg;const tickAt=Math.max(7,S.power*0.28);
+  if(tickAcc>tickAt){dmgNum(ps[0],ps[1]-6,tickAcc,critNow?'#ffe14d':T.dmg,critNow);tickAcc=0;}
   if(rnd()<0.3)burst(ps[0],ps[1],P.ground[2],1,0.5);
   if(t.hp<=0){world.set(key(ring,sec),null);burst(ps[0],ps[1],T.accent,10,1);shake=Math.max(shake,3.5);hitstop=0.02;
     run.combo=Math.min(99,run.combo+1);run.comboT=1.5;if(run.combo>run.maxCombo)run.maxCombo=run.combo;  // streak (loot bonus only with Kombo-Meister)
@@ -2938,8 +2968,14 @@ function update(dt){curDt=dt;updateCamera(dt);if(!run.active||run.paused)return;
   // particles / dmg numbers (screen space)
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.age+=dt;if(p.age>=p.life){killPart(i);continue;}
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=380*dt;p.vx*=0.96;}
+  /* Every label rises at the same speed. Loot text used to ease to a stop while
+     damage numbers kept climbing at a constant rate, so a fast number caught up
+     with a slow one and they crossed — separating them at spawn cannot help once
+     they move at different speeds. Uniform motion preserves the spacing
+     slotFor() establishes for the whole lifetime. Rarity still reads through
+     size and how long the label lives, which were always the stronger signals. */
   for(let i=dmgnums.length-1;i>=0;i--){const d=dmgnums[i];d.age+=dt;
-    d.y-=(d.vy||26)*dt;if(d.vy)d.vy*=1-Math.min(0.9,dt*1.6);   // loot text eases to a stop as it fades
+    d.y-=26*dt;
     if(d.age>=d.life)dmgnums.splice(i,1);}
   // deep-layer creatures: spawn, home toward the drill, bite if you're not drilling
   /* Deep Layers have to bite back, or "harder and richer" is only richer. Each
