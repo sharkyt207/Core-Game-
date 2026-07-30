@@ -279,6 +279,19 @@ const SKILLS=[
  {id:'drilllord', name:'Bohr-Meister',  ic:'⛏️', cost:3600, req:['coredrill'],pos:[0.4,7], eff:{dp:60,wide:1}},
  {id:'singularity',name:'Singularität', ic:'🌀', cost:12000,req:['apex','coredrill'], pos:[-0.9,8.4],
    eff:{dp:220,ds:100,de:200,dv:1.5,crit:1,drone:2,chain:1,bossPow:2}},
+ /* --- DOCTRINES: pick exactly one, ever ---
+    44 skills with no exclusivity meant the tree was a checklist: given enough
+    runs every player ended up with the identical maxed drill, and there was no
+    such thing as "my build". The relics got combinations; the tree needs a
+    commitment. Three doctrines branch off the mid-tree, each cheap enough to
+    reach early and each locking the other two out until you prestige. Every one
+    of them GIVES something and COSTS something, so none is simply best. */
+ {id:'doc_drive', name:'Vortrieb',  ic:'⚔️', cost:1500, req:['drill3'], pos:[-1.6,4.2], excl:'doctrine',
+   eff:{dp:70,dh:-2}},
+ {id:'doc_hunt',  name:'Beutezug',  ic:'🏹', cost:1500, req:['drill3'], pos:[0,4.6],    excl:'doctrine',
+   eff:{dv:0.7,dp:-14,luck:0.06}},
+ {id:'doc_pion',  name:'Pionier',   ic:'🧱', cost:1500, req:['drill3'], pos:[1.6,4.2],  excl:'doctrine',
+   eff:{de:130,dh:4,dc:8,dv:-0.15}},
  // --- expansion: mobility & magnet ---
  {id:'speed3',    name:'Speed III',      ic:'💨', cost:1000, req:['speed2'],   pos:[-1.9,3],  eff:{ds:70}},
  {id:'magnet2',   name:'Magnet II',      ic:'🧲', cost:1400, req:['magpulse'], pos:[-3.9,4],  eff:{dm:130}},
@@ -298,7 +311,13 @@ const SKILLS=[
 const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
 function owned(id){return meta.skills.includes(id);}
 function visibleSkill(s){return owned(s.id)||s.req.every(owned);}          // hidden until reachable
-function canBuy(s){return !owned(s.id)&&s.req.every(owned)&&meta.credits>=s.cost;}
+/* An exclusive group allows exactly one member for the whole prestige cycle.
+   `exclBlocker` returns the skill that is standing in the way, so the tree and
+   the info panel can name it instead of just greying the node out — "you cannot
+   buy this" without a reason reads as a bug. */
+function exclBlocker(s){if(!s.excl)return null;
+  return SKILLS.find(x=>x.excl===s.excl&&x.id!==s.id&&owned(x.id))||null;}
+function canBuy(s){return !owned(s.id)&&s.req.every(owned)&&!exclBlocker(s)&&meta.credits>=s.cost;}
 function buySkill(id){const s=SKILLMAP[id];if(!s||!canBuy(s))return false;
   meta.credits-=s.cost;meta.skills.push(id);saveMeta();return true;}
 
@@ -1238,10 +1257,14 @@ function skillEffLines(s){const de=settings.lang!=='en',e=s.eff||{},L=[];
   add(e.ds,'Speed','speed');
   add(e.de,'Sprit-Tank','fuel tank');
   add(e.dr,'Sprit/Sek.','fuel/sec');
-  if(e.dh)L.push('−'+e.dh+' '+(de?'Hitzeaufbau':'heat buildup'));
+  /* Signs have to be right in both directions. These two lines only ever handled
+     the upside, so the moment a skill carried a real downside they printed
+     "−-2 Hitzeaufbau" and "+-15% Loot-Wert" — which makes a deliberate trade-off
+     look like a broken string. */
+  if(e.dh)L.push((e.dh>0?'−':'+')+Math.abs(e.dh)+' '+(de?'Hitzeaufbau':'heat buildup'));
   if(e.dc)L.push('+'+e.dc+' '+(de?'Kühlung':'cooling'));
   add(e.dm,'Magnet-Reichweite','magnet range');
-  if(e.dv)L.push('+'+Math.round(e.dv*100)+'% '+(de?'Loot-Wert':'loot value'));
+  if(e.dv)L.push((e.dv>0?'+':'−')+Math.round(Math.abs(e.dv)*100)+'% '+(de?'Loot-Wert':'loot value'));
   if(e.crit)L.push('+'+Math.round(e.crit*100)+'% '+(de?'Krit-Chance (×2 Schaden)':'crit chance (x2 damage)'));
   if(e.luck)L.push('+'+Math.round(e.luck*100)+'% '+(de?'Fundchance':'find chance'));
   if(e.chain)L.push(de?'Kettenreaktion +1 Stufe':'chain reaction +1 level');
@@ -1269,11 +1292,23 @@ function skillEffLines(s){const de=settings.lang!=='en',e=s.eff||{},L=[];
   return L;}
 function showSkillInfo(s){const de=settings.lang!=='en',own=owned(s.id);
   const box=document.getElementById('skillInfo');
-  const state=own?(de?'✓ Gekauft':'✓ Owned'):(canBuy(s)?(de?'Kaufbar für ':'Buy for ')+s.cost+'$'
+  const block=own?null:exclBlocker(s);
+  const state=own?(de?'✓ Gekauft':'✓ Owned')
+    :block?(de?'🚫 Gesperrt durch '+block.name:'🚫 Locked by '+block.name)
+    :(canBuy(s)?(de?'Kaufbar für ':'Buy for ')+s.cost+'$'
     :(de?'Kostet ':'Costs ')+s.cost+'$'+(meta.credits<s.cost?(de?' — zu wenig Cash':' — not enough cash'):''));
-  box.innerHTML='<div class="siHead"><span class="siIc">'+s.ic+'</span><b>'+s.name+'</b></div>'+
-    '<ul class="siList">'+skillEffLines(s).map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
-    '<div class="siFoot" style="color:'+(own?'#2de2e6':canBuy(s)?'#ffd23f':'#9a90ad')+'">'+state+'</div>';
+  /* A doctrine has to say out loud that it is a one-way choice, before the tap.
+     A player who spends 1500 $ and only then discovers two branches closed has
+     been tricked by the interface, not by the design. */
+  const docNote=s.excl&&!own&&!block
+    ?'<div style="font-size:11px;line-height:1.45;color:#ff4de0;margin-top:6px;font-weight:900;">'+
+      (de?'Doktrin: Du wählst genau EINE. Die anderen bleiben bis zum nächsten Prestige gesperrt.'
+         :'Doctrine: you pick exactly ONE. The others stay locked until your next prestige.')+'</div>'
+    :block?'<div style="font-size:11px;line-height:1.45;color:#9a90ad;margin-top:6px;">'+
+      (de?'Ein Prestige öffnet die Wahl wieder.':'A prestige reopens the choice.')+'</div>':'';
+  box.innerHTML='<div class="siHead"><span class="siIc">'+(block?'🚫':s.ic)+'</span><b>'+s.name+'</b></div>'+
+    '<ul class="siList">'+skillEffLines(s).map(x=>'<li>'+x+'</li>').join('')+'</ul>'+docNote+
+    '<div class="siFoot" style="color:'+(own?'#2de2e6':block?'#ff6a3d':canBuy(s)?'#ffd23f':'#9a90ad')+'">'+state+'</div>';
   box.classList.add('show');vibe(8);
   clearTimeout(showSkillInfo._t);
   showSkillInfo._t=setTimeout(()=>box.classList.remove('show'),3200);}
@@ -1370,10 +1405,14 @@ function buildTree(recenter){
   [...cvs.querySelectorAll('.node')].forEach(n=>n.remove());
   const boxes={};
   for(const s of SKILLS){if(!visibleSkill(s))continue;const own=owned(s.id),buy=canBuy(s);
-    const n=document.createElement('button');n.className='node'+(own?' owned':' avail'+(buy?'':' no'));
+    const blocked=!own&&exclBlocker(s);
+    const n=document.createElement('button');
+    n.className='node'+(own?' owned':' avail'+(buy?'':' no')+(blocked?' locked':''))+(s.excl&&!own&&!blocked?' doctrine':'');
     n.id='n_'+s.id;   // lets the purchase flare find the rebuilt node
     n.style.left=ox(s.id)+'px';n.style.top=oy(s.id)+'px';
-    n.innerHTML='<span class="ni">'+s.ic+'</span><span class="nn">'+s.name+'</span>'+(own?'':'<span class="nc">'+s.cost+'$</span>');
+    n.innerHTML='<span class="ni">'+(blocked?'🚫':s.ic)+'</span><span class="nn">'+s.name+'</span>'+
+      (own?'':blocked?'<span class="nc" style="color:#ff6a3d">'+(settings.lang==='en'?'locked':'gesperrt')+'</span>'
+                     :'<span class="nc">'+s.cost+'$</span>');
     attachSkillPress(n,s);
     cvs.appendChild(n);boxes[s.id]=n;}
   // connectors: trimmed to each box's border so no line ever crosses a node

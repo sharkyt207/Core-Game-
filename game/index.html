@@ -194,6 +194,15 @@
      read as finished hardware, unaffordable ones recede — so the tree answers
      "what can I buy right now?" at a glance instead of after reading 44 prices. */
   .node.avail:not(.no){animation:nodeBeckon 2.1s ease-in-out infinite;}
+  /* A doctrine is a one-way door, so it must not look like the other 44 nodes. */
+  .node.doctrine{border-color:#ff4de0;box-shadow:3px 3px 0 rgba(255,77,224,.3);}
+  .node.doctrine.avail:not(.no){animation:docBeckon 1.7s ease-in-out infinite;}
+  @keyframes docBeckon{
+    0%,100%{box-shadow:3px 3px 0 rgba(255,77,224,.3),0 0 0 rgba(255,77,224,0);}
+    50%    {box-shadow:3px 3px 0 rgba(255,77,224,.3),0 0 22px rgba(255,77,224,.7);}}
+  .node.locked{border-color:#5a3a3a;opacity:.5;animation:none;}
+  .node.locked .ni{filter:grayscale(1);}
+  @media (prefers-reduced-motion:reduce){.node.doctrine.avail:not(.no){animation:none;}}
   @keyframes nodeBeckon{
     0%,100%{box-shadow:3px 3px 0 rgba(255,210,63,.3),0 0 0 rgba(255,210,63,0);}
     50%    {box-shadow:3px 3px 0 rgba(255,210,63,.3),0 0 18px rgba(255,210,63,.55);}}

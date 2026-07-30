@@ -129,6 +129,29 @@ tiefer gehen war Gratisgeld statt Risiko. Jetzt liegt das Verhältnis bei 0,75.
 Bosspuls. Vorher skalierte nur die Trefferpunkte-Zahl der Gegner, nicht ihr
 Schaden — ein Krabbler biss auf Schicht 12 genauso hart wie auf Schicht 1.
 
+## Doktrinen — die eine dauerhafte Entscheidung im Baum
+47 Skills ohne Ausschluss hiessen: mit genug Runs endet jeder Spieler beim
+identischen Maximalbohrer, „mein Build" gab es nicht. Drei Doktrinen zweigen bei
+`drill3` ab, kosten je 1 500 $, und **eine** davon sperrt die anderen zwei bis
+zum nächsten Prestige.
+
+| Doktrin | Gewinn | Preis |
+|---|---|---|
+| ⚔️ Vortrieb | +70 Bohrkraft | +2 Hitzeaufbau |
+| 🏹 Beutezug | +70 % Erzwert, +6 % Fundchance | −14 Bohrkraft |
+| 🧱 Pionier | +130 Tank, −4 Hitze, +8 Kühlung | −15 % Erzwert |
+
+Keine ist schlicht die beste — jede gibt und nimmt. Der Knoten sagt vor dem Tippen,
+dass die Wahl endgültig ist; gesperrte Knoten nennen den Blocker beim Namen und
+den Weg zurück (Prestige).
+
+## Relikt-Synergien
+Acht Paare aus dem 20er-Pool tun etwas, das keine Hälfte allein kann. Bei
+`RELIC_SLOTS = 6` passen höchstens drei Paare gleichzeitig, meist weniger — die
+Frachtraum-Frage ist damit „was passt zusammen" statt „was ist am grössten".
+Ein Angebot, das ein Paar vollenden würde, wird beim Händler markiert; ohne den
+Hinweis findet man Kombinationen bei 6 von 20 Plätzen praktisch nie.
+
 ## Meta-Sinks (wofür Cash ausgegeben wird)
 Skill-Baum · Planeten-Freischaltung · 9 Bohrer-Module · Skins. Prestige/Aszension und
 die Refinerie (Erz statt Cash) verlängern die Kurve ins Endlose.
