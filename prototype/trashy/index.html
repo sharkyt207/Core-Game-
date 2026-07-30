@@ -145,7 +145,12 @@
 
   /* achievement popup */
   /* clears the fuel/heat readout in the top-left instead of covering it */
-  #achPop{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 132px);transform:translate(-50%,-160%);
+  /* Achievement toasts live at the BOTTOM. They used to sit 132 px from the top,
+     which is exactly where the fuel-low / overheating banner appears — so the
+     single most urgent message in the game could be covered by a celebration.
+     The top band belongs to state you must read right now; a toast is news that
+     can wait, and it slides in from below where nothing critical lives. */
+  #achPop{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 148px);transform:translate(-50%,160%);
     display:flex;align-items:center;gap:10px;background:#000;border:3px solid #2de2e6;
     box-shadow:0 0 18px rgba(45,226,230,.5);padding:9px 14px;z-index:40;opacity:0;pointer-events:none;max-width:88vw;
     transition:transform .35s cubic-bezier(.2,1.4,.4,1),opacity .35s;}
@@ -3352,11 +3357,18 @@ function draw(){scene();
      you close on the red line, with a heartbeat that quickens — so the screen
      reads "this is the good part, and it is about to stop being the good part". */
   if(run.ovr>0){const o1=run.ovr,hb=0.86+0.14*Math.sin(performance.now()/(150-70*o1));
-    const v=ctx.createRadialGradient(W/2,H/2,H*(0.30-0.08*o1),W/2,H/2,H*0.68);
-    const r=255,g=Math.round(150-140*o1),bl=Math.round(60-45*o1),a=(0.14+0.42*o1)*hb;
-    v.addColorStop(0,'rgba('+r+','+g+','+bl+',0)');v.addColorStop(1,'rgba('+r+','+g+','+bl+','+a+')');
+    /* The glow keeps its centre clear. At full Overdrive the old version laid a
+       flat wash over the whole screen including the play area, and ore colours —
+       the thing you are actually hunting — went red along with everything else.
+       Now the tint starts further out and the bloom is capped, so the edges
+       scream while the tiles under your drill stay readable. */
+    const v=ctx.createRadialGradient(W/2,H/2,H*(0.40-0.06*o1),W/2,H/2,H*0.72);
+    const r=255,g=Math.round(150-140*o1),bl=Math.round(60-45*o1),a=(0.12+0.34*o1)*hb;
+    v.addColorStop(0,'rgba('+r+','+g+','+bl+',0)');
+    v.addColorStop(0.55,'rgba('+r+','+g+','+bl+','+(a*0.35).toFixed(3)+')');
+    v.addColorStop(1,'rgba('+r+','+g+','+bl+','+a+')');
     ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
-    if(o1>0.25&&QUAL.ca){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(o1-0.25)*0.30*hb;
+    if(o1>0.35&&QUAL.ca){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(o1-0.35)*0.16*hb;
       ctx.fillStyle='#ff8a3d';ctx.fillRect(0,0,W,H);ctx.restore();}}
   // boss shockwave ring emanating from the core
   if(run.bossWave>0){const wr=(1-run.bossWave)*Math.max(W,H)*0.6;ctx.strokeStyle=P.core;ctx.globalAlpha=run.bossWave*0.8;
@@ -3400,15 +3412,19 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
     const venting=!drilling&&run.heat>0.5;
     txt(c,'HEAT '+Math.round(run.heat)+'%'+(venting?' ▼':''),M,y2,'left',
       venting?'#8be9ff':hf>0.9?'#ff4d4d':hf>0.7?'#ff6a3d':'#ff8a3d',Math.round(W*0.04));
-    if(venting&&hf>0.35)txt(c,settings.lang==='en'?'COOLING':'KÜHLT AB',M+Math.round(W*0.30),y2,'left','#8be9ff',Math.round(W*0.031));
-    /* Overdrive has to read as a prize, not a siren. It sits where the cooling
-       label sits, pulses, and states the loot multiplier outright — the player
-       should be able to see exactly what greed is paying them. */
-    else if(run.ovr>0.02){const op=0.7+0.3*Math.sin(performance.now()/120);
+    /* Overdrive has to read as a prize, not a siren, and it must not be pushed
+       off the HUD by the cooling label. Sharing the line meant that easing off at
+       94 % heat replaced "OVERDRIVE x1.73" with "KÜHLT AB" — the multiplier
+       vanished at the exact moment it was worth the most. They stack now:
+       the multiplier owns its slot, cooling reports underneath it. */
+    if(run.ovr>0.02){const op=0.7+0.3*Math.sin(performance.now()/120);
       c.globalAlpha=op;
-      txt(c,'⚡ OVERDRIVE ×'+(1+OVR_LOOT*run.ovr).toFixed(2),M+Math.round(W*0.30),y2,'left',
+      txt(c,'⚡ OVERDRIVE ×'+(1+(S.ovrLoot||OVR_LOOT)*run.ovr).toFixed(2),M+Math.round(W*0.30),y2,'left',
         run.ovr>0.7?'#ffe14d':'#ff8a3d',Math.round(W*0.034));
-      c.globalAlpha=1;}
+      c.globalAlpha=1;
+      if(venting)txt(c,settings.lang==='en'?'cooling':'kühlt ab',
+        M+Math.round(W*0.30),y2+Math.round(W*0.040),'left','#8be9ff',Math.round(W*0.028));}
+    else if(venting&&hf>0.35)txt(c,settings.lang==='en'?'COOLING':'KÜHLT AB',M+Math.round(W*0.30),y2,'left','#8be9ff',Math.round(W*0.031));
     if(run.depthMax>2)txt(c,'HOME [↑ '+run.depthMax+']',W/2,H*0.28,'center','#ffffff',Math.round(W*0.05));
     /* Expedition readout: which layer you are on, and how far to the next
        station. Without the countdown the Safe Zone is a surprise; with it,
@@ -3437,16 +3453,29 @@ function drawHUD(){const c=ctx,M=12,top=Math.max(14,H*0.05);c.imageSmoothingEnab
          the same instant. Overdrive owns 70-88 %; above that it is real panic. */
       const lowFuel=ef<0.3, hotNow=hf>0.88;
       if(lowFuel||hotNow){
+        /* The warning has to survive the worst frame in the game: full Overdrive
+           paints the whole screen red, and a red-on-red warning is the one piece
+           of text you cannot afford to lose. It gets its own dark plate, sits
+           clear of the drill (where crit numbers live), and only its glow pulses
+           — the text itself stays at full opacity so it is never mid-fade when
+           you glance at it. */
         const pulse=0.62+0.38*Math.sin(performance.now()/190);
         const col=lowFuel?'#ff8a3d':'#ff4d4d';
         const head=lowFuel?(settings.lang==='en'?'FUEL LOW':'SPRIT KNAPP')
                           :(settings.lang==='en'?'OVERHEATING':'ÜBERHITZT GLEICH');
-        c.globalAlpha=pulse;
-        txt(c,'⚠ '+head,W/2,H*0.335,'center',col,Math.round(W*0.052));
-        txt(c,settings.lang==='en'?'go UP — the way back is free'
-                                  :'HOCH fahren — der Rückweg ist gratis',
-            W/2,H*0.335+Math.round(W*0.058),'center','#ffffff',Math.round(W*0.034));
-        c.globalAlpha=1;
+        const sub=settings.lang==='en'?'go UP — the way back is free'
+                                      :'HOCH fahren — der Rückweg ist gratis';
+        const y0=H*0.185,h1=Math.round(W*0.052),h2=Math.round(W*0.034);
+        const boxH=h1+h2+Math.round(W*0.055);
+        c.save();
+        c.fillStyle='rgba(6,4,12,0.82)';
+        c.fillRect(0,y0-Math.round(W*0.03),W,boxH);
+        c.globalAlpha=0.35+0.4*pulse;c.fillStyle=col;
+        c.fillRect(0,y0-Math.round(W*0.03),W,Math.max(2,Math.round(W*0.008)));
+        c.fillRect(0,y0-Math.round(W*0.03)+boxH-Math.max(2,Math.round(W*0.008)),W,Math.max(2,Math.round(W*0.008)));
+        c.globalAlpha=1;c.restore();
+        txt(c,'⚠ '+head,W/2,y0,'center',col,h1);
+        txt(c,sub,W/2,y0+Math.round(W*0.058),'center','#ffffff',h2);
       }
     }
     if(S.combo&&run.combo>1){const cc=run.combo>=25?'#ff4de0':run.combo>=10?T.accent:'#8be9ff';

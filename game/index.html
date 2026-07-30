@@ -162,7 +162,12 @@
 
   /* achievement popup */
   /* clears the fuel/heat readout in the top-left instead of covering it */
-  #achPop{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 132px);transform:translate(-50%,-160%);
+  /* Achievement toasts live at the BOTTOM. They used to sit 132 px from the top,
+     which is exactly where the fuel-low / overheating banner appears — so the
+     single most urgent message in the game could be covered by a celebration.
+     The top band belongs to state you must read right now; a toast is news that
+     can wait, and it slides in from below where nothing critical lives. */
+  #achPop{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 148px);transform:translate(-50%,160%);
     display:flex;align-items:center;gap:10px;background:#000;border:3px solid #2de2e6;
     box-shadow:0 0 18px rgba(45,226,230,.5);padding:9px 14px;z-index:40;opacity:0;pointer-events:none;max-width:88vw;
     transition:transform .35s cubic-bezier(.2,1.4,.4,1),opacity .35s;}
