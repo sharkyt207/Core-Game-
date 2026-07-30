@@ -152,6 +152,30 @@ Frachtraum-Frage ist damit „was passt zusammen" statt „was ist am grössten"
 Ein Angebot, das ein Paar vollenden würde, wird beim Händler markiert; ohne den
 Hinweis findet man Kombinationen bei 6 von 20 Plätzen praktisch nie.
 
+## Aszension — Splitter als Währung statt als Zahl
+Splitter gaben früher nur `+8 Bohrkraft` und einen Term im Loot-Multiplikator.
+Nach Frachtraum (Relikte), Doktrinen (Baum) und Overdrive (Run) war die tiefste
+Meta-Ebene die einzige **ohne** Entscheidung. Der passive Bonus liegt jetzt bei
+`+3` je Splitter; der Rest wandert auf ein Board, das man selbst zusammenstellt.
+
+| Perk | Stufen | Kosten | Wirkung |
+|---|--:|--:|---|
+| 💎 Kernresonanz | 4 | 1/2/3/4 | +12 % Erzwert je Stufe |
+| ⛏️ Titanwerk | 4 | 1/2/3/4 | +14 Bohrkraft je Stufe |
+| 🛢️ Tiefenspeicher | 4 | 1/2/3/4 | +45 Sprit je Stufe |
+| 📦 Frachtraum-Ausbau | 2 | 3/5 | +1 Reliktplatz je Stufe |
+| 🔍 Marktkontakte | 1 | 3 | Händler zeigt 4 statt 3 Relikte |
+| 🛟 Notreserve | 1 | 4 | Bergung 65 % statt 40 % |
+| 💰 Startkapital | 1 | 3 | Jedes Prestige beginnt mit 2 500 $ |
+| 🌬️ Zweiter Wind | 1 | 5 | Einmal je Expedition den Tod überleben |
+
+Alles zusammen kostet 40 Splitter — weit mehr, als man in absehbarer Zeit hat.
+Das Board ist damit ein eigener Build, der jedes Prestige überlebt.
+
+`RELIC_SLOTS`, `RELIC_PICKS` und `SALVAGE` werden nicht mehr direkt gelesen,
+sondern über `relicSlots()`, `relicPicks()` und `salvageRate()` — sonst hätten
+die Regel-Perks an je drei Stellen einzeln nachgezogen werden müssen.
+
 ## Meta-Sinks (wofür Cash ausgegeben wird)
 Skill-Baum · Planeten-Freischaltung · 9 Bohrer-Module · Skins. Prestige/Aszension und
 die Refinerie (Erz statt Cash) verlängern die Kurve ins Endlose.

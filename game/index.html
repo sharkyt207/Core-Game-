@@ -353,6 +353,7 @@
   <div class="treebottom">
     <button class="big" id="btnPrestige" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">⚛ Prestige</button>
     <button class="big" id="btnAscend" style="display:none;background:#ff4de0;color:#fff;margin-right:10px;padding:15px 22px;">✦ Aszension</button>
+    <button class="big" id="btnPerks" style="display:none;background:#8a5cff;color:#fff;margin-right:10px;padding:15px 22px;">✦ Splitter</button>
     <button class="big" id="btnTreeDone">Fertig</button>
   </div>
 </div>
@@ -420,6 +421,19 @@
   <div class="sub" id="goSub">Die Bergungsdrohne rettet 40 % deiner Beute. Extrahierst du selbst, behältst du alles.</div>
   <button class="big" id="btnRetry">Nochmal</button>
   <div class="menubtns"><button class="mbtn" id="btnGoMenu">Menü</button></div>
+</div>
+
+<!-- ASCENSION BOARD: what shards are actually for -->
+<div class="over" id="perkOver">
+  <div class="tag" style="color:#ff4de0">// aszension //</div>
+  <div class="logo" style="font-size:min(12vw,50px);text-shadow:4px 4px 0 #8a1a78;">Singularität</div>
+  <div class="sub" id="perkSub">Splitter überleben jedes Prestige. Gib sie aus — die Wahl bleibt für immer.</div>
+  <div class="result" style="margin:8px 0 4px;">
+    <div><b id="perkFree" style="color:#ff4de0">0</b><span>frei</span></div>
+    <div><b id="perkSpent">0</b><span>investiert</span></div>
+  </div>
+  <div id="perkList" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px;"></div>
+  <button class="big" id="btnPerkDone" style="margin-top:14px">Fertig</button>
 </div>
 
 <!-- SAFE ZONE: the expedition's trading post -->

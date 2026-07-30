@@ -122,14 +122,14 @@ const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
 function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
   if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.contracts)j.contracts=[];
+  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.ascend.perks)j.ascend.perks={};if(j.ascend.spent==null)j.ascend.spent=0;if(!j.contracts)j.contracts=[];
   if(!j.mats)j.mats={ferrite:0,cuprite:0,crystal:0,core:0,artifact:0};if(!j.refine)j.refine={};
   if(!j.modules)j.modules=[];if(!j.slots)j.slots=[null,null,null];if(!j.challenge)j.challenge={best:0,bestDate:''};if(!j.scores)j.scores=[];
   if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'};if(!j.settings.lang)j.settings.lang='de';if(!j.settings.quality)j.settings.quality='auto';
   if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
   if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
   if(!j.records)j.records={};return j;}}catch(e){}
-  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0},contracts:[],mats:{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0},refine:{},modules:[],slots:[null,null,null],challenge:{best:0,bestDate:''},scores:[],
+  return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0,perks:{},spent:0},contracts:[],mats:{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0},refine:{},modules:[],slots:[null,null,null],challenge:{best:0,bestDate:''},scores:[],
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
     cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
 const SKINS=[
@@ -227,7 +227,9 @@ function nextAch(){const a=achQueue.shift();if(!a){achTimer=null;return;}
 function totalCores(){return Math.floor(Math.sqrt(meta.lifetime/300));}
 function prestigeGain(){return Math.max(0,totalCores()-meta.prestige.cores);}
 function doPrestige(){const g=prestigeGain();if(g<=0)return false;
-  meta.prestige.cores=totalCores();meta.skills=[];meta.credits=0;saveMeta();S=stats();return true;}
+  meta.prestige.cores=totalCores();meta.skills=[];
+  meta.credits=perkLvl('a_seed')?2500:0;      // Startkapital: the rebuild is not from zero
+  saveMeta();S=stats();return true;}
 // Ascension ("Singularity") — second prestige layer. Spends accumulated cores for
 // permanent Singularity Shards: +8 Bohrkraft & +25% Loot each. Needs >=50 cores.
 const ASCEND_COST=25;
@@ -235,7 +237,59 @@ function ascendGain(){return Math.floor((meta.prestige?meta.prestige.cores:0)/AS
 function canAscend(){return ascendGain()>=2;}
 function doAscend(){if(!canAscend())return false;
   meta.ascend.shards+=ascendGain();
-  meta.prestige.cores=0;meta.lifetime=0;meta.skills=[];meta.credits=0;saveMeta();S=stats();return true;}
+  meta.prestige.cores=0;meta.lifetime=0;meta.skills=[];
+  meta.credits=perkLvl('a_seed')?2500:0;
+  saveMeta();S=stats();return true;}
+/* ---------- ASCENSION PERKS ----------
+ * Shards used to be nothing but two numbers: +8 power each and a term in the
+ * loot multiplier. After building real decisions into the relics (capacity),
+ * the tree (doctrines) and the run itself (Overdrive), the deepest meta layer
+ * in the game was still the one with no choice in it at all.
+ * Shards are now a currency you SPEND. Three tiered perks scale your numbers;
+ * five one-off perks change how the game is played and cannot all be afforded,
+ * so the board is a build of its own that outlives every prestige.
+ * `lvl` = how many times it can be taken; `cost(n)` = shards for the n-th level. */
+const ASCPERKS=[
+ {id:'a_res',  ic:'💎', lvl:4, cost:n=>n+1,
+  de:['Kernresonanz','+12 % Erzwert je Stufe'],       en:['Core Resonance','+12% ore value per level']},
+ {id:'a_titan',ic:'⛏️', lvl:4, cost:n=>n+1,
+  de:['Titanwerk','+14 Bohrkraft je Stufe'],          en:['Titanworks','+14 drill power per level']},
+ {id:'a_store',ic:'🛢️', lvl:4, cost:n=>n+1,
+  de:['Tiefenspeicher','+45 Sprit je Stufe'],         en:['Deep Reserve','+45 fuel per level']},
+ {id:'a_cargo',ic:'📦', lvl:2, cost:n=>3+n*2,
+  de:['Frachtraum-Ausbau','+1 Reliktplatz je Stufe'], en:['Cargo Refit','+1 relic slot per level']},
+ {id:'a_broker',ic:'🔍',lvl:1, cost:()=>3,
+  de:['Marktkontakte','Der Händler zeigt 4 statt 3 Relikte'],
+  en:['Broker Contacts','The trader shows 4 relics instead of 3']},
+ {id:'a_salv', ic:'🛟', lvl:1, cost:()=>4,
+  de:['Notreserve','Die Bergungsdrohne rettet 65 % statt 40 %'],
+  en:['Emergency Reserve','The salvage drone recovers 65% instead of 40%']},
+ {id:'a_seed', ic:'💰', lvl:1, cost:()=>3,
+  de:['Startkapital','Jedes Prestige beginnt mit 2 500 $'],
+  en:['Seed Capital','Every prestige starts with $2,500']},
+ {id:'a_wind', ic:'🌬️', lvl:1, cost:()=>5,
+  de:['Zweiter Wind','Einmal je Expedition überlebst du den Tod'],
+  en:['Second Wind','Survive death once per expedition']},
+];
+function perkMap(){return (meta.ascend&&meta.ascend.perks)||{};}
+function perkLvl(id){return perkMap()[id]||0;}
+function perkDef(id){return ASCPERKS.find(x=>x.id===id);}
+function perkNext(id){const d=perkDef(id);if(!d)return null;
+  const l=perkLvl(id);if(l>=d.lvl)return null;return d.cost(l);}
+// Shards not yet committed to the board.
+function shardsFree(){const total=(meta.ascend&&meta.ascend.shards)||0;
+  return total-((meta.ascend&&meta.ascend.spent)||0);}
+function buyPerk(id){const c=perkNext(id);if(c===null||shardsFree()<c)return false;
+  meta.ascend.perks=meta.ascend.perks||{};
+  meta.ascend.perks[id]=perkLvl(id)+1;
+  meta.ascend.spent=((meta.ascend&&meta.ascend.spent)||0)+c;
+  saveMeta();S=stats();checkAchievements();return true;}
+function perkName(d){return (settings.lang==='en'?d.en:d.de)[0];}
+function perkDesc(d){return (settings.lang==='en'?d.en:d.de)[1];}
+// Perks that change rules rather than numbers, read where the rule lives.
+function relicSlots(){return RELIC_SLOTS+perkLvl('a_cargo');}
+function relicPicks(){return RELIC_PICKS+(perkLvl('a_broker')?1:0);}
+function salvageRate(){return perkLvl('a_salv')?0.65:SALVAGE;}
 function saveMeta(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(meta));}catch(e){}}
 
 // Skill tree — starts with ONE unlockable skill; buying a node reveals its children.
@@ -364,7 +418,9 @@ function stats(){
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;heatGen-=e.dh||0;coolRate+=e.dc||0;
     magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;luck+=e.luck||0;if(e.drone)drones++;}
   const cores=meta.prestige?meta.prestige.cores:0;power+=cores*4;
-  const shards=meta.ascend?meta.ascend.shards:0;power+=shards*8;
+  const shards=meta.ascend?meta.ascend.shards:0;power+=shards*3;
+  // Ascension board: the part of a shard's value the player chose themselves.
+  power+=perkLvl('a_titan')*14;energyMax+=perkLvl('a_store')*45;valueMul+=perkLvl('a_res')*0.12;
   /* Prestige used to be (1 + 0.12·cores)·(1 + 0.25·shards) — linear, unbounded,
    * and multiplied on top of every other loot source. Measured at 300 cores /
    * 30 shards that reached x314, so one relic on Obscura in Overdrive paid
@@ -968,7 +1024,8 @@ function relicPrice(r,zone,tier){
 /* Offers are drawn without replacement from what you do not already own, so a
    station never wastes a slot on a relic you are already carrying. */
 function rollOffers(){const own=run.exp.relics,pool=RELICS.filter(r=>own.indexOf(r.id)<0);
-  const out=[];for(let i=0;i<RELIC_PICKS&&pool.length;i++)out.push(pool.splice(Math.floor(rnd()*pool.length),1)[0].id);
+  const picks=relicPicks();
+  const out=[];for(let i=0;i<picks&&pool.length;i++)out.push(pool.splice(Math.floor(rnd()*pool.length),1)[0].id);
   return out;}
 /* Relic effects are applied on top of the freshly computed stats, never baked
    into the save — an expedition's build exists only for as long as the run does. */
@@ -1059,7 +1116,7 @@ function renderZone(){const e=run.exp,de=settings.lang!=='en';
   (e.offers||[]).forEach(id=>{
     const r=relicById(id);if(!r)return;
     const price=relicPrice(r,e.zone,e.tier),owned=e.relics.indexOf(id)>=0,afford=run.haul>=price;
-    const full=e.relics.length>=RELIC_SLOTS;
+    const full=e.relics.length>=relicSlots();
     const syn=owned?null:synFor(id);   // would taking this complete a pair?
     const b=document.createElement('button');
     b.className='mbtn';b.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;'+
@@ -1078,9 +1135,9 @@ function renderZone(){const e=run.exp,de=settings.lang!=='en';
     b.onclick=()=>buyRelic(id);
     box.appendChild(b);});
   const own=document.getElementById('zoneOwned');
-  const cap=(de?'Frachtraum ':'Cargo ')+e.relics.length+'/'+RELIC_SLOTS;
+  const cap=(de?'Frachtraum ':'Cargo ')+e.relics.length+'/'+relicSlots();
   const syns=activeSyn();
-  own.innerHTML='<span style="color:'+(e.relics.length>=RELIC_SLOTS?'#ffd23f':'#12d9b0')+';font-weight:900;">'+cap+'</span>'+
+  own.innerHTML='<span style="color:'+(e.relics.length>=relicSlots()?'#ffd23f':'#12d9b0')+';font-weight:900;">'+cap+'</span>'+
     (e.relics.length?' — '+e.relics.map(i=>{const r=relicById(i);return r?r.ic+' '+relicName(r):'';}).join(' · ')
                     :' — '+(de?'noch leer':'still empty'))+
     (syns.length?'<br><span style="color:#ff4de0;font-weight:900;">'+
@@ -1091,7 +1148,7 @@ function buyRelic(id){const e=run.exp,r=relicById(id);if(!r||e.relics.indexOf(id
   /* At capacity a purchase becomes a trade. Rather than silently refusing (which
      reads as a bug) or auto-dropping something (which throws away a build the
      player chose), the panel switches into swap mode and asks what goes. */
-  if(e.relics.length>=RELIC_SLOTS){e.swap=id;sfx.ui();haptic('medium');renderZone();return;}
+  if(e.relics.length>=relicSlots()){e.swap=id;sfx.ui();haptic('medium');renderZone();return;}
   run.haul-=price;e.spent+=price;e.relics.push(id);
   restat();
   run.energy=Math.min(run.energy,S.energyMax);   // a tank-shrinking relic must not leave you over-full
@@ -1132,8 +1189,21 @@ function goDeeper(){const e=run.exp;e.tier++;e.tierDone=false;e.zone=0;e.nextZon
  * SALVAGE of the haul (and the matching share of refinery ore), so a bad run
  * still moves you forward while extracting yourself stays clearly better. */
 const SALVAGE=0.4;
-function gameOver(reason){if(!run.active)return;run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
-  const saved=Math.round(run.haul*SALVAGE),lost=Math.round(run.haul)-saved;
+function gameOver(reason){if(!run.active)return;
+  /* Second Wind: on an expedition, the first death is survivable. It fires
+     BEFORE anything is written, so the run genuinely continues — a revive that
+     banks your haul first would just be a slower game over. Once per
+     expedition, and the HUD stops advertising it afterwards. */
+  if(run.exp&&perkLvl('a_wind')&&!run.exp.windUsed){
+    run.exp.windUsed=true;
+    run.heat=0;run.ventT=0;run.energy=Math.max(run.energy,S.energyMax*0.5);
+    enemies.length=0;
+    flash=Math.max(flash,1);shake=Math.max(shake,24);glitch=0.6;
+    sfx.leg();haptic('epic');
+    lootNum(W/2,DRILL_SY-40,settings.lang==='en'?'SECOND WIND':'ZWEITER WIND','#8be9ff',2);
+    return;}
+  run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
+  const saved=Math.round(run.haul*salvageRate()),lost=Math.round(run.haul)-saved;
   meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
   /* Expedition progress is credited on death too. It used to be written only in
      extract(), so a player who fought down to layer 6 and died there got no
@@ -1388,6 +1458,12 @@ function buildTree(recenter){
   pb.style.display=pg>0?'inline-flex':'none';pb.textContent='⚛ +'+pg;
   const ag=ascendGain(),ab=document.getElementById('btnAscend');
   ab.style.display=canAscend()?'inline-flex':'none';ab.textContent='✦ +'+ag;
+  /* The board button only appears once shards exist — before that it would be a
+     locked door with nothing behind it. Free shards get called out, because an
+     unspent shard is the one thing on this screen doing nothing for you. */
+  const perkBtn=document.getElementById('btnPerks'),shTotal=(meta.ascend&&meta.ascend.shards)||0;
+  perkBtn.style.display=shTotal>0?'inline-flex':'none';
+  perkBtn.textContent=shardsFree()>0?'✦ '+shardsFree()+(settings.lang==='en'?' free':' frei'):'✦ '+(settings.lang==='en'?'Shards':'Splitter');
   const sc=document.getElementById('treeScroll');
   const keepL=sc.scrollLeft,keepT=sc.scrollTop;          // remember the view
   const vw=sc.clientWidth||window.innerWidth,vh=sc.clientHeight||window.innerHeight;
@@ -2008,6 +2084,34 @@ function buildCompendium(){const de=settings.lang!=='en',st=meta.stats;let h='';
   for(const k in EVENTINFO){const e=EVENTINFO[k];h+=codexRow('⚠',e.col,de?e.de:e.en,'',e.dur+'s',e.col);}
   document.getElementById('codexList').innerHTML=h;}
 function openCompendium(from){backTo=from;hide(from);show('codexOver');buildCompendium();}
+
+/* ---------- ASCENSION BOARD ---------- */
+function buildPerks(){const de=settings.lang!=='en';
+  document.getElementById('perkFree').textContent=shardsFree();
+  document.getElementById('perkSpent').textContent=(meta.ascend&&meta.ascend.spent)||0;
+  const box=document.getElementById('perkList');box.innerHTML='';
+  for(const d of ASCPERKS){
+    const lv=perkLvl(d.id),next=perkNext(d.id),maxed=next===null,afford=!maxed&&shardsFree()>=next;
+    const b=document.createElement('button');
+    b.className='mbtn';
+    b.style.cssText='justify-content:space-between;text-align:left;padding:11px 13px;'+
+      (maxed?'border-color:#12d9b0;color:#12d9b0;opacity:.75;'
+            :afford?'border-color:#ff4de0;color:#ff4de0;box-shadow:4px 4px 0 rgba(255,77,224,.28);'
+                   :'opacity:.5;');
+    b.innerHTML='<span style="display:flex;flex-direction:column;gap:3px;">'+
+      '<span style="font-size:12px;">'+d.ic+' '+perkName(d)+(d.lvl>1?' '+lv+'/'+d.lvl:'')+'</span>'+
+      '<span style="font-size:10px;letter-spacing:.04em;color:#9a90ad;text-transform:none;">'+perkDesc(d)+'</span></span>'+
+      '<span style="font-size:13px;">'+(maxed?'✓':'✦'+next)+'</span>';
+    b.disabled=maxed||!afford;
+    b.onclick=()=>{if(buyPerk(d.id)){sfx.buy();haptic('success');buildPerks();updateAbilityButtons();}else sfx.deny();};
+    box.appendChild(b);}
+  const sub=document.getElementById('perkSub');
+  sub.textContent=shardsFree()>0
+    ?(de?'Splitter überleben jedes Prestige. Gib sie aus — die Wahl bleibt für immer.'
+        :'Shards survive every prestige. Spend them — the choice is permanent.')
+    :(de?'Keine freien Splitter. Steige erneut auf, um weiter auszubauen.'
+        :'No free shards. Ascend again to keep building.');}
+function openPerks(from){backTo=from;hide(from);show('perkOver');buildPerks();}
 
 /* ===================== UPDATE ===================== */
 let curDt=0.016;
@@ -2911,6 +3015,8 @@ document.getElementById('btnAscend').onclick=()=>{sfx.ui();const g=ascendGain(),
   document.getElementById('ascendTxt').innerHTML='Wandelt <b>'+meta.prestige.cores+'</b> Kerne in <b style="color:#ff4de0">'+g+'</b> Splitter.<br>Setzt Kerne, Skill-Baum &amp; Credits zurück.<br>Splitter: <b>'+meta.ascend.shards+'</b> → <b style="color:#ff4de0">'+ns+'</b><br>Permanent: +'+(ns*25)+'% Loot · +'+(ns*8)+' Bohrkraft.';
   hide('treeOver');show('ascendOver');};
 document.getElementById('btnAscendCancel').onclick=()=>{sfx.ui();hide('ascendOver');show('treeOver');buildTree(false);};
+document.getElementById('btnPerks').onclick=()=>{sfx.ui();openPerks('treeOver');};
+document.getElementById('btnPerkDone').onclick=()=>{sfx.back();hide('perkOver');show(backTo||'treeOver');buildTree(false);};
 document.getElementById('btnAscendGo').onclick=()=>{
   const de=settings.lang!=='en',before=(meta.ascend&&meta.ascend.shards)||0;
   if(doAscend()){const gained=meta.ascend.shards-before;
