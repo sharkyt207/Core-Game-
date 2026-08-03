@@ -25,15 +25,25 @@ async function start(): Promise<void> {
   // Restore progress first — see cloud.ts for the merge rule.
   await initCloud();
 
-  // Keep the app alive on Android back; in-game menus own navigation.
+  // Android hardware Back. The engine owns navigation, so it decides: it closes
+  // whatever screen is open and reports back whether it handled the key. Only a
+  // bare title screen returns false, and only then does the app actually exit —
+  // the previous no-op meant Back was simply dead, which reads as a broken app.
   App.addListener("backButton", () => {
-    /* no-op */
+    const handled = (window as unknown as { __cbBack?: () => boolean }).__cbBack?.();
+    if (!handled) void App.exitApp();
   }).catch(() => {});
 
   // Flush the save when the app is backgrounded — the moment iOS/Android are
-  // most likely to kill the process.
+  // most likely to kill the process — and hand the engine the pause, so the
+  // drill hum and the score do not keep playing out of a pocket.
   App.addListener("appStateChange", ({ isActive }) => {
-    if (!isActive) void pushSave();
+    const w = window as unknown as { __cbPause?: () => void; __cbResume?: () => void };
+    if (isActive) w.__cbResume?.();
+    else {
+      w.__cbPause?.();
+      void pushSave();
+    }
   }).catch(() => {});
 
   // Referencing Haptics guarantees the plugin is bundled, so the engine's

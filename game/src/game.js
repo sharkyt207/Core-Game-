@@ -120,15 +120,47 @@ function neighborsOf(ring,sec){const n=secCount(ring),a=(sec+0.5)*(TAU/n);
 /* ===================== SAVE / SKILL TREE ===================== */
 const SAVE_KEY='corebreaker_tree_v1';
 const meta=loadMeta();
-function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&j.v===2){
-  if(!j.skills)j.skills=[];if(!j.unlockedPlanets)j.unlockedPlanets=['terra'];if(!j.planet)j.planet='terra';
-  if(j.lifetime==null)j.lifetime=0;if(!j.prestige)j.prestige={cores:0};if(!j.ascend)j.ascend={shards:0};if(!j.seenMenu)j.seenMenu={};if(!j.ascend.perks)j.ascend.perks={};if(j.ascend.spent==null)j.ascend.spent=0;if(!j.contracts)j.contracts=[];
-  if(!j.mats)j.mats={ferrite:0,cuprite:0,crystal:0,core:0,artifact:0};if(!j.refine)j.refine={};
-  if(!j.modules)j.modules=[];if(!j.slots)j.slots=[null,null,null];if(!j.challenge)j.challenge={best:0,bestDate:''};if(!j.scores)j.scores=[];
-  if(!j.settings)j.settings={music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'};if(!j.settings.lang)j.settings.lang='de';if(!j.settings.quality)j.settings.quality='auto';
-  if(!j.stats)j.stats={runs:0,bestDepth:0,totalEarned:0};if(!j.achievements)j.achievements=[];
-  if(!j.daily)j.daily=null;if(!j.cosmetics)j.cosmetics={owned:['default'],equipped:'default'};if(j.tutorialSeen==null)j.tutorialSeen=false;
-  if(!j.records)j.records={};return j;}}catch(e){}
+/* Repairing the save is TYPE-checked, not truthiness-checked. `if(!j.skills)`
+ * accepts anything truthy, so a save carrying `skills:{}` — which the import box
+ * happily takes, since it only looks at `v` — reached `for(const id of
+ * meta.skills)` and threw before the first frame. The app then never booted
+ * again: no title screen, so no way to get to the import box and undo it. A
+ * bricked install is the worst outcome a paid app has, so every field is now
+ * coerced to its expected shape and a wrong one falls back to the default. */
+/* Function declarations, not const arrows: `const meta=loadMeta()` runs ABOVE
+   this point, so arrows would still be in their temporal dead zone and every
+   load would throw into loadMeta's catch and silently reset the save. */
+function asArr(v,d){return Array.isArray(v)?v:(d||[]);}
+function asObj(v,d){return (v&&typeof v==='object'&&!Array.isArray(v))?v:(d||{});}
+function asNum(v,d){return Number.isFinite(+v)?+v:(d||0);}
+function asStr(v,d){return typeof v==='string'&&v?v:d;}
+function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&&typeof j==='object'&&!Array.isArray(j)&&j.v===2){
+  j.credits=asNum(j.credits,0);j.lifetime=asNum(j.lifetime,0);
+  j.skills=asArr(j.skills);j.achievements=asArr(j.achievements);j.contracts=asArr(j.contracts);
+  j.modules=asArr(j.modules);j.scores=asArr(j.scores);
+  j.unlockedPlanets=asArr(j.unlockedPlanets,['terra']);if(!j.unlockedPlanets.length)j.unlockedPlanets=['terra'];
+  j.planet=asStr(j.planet,'terra');
+  j.prestige=asObj(j.prestige);j.prestige.cores=asNum(j.prestige.cores,0);
+  j.ascend=asObj(j.ascend);j.ascend.shards=asNum(j.ascend.shards,0);
+  j.ascend.perks=asObj(j.ascend.perks);j.ascend.spent=asNum(j.ascend.spent,0);
+  j.seenMenu=asObj(j.seenMenu);j.refine=asObj(j.refine);j.records=asObj(j.records);
+  j.mats=asObj(j.mats,{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0});
+  for(const k of ['ferrite','cuprite','crystal','core','artifact'])j.mats[k]=asNum(j.mats[k],0);
+  // exactly three module slots — a short array would leave the UI reading undefined
+  j.slots=asArr(j.slots,[null,null,null]);while(j.slots.length<3)j.slots.push(null);j.slots.length=3;
+  j.challenge=asObj(j.challenge,{best:0,bestDate:''});j.challenge.best=asNum(j.challenge.best,0);
+  j.challenge.bestDate=asStr(j.challenge.bestDate,'');
+  j.settings=asObj(j.settings,{});const s=j.settings;
+  for(const k of ['music','sfx','vibe','shake'])if(typeof s[k]!=='boolean')s[k]=true;
+  s.lang=(s.lang==='en'||s.lang==='de')?s.lang:'de';
+  s.quality=(s.quality==='high'||s.quality==='low')?s.quality:'auto';
+  j.stats=asObj(j.stats);for(const k of ['runs','bestDepth','totalEarned'])j.stats[k]=asNum(j.stats[k],0);
+  j.daily=(j.daily&&typeof j.daily==='object'&&!Array.isArray(j.daily))?j.daily:null;
+  j.cosmetics=asObj(j.cosmetics);j.cosmetics.owned=asArr(j.cosmetics.owned,['default']);
+  if(!j.cosmetics.owned.length)j.cosmetics.owned=['default'];
+  j.cosmetics.equipped=asStr(j.cosmetics.equipped,'default');
+  j.tutorialSeen=!!j.tutorialSeen;
+  return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0,perks:{},spent:0},contracts:[],mats:{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0},refine:{},modules:[],slots:[null,null,null],challenge:{best:0,bestDate:''},scores:[],
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
     cosmetics:{owned:['default'],equipped:'default'},tutorialSeen:false,records:{}};}
@@ -156,7 +188,17 @@ const L={de:{
   reasonFuel:'SPRIT LEER', reasonHeat:'ÜBERHITZT', lootLost:'Loot verloren', lootSaved:'geborgen',
   tutTitle:'So geht\'s', tut1:'Finger unten aufsetzen & ziehen: RUNTER bohrt rein, HOCH fliegt raus, SEITLICH um den Planeten.',
   tut2:'SPRIT & HITZE regenerieren nicht! Bei leer oder 100% = Game Over. Fahr rechtzeitig HOME (⏏).',
-  tut3:'Verkaufe Loot, kauf Skills im Baum, tauch tiefer. Ziel: der glühende Kern.', tutGo:'Los geht\'s', help:'❓ Tutorial'
+  tut3:'Verkaufe Loot, kauf Skills im Baum, tauch tiefer. Ziel: der glühende Kern.', tutGo:'Los geht\'s', help:'❓ Tutorial',
+  /* Everything below used to sit in the markup as German only, so picking
+     English left roughly a third of the buttons untranslated — the sort of
+     half-finished feel that a paid app cannot afford. */
+  back:'Zurück', cancel:'Abbrechen', next:'Weiter', skip:'Überspringen',
+  modules:'🔩 Module', refinery:'⚗️ Refinerie', contracts:'📋 Kontrakte', shards:'✦ Splitter',
+  homeMenu:'🏠 Hauptmenü', prestige:'⚛ Prestige', ascension:'✦ Aszension',
+  overload:'Überladen', ascendGo:'Aufsteigen', wipeGo:'Endgültig löschen', wipeBackup:'⬆ Erst Save-Code sichern',
+  expSave:'⬆ Save exportieren', impSave:'⬇ Save importieren',
+  deeper:'Tiefer', pushDeeper:'Tiefer vorstoßen', extractHere:'⏏ Hier extrahieren', outWithLoot:'⏏ Mit der Beute raus',
+  chalStart:'Start'
  },en:{
   dropIn:'Drop In', tree:'🌳 Skill Tree', planets:'🪐 Planets', ach:'🏆 Achievements', settings:'⚙ Settings',
   done:'Done', retry:'Retry', menu:'Menu', on:'ON', off:'OFF',
@@ -169,7 +211,14 @@ const L={de:{
   reasonFuel:'OUT OF FUEL', reasonHeat:'OVERHEATED', lootLost:'Loot lost', lootSaved:'salvaged',
   tutTitle:'How to play', tut1:'Touch the lower screen & drag: DOWN drills in, UP flies out, SIDEWAYS around the planet.',
   tut2:'FUEL & HEAT do not regen! Empty or 100% = Game Over. Head HOME (⏏) in time.',
-  tut3:'Sell loot, buy skills in the tree, dig deeper. Goal: the glowing core.', tutGo:'Let\'s go', help:'❓ Tutorial'
+  tut3:'Sell loot, buy skills in the tree, dig deeper. Goal: the glowing core.', tutGo:'Let\'s go', help:'❓ Tutorial',
+  back:'Back', cancel:'Cancel', next:'Next', skip:'Skip',
+  modules:'🔩 Modules', refinery:'⚗️ Refinery', contracts:'📋 Contracts', shards:'✦ Shards',
+  homeMenu:'🏠 Main menu', prestige:'⚛ Prestige', ascension:'✦ Ascension',
+  overload:'Overload', ascendGo:'Ascend', wipeGo:'Delete for good', wipeBackup:'⬆ Back up save code first',
+  expSave:'⬆ Export save', impSave:'⬇ Import save',
+  deeper:'Deeper', pushDeeper:'Push deeper', extractHere:'⏏ Extract here', outWithLoot:'⏏ Out with the haul',
+  chalStart:'Start'
  }};
 function t(k){const d=L[settings.lang]||L.de;return d[k]!=null?d[k]:(L.de[k]!=null?L.de[k]:k);}
 
@@ -603,7 +652,7 @@ function w2s(rad,ang){const d=angDiff(ang,drill.ang),f=-Math.PI/2+d;
 // drag as far as you like), the magnitude runs through a smoothstep curve
 // (precise near the centre, full power at the rim), and update() reads a
 // smoothed vector so the machine has weight instead of snapping.
-const input={active:false,ax:0,ay:0,dx:0,dy:0,mag:0,sdx:0,sdy:0,smag:0,tapT:0};
+const input={active:false,ax:0,ay:0,dx:0,dy:0,mag:0,sdx:0,sdy:0,smag:0,tapT:0,id:null};
 const MAXR=92,DEAD=9;
 function setInput(px,py){let dx=px-input.ax,dy=py-input.ay;const d=Math.hypot(dx,dy);
   if(d>MAXR){const k=(d-MAXR)/d;input.ax+=dx*k;input.ay+=dy*k;dx*=MAXR/d;dy*=MAXR/d;}
@@ -611,18 +660,36 @@ function setInput(px,py){let dx=px-input.ax,dy=py-input.ay;const d=Math.hypot(dx
   const raw=Math.min(1,Math.max(0,(Math.hypot(dx,dy)-DEAD)/(MAXR-DEAD)));
   input.mag=raw*raw*(3-2*raw);}
 const cv=document.getElementById('game');
-function ptc(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
-function onDown(e){if(!run.active)return;
-  if(e.touches&&e.touches.length>1)return;            // two fingers is never steering
-  const t=ptc(e);input.active=true;input.ax=t.x;input.ay=t.y;setInput(t.x,t.y);
+/* The stick owns exactly ONE touch point and holds it by identifier until that
+ * same point lifts. The old code read `touches[0]` and released on any touchend,
+ * which is why a second finger was never usable: pressing an ability stole or
+ * killed the steer, so flying and firing at the same time was impossible. Now
+ * every foreign touch — a skill button, Extract, a stray palm — comes and goes
+ * without the machine ever losing the stick. */
+function findTouch(list,id){for(let i=0;i<list.length;i++)if(list[i].identifier===id)return list[i];return null;}
+function beginInput(x,y){input.active=true;input.ax=x;input.ay=y;setInput(x,y);
   input.tapT=0.14;haptic('sel');hideHint();}
-function onMove(e){if(input.active){const t=ptc(e);setInput(t.x,t.y);e.preventDefault();}}
-function onUp(){input.active=false;input.mag=0;input.dx=input.dy=0;}
+function endInput(){input.active=false;input.id=null;input.mag=0;input.dx=input.dy=0;}
+function onDown(e){if(!run.active)return;
+  if(e.changedTouches){
+    e.preventDefault();                          // no synthesized mouse events on top of the touch
+    if(input.id!==null)return;                   // stick already claimed — extra fingers are not steering
+    const t=e.changedTouches[0];input.id=t.identifier;beginInput(t.clientX,t.clientY);
+  }else{if(input.id!==null)return;input.id='mouse';beginInput(e.clientX,e.clientY);}}
+function onMove(e){
+  if(e.changedTouches){const t=findTouch(e.touches,input.id);if(!t)return;
+    setInput(t.clientX,t.clientY);e.preventDefault();}
+  else if(input.id==='mouse')setInput(e.clientX,e.clientY);}
+/* Release only when OUR point ends. touchcancel carries changedTouches too, so
+ * the system taking a finger away (call, notification shade) lands here as well. */
+function onUp(e){
+  if(e&&e.changedTouches){if(input.id===null||!findTouch(e.changedTouches,input.id))return;endInput();}
+  else{if(input.id!=='mouse')return;endInput();}}
 cv.addEventListener('touchstart',onDown,{passive:false});
 cv.addEventListener('touchmove',onMove,{passive:false});
 cv.addEventListener('touchend',onUp);cv.addEventListener('touchcancel',onUp);
 cv.addEventListener('mousedown',onDown);
-window.addEventListener('mousemove',e=>{if(input.active)onMove(e);});
+window.addEventListener('mousemove',e=>{if(input.id==='mouse')onMove(e);});
 window.addEventListener('mouseup',onUp);
 const kb={};
 window.addEventListener('keydown',e=>{kb[e.key.toLowerCase()]=true;const k=e.key.toLowerCase();if(e.key===' ')shockwave();if(k==='b')boost();if(k==='l')laser();if(k==='m')magpulse();if(k==='t')teleport();if(k==='f')freeze();if(k==='n')nuke();});
@@ -806,6 +873,30 @@ function ensureMusic(){if(musicTimer)return;const a=audio();if(!a)return;if(a.st
   musicRate=430;musicTimer=setInterval(musicTick,musicRate);}
 function startMusic(){ensureMusic();}
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
+
+/* ---------- leaving the app ----------
+ * A phone call, the notification shade, a switch to another app: the frame loop
+ * stops there on its own, but WebAudio does not. The drill hum is a continuous
+ * oscillator and the score is a setInterval, so without this the game keeps
+ * droning out of a pocket long after the player left — the kind of thing that
+ * gets a paid app one star. Suspending the whole context is one call and takes
+ * the hum, the score and every tail with it.
+ * The run is frozen too: coming back to a drill that has been eating fuel while
+ * you took a call would be worse than the silence. */
+let wasPausedByBlur=false,last=performance.now();   // `last` lives here so a blur during load can reset it safely
+function appPause(){
+  if(run.active&&!run.paused){run.paused=true;wasPausedByBlur=true;}
+  engineSet(0,0);stopMusic();
+  const a=AC;if(a&&a.state==='running')a.suspend().catch(()=>{});}
+function appResume(){
+  last=performance.now();                    // no dt spike on the first frame back
+  const a=AC;if(a&&a.state==='suspended')a.resume().catch(()=>{});
+  if(settings.music)ensureMusic();
+  if(wasPausedByBlur){wasPausedByBlur=false;if(run.active)run.paused=false;}}
+document.addEventListener('visibilitychange',()=>{document.hidden?appPause():appResume();});
+window.addEventListener('pagehide',appPause);
+// Capacitor's appStateChange arrives through here as well (see game/src/main.ts).
+window.__cbPause=appPause;window.__cbResume=appResume;
 
 /* ===================== FX ===================== */
 // Particles are pooled and removed via swap-and-pop (O(1), no array shifting,
@@ -1149,6 +1240,8 @@ function startRun(){S=stats();
   updateAbilityButtons();
   drill.rad=R_SURF+300;drill.ang=0;drill.face=Math.PI/2;snapCamera();
   drops.length=0;parts.length=0;dmgnums.length=0;enemies.length=0;regrow.length=0;bossBeam=0;shake=flash=hitstop=0;
+  // A finger still down when the last run ended would otherwise own the stick forever.
+  endInput();input.sdx=input.sdy=input.smag=0;
   hide('titleOver');hide('shopOver');hide('gameoverOver');showHint();
   document.body.classList.add('playing');   // reveal the in-run HUD/ability bar
   if(audio()&&AC.state==='suspended')AC.resume();startMusic();}
@@ -1627,6 +1720,25 @@ function applyLang(){
   set('btnTreeDone','done');set('btnPlanetsDone','done');set('btnSettingsDone','done');set('btnAchDone','done');
   set('btnRetry','retry');set('btnGoMenu','menu');set('btnSkinDone','done');
   set('btnHelp','help');if(document.getElementById('tutOver').classList.contains('show'))renderTut();
+  // The rest of the static markup — menus, modal choices, destructive confirms.
+  set('btnModuleDone','done');set('btnRefineDone','done');set('btnContractDone','done');
+  set('btnCodexDone','done');set('btnPerkDone','done');
+  set('btnChalDone','back');set('btnDosDone','back');
+  set('btnTutSkip','skip');set('btnTutNext','next');set('btnCutGo','next');
+  set('btnModules','modules');set('btnModules2','modules');
+  set('btnRefine','refinery');set('btnRefine2','refinery');
+  set('btnContracts','contracts');
+  set('btnTree2','tree');set('btnPlanets2','planets');set('btnShopMenu','homeMenu');
+  // btnPrestige / btnAscend / btnPerks are NOT set here: buildTree() rewrites all
+  // three with their live counts every time the tree opens, and it already picks
+  // the language itself. Setting them here too would be a second source of truth.
+  set('btnPrestigeGo','overload');set('btnAscendGo','ascendGo');
+  set('btnPrestigeCancel','cancel');set('btnAscendCancel','cancel');set('btnWipeCancel','cancel');
+  set('btnWipeGo','wipeGo');set('btnWipeBackup','wipeBackup');
+  set('btnExport','expSave');set('btnImport','impSave');
+  set('btnZoneGo','deeper');set('btnZoneOut','extractHere');
+  set('btnDeepGo','pushDeeper');set('btnDeepOut','outWithLoot');
+  set('btnChalStart','chalStart');
   set('titleSub','titleSub');set('hint','hint',true);set('goSub','goSub',true);set('goLostLbl','lootLost');set('goSavedLbl','lootSaved');
   buildSettings();updateDailyUI();}
 
@@ -2992,7 +3104,7 @@ function hx(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[
 /* ===================== LOOP ===================== */
 const gid=(x)=>document.getElementById(x);
 const shockCdEl=gid('shockCd'),boostCdEl=gid('boostCd'),laserCdEl=gid('laserCd'),magCdEl=gid('magCd'),tpCdEl=gid('tpCd'),freezeCdEl=gid('freezeCd'),nukeCdEl=gid('nukeCd');
-let last=performance.now();
+last=performance.now();   // declared up with appPause/appResume, which also reset it
 function frame(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;
   tickQuality(dt);
   if(hitstop>0)hitstop-=dt;else update(dt);draw();
@@ -3012,16 +3124,44 @@ let hintTimer;function showHint(){const h=document.getElementById('hint');h.styl
 function hideHint(){document.getElementById('hint').style.opacity='0';}
 document.getElementById('btnStart').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnDescend').onclick=()=>{sfx.ui();startRun();};
-document.getElementById('btnExtract').onclick=extract;
-document.getElementById('btnShock').onclick=shockwave;
-document.getElementById('btnBoost').onclick=boost;
-document.getElementById('btnLaser').onclick=laser;
-document.getElementById('btnMag').onclick=magpulse;
-document.getElementById('btnTp').onclick=teleport;
-document.getElementById('btnFreeze').onclick=freeze;
-document.getElementById('btnNuke').onclick=nuke;
-document.getElementById('btnSound').onclick=function(){const on=!(settings.sfx&&settings.music);settings.sfx=on;settings.music=on;saveMeta();
-  this.textContent=on?'🔊':'🔇';if(on){audio();if(AC&&AC.state==='suspended')AC.resume();startMusic();}else stopMusic();};
+/* In-run buttons fire on PRESS, not on click — for two reasons that both only
+ * show up with a thumb already on the stick. A browser synthesises click only
+ * for the PRIMARY pointer, so a second finger on an ability produced no click
+ * at all; and in an action game the ~120 ms between touch-down and lift is time
+ * you do not have. `pointerdown` fires for every pointer, primary or not.
+ * The click that may follow is swallowed by the short window so nothing fires
+ * twice, while a keyboard Enter (click with no preceding pointerdown) still works. */
+function pressBtn(id,fn){const el=document.getElementById(id);let last=-1e9;
+  const go=()=>{const n=performance.now();if(n-last<260)return;last=n;fn();};
+  el.addEventListener('pointerdown',go);
+  el.onclick=go;}
+/* Extract and the mute toggle fire on RELEASE instead. They have the same
+   multi-touch problem — no click for a second finger — but they are not combat
+   inputs, and ending a descent on a thumb that merely brushed the button would
+   be its own bug. pointerup fires for every pointer AND only lands here while
+   the finger is still on the button, so sliding off still cancels. */
+function tapBtn(id,fn){const el=document.getElementById(id);let last=-1e9,slidOff=false;
+  const go=()=>{const n=performance.now();if(n-last<260)return;last=n;fn();};
+  /* A touch pointer is implicitly captured by the element it started on, so
+     pointerup fires here even when the thumb has long since slid away — and the
+     click that follows targets the button too. Neither tells us where the finger
+     actually was, so compare against the button's own box. */
+  const inside=(e)=>{const r=el.getBoundingClientRect();
+    return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;};
+  el.addEventListener('pointerup',(e)=>{slidOff=!inside(e);if(!slidOff)go();});
+  // A keyboard Enter arrives as a click with no pointerup before it, so it still fires.
+  el.onclick=()=>{if(slidOff){slidOff=false;return;}go();};}
+tapBtn('btnExtract',extract);
+pressBtn('btnShock',shockwave);
+pressBtn('btnBoost',boost);
+pressBtn('btnLaser',laser);
+pressBtn('btnMag',magpulse);
+pressBtn('btnTp',teleport);
+pressBtn('btnFreeze',freeze);
+pressBtn('btnNuke',nuke);
+tapBtn('btnSound',function(){const on=!(settings.sfx&&settings.music);settings.sfx=on;settings.music=on;saveMeta();
+  document.getElementById('btnSound').textContent=on?'🔊':'🔇';
+  if(on){audio();if(AC&&AC.state==='suspended')AC.resume();startMusic();}else stopMusic();});
 document.getElementById('btnSound').textContent=(settings.sfx&&settings.music)?'🔊':'🔇';
 document.getElementById('btnSettings').onclick=()=>{sfx.ui();openSettings('titleOver');};
 document.getElementById('btnSettings2').onclick=()=>{sfx.ui();openSettings('shopOver');};
@@ -3050,7 +3190,14 @@ document.getElementById('btnExport').onclick=()=>{sfx.ui();
 document.getElementById('btnImport').onclick=()=>{sfx.ui();let code;
   try{code=window.prompt(settings.lang==='en'?'Paste save code:':'Save-Code einfügen:','');}catch(e){}
   if(!code)return;try{const j=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-    if(j&&j.v===2){localStorage.setItem(SAVE_KEY,JSON.stringify(j));location.reload();}else sfx.ui();}catch(e){sfx.ui();}};
+    // Only `v` used to be checked, so a structurally broken code was written
+    // straight to disk and the reload landed on a dead app. Write the REPAIRED
+    // shape instead — loadMeta is the single place that knows what valid means.
+    if(j&&typeof j==='object'&&!Array.isArray(j)&&j.v===2){
+      localStorage.setItem(SAVE_KEY,JSON.stringify(j));
+      const fixed=loadMeta();                       // coerces every field, or falls back to defaults
+      localStorage.setItem(SAVE_KEY,JSON.stringify(fixed));
+      location.reload();}else sfx.ui();}catch(e){sfx.ui();}};
 /* Wiping the save is irreversible, so the confirmation spells out exactly what
    is about to be lost and offers the backup code first. */
 function exportSaveCode(){try{const code=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
@@ -3148,6 +3295,33 @@ document.getElementById('btnAscendGo').onclick=()=>{
     burstFx('#ff4de0','+'+gained+' ✦',de?'Singularität':'Singularity');
     updateAbilityButtons();checkAchievements();}
   hide('ascendOver');show('treeOver');buildTree(true);};
+/* ---------- Android hardware Back ----------
+ * The native shell used to swallow Back entirely, which left the player with no
+ * system-level way out of any screen — and Android users read a dead Back key as
+ * a broken app. Instead of a second navigation graph that would drift from the
+ * first, Back presses the very button the open screen already shows, so there is
+ * exactly one way back out of every overlay.
+ * Three deliberate exceptions: the modal decision screens (safe zone, deep dive,
+ * cutscene) have no non-destructive "cancel", and a live run must never be one
+ * stray Back away from losing its haul. Those consume the key and do nothing.
+ * Only the bare title screen returns false — the single place where the shell is
+ * allowed to turn Back into "leave the app". */
+const BACK_BTN={
+  settingsOver:'btnSettingsDone', achOver:'btnAchDone',      contractOver:'btnContractDone',
+  refineOver:'btnRefineDone',     moduleOver:'btnModuleDone', challengeOver:'btnChalDone',
+  codexOver:'btnCodexDone',       skinOver:'btnSkinDone',     treeOver:'btnTreeDone',
+  planetOver:'btnPlanetsDone',    perkOver:'btnPerkDone',     dossierOver:'btnDosDone',
+  prestigeOver:'btnPrestigeCancel',ascendOver:'btnAscendCancel',wipeOver:'btnWipeCancel',
+  tutOver:'btnTutSkip',           gameoverOver:'btnGoMenu'};
+const BACK_MODAL=['zoneOver','deepOver','cutOver','splashOver'];
+window.__cbBack=function(){
+  for(const id of BACK_MODAL)if(document.getElementById(id).classList.contains('show'))return true;
+  for(const id in BACK_BTN){const o=document.getElementById(id);
+    if(o&&o.classList.contains('show')){const b=document.getElementById(BACK_BTN[id]);
+      if(b&&!b.disabled){b.click();return true;}}}
+  if(run.active)return true;                 // never quit out of a live descent
+  return false;                              // title screen: the shell may exit
+};
 document.getElementById('btnHelp').onclick=()=>{sfx.ui();openTut('titleOver');};
 document.getElementById('btnTutNext').onclick=()=>{sfx.ui();if(tutIndex>=TUTSTEPS.length-1)finishTut();else{tutIndex++;renderTut();}};
 document.getElementById('btnTutSkip').onclick=()=>{sfx.ui();finishTut();};
