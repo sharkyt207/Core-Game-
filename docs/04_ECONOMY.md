@@ -74,43 +74,86 @@ Der Kern von Terra fällt damit nach grob 6–8 Runs — nicht im ersten und nic
 im dreißigsten.
 
 ## Progressions-Gates (Planeten)
-| Planet | Freischaltung $ | Ringe | Härte | Loot |
-|---|--:|--:|--:|--:|
-| Terra | 0 | 60 | 1.0 | 1.0 |
-| Magmar | 900 | 68 | 1.5 | 1.7 |
-| Cryonis | 4 200 | 76 | 2.1 | 2.5 |
-| Ferro | 7 500 | 74 | 1.9 | 2.3 |
-| Mechon | 13 000 | 72 | 1.8 | 2.0 |
-| Neon | 21 000 | 76 | 2.2 | 2.8 |
-| Abyss | 38 000 | 88 | 2.6 | 3.6 |
-| Verdant | 70 000 | 96 | 2.9 | 4.4 |
-| Obscura | 130 000 | 102 | 3.4 | 5.5 |
+| Planet | Freischaltung $ | (vorher) | Ringe | Härte | Loot |
+|---|--:|--:|--:|--:|--:|
+| Terra | 0 | 0 | 60 | 1.0 | 1.0 |
+| Magmar | 1 200 | 900 | 68 | 1.5 | 1.7 |
+| Cryonis | 6 500 | 4 200 | 76 | 2.1 | 2.5 |
+| Ferro | 13 000 | 7 500 | 74 | 1.9 | 2.3 |
+| Mechon | 26 000 | 13 000 | 72 | 1.8 | 2.0 |
+| Neon | 48 000 | 21 000 | 76 | 2.2 | 2.8 |
+| Abyss | 95 000 | 38 000 | 88 | 2.6 | 3.6 |
+| Verdant | 200 000 | 70 000 | 96 | 2.9 | 4.4 |
+| Obscura | 420 000 | 130 000 | 102 | 3.4 | 5.5 |
 
 Die Ringzahl wurde ×2,3 angehoben. Vorher war der tiefste Planet 46 Ringe tief —
 der Erfolg „Erreiche 100 m Tiefe" war damit **auf keinem Planeten erreichbar**,
 ebenso die höchste Kontrakt-Stufe (160 m). Kontrakt-Stufen jetzt 30/55/85/120 m.
 
-## Expedition — gemessener Bogen (Terra, 12 Skills)
+## Wie lange der Inhalt hält
+Der Baum war mit 89 520 $ und alle Planeten mit 284 600 $ zu haben — zusammen
+374 120 $. Eine einzige tiefe Expedition trug davon rund 28 000 $ nach Hause,
+also war das gesamte Spiel in gut einem Dutzend Läufen gekauft. Zwei Änderungen
+strecken das, ohne dass ein einzelner Lauf sich schlechter anfühlt:
 
-| Schicht | Kern geknackt nach | Beute beim Kern |
-|--:|--:|--:|
-| 1 | 26 s | 232 $ |
-| 2 | 74 s | 1 832 $ |
-| 3 | 135 s | 4 652 $ |
-| 4 | 183 s | 10 607 $ |
-| 5 | 250 s | 22 256 $ |
-| 6 | 330 s | 28 062 $ |
+- **Kostenkurve am Ende steiler.** Skills bis 700 $ bleiben unangetastet (die
+  ersten zwölf Knoten kosten aufs Geld genau dasselbe wie vorher), darüber
+  ×1,4 / ×1,9 / ×2,6 nach Preisklasse. Summe Baum: 89 520 $ → **170 590 $**.
+  Planeten skalieren am Schwanz am stärksten (Obscura 130 000 → 420 000 $).
+  Gesamtinhalt **374 120 $ → 980 290 $ (×2,6)**.
+- **Die Expedition zahlt weniger**, weil sie nackt beginnt (siehe unten) — der
+  gemessene Bogen halbiert sich grob.
 
-Ein Lauf trägt über **6 Minuten** und wird pro Schicht spürbar langsamer.
-Der Beute-Zuwachs bremst sich ein (×7,9 → ×2,5 → ×2,3 → ×2,1 → ×1,3).
+Beides zusammen ergibt rund die **fünffache** Zeit bis „alles gekauft".
 
-Vor dem Balancing-Pass sah derselbe Bogen so aus: Kern 1 nach 29 s, **alle 20
+## Expedition — Roguelite statt Belohnungsrunde
+Die Expedition lief bisher auf dem gerade im Menü gewählten Planeten und mit
+dem vollen Meta-Bohrer. Beides nahm ihr den Charakter: die Schwierigkeit hing
+an einer Einstellung auf einem anderen Bildschirm, und der Reliktladen war
+Beiwerk zu einem Bohrer, der schon fertig war.
+
+- **Feste Welten, vorher gewählt:** 🟢 Leicht = Terra (Härte ×1,0),
+  🔴 Etwas schwer = Magmar (Härte ×1,5 · Loot ×1,7). `meta.planet` bleibt
+  unangetastet, der nächste normale Run startet weiter dort, wo er soll.
+- **Nackter Start:** keine Skills, Module, Refinerie, Kerne, Splitter und keine
+  der drei Kraft-Perks. Der Bohrer ist exakt der aus Minute eins
+  (Kraft 30 · Tank 260 · 0 Fähigkeiten).
+- **Fähigkeiten sind jetzt Relikte.** Sechs neue Einträge im Pool schalten
+  Blast, Puls, TP, Boost, Cryo und Laser frei. Ohne sie wäre eine nackte
+  Expedition ein Bohrer ohne Verben gewesen.
+- **Regel-Perks gelten weiter:** Frachtraum-Plätze, vier statt drei Angebote,
+  die bessere Bergungsquote, ein Zweiter Wind. Die stehen ausserhalb von
+  `stats()`, formen den Lauf und trivialisieren ihn nicht.
+
+### Gemessener Bogen (Terra, nackt)
+
+| Schicht | Kern geknackt nach | Beute beim Kern | vorher (12 Skills) |
+|--:|--:|--:|--:|
+| 1 | 102 s | 395 $ | 26 s · 232 $ |
+| 2 | 184 s | 5 218 $ | 74 s · 1 832 $ |
+| 3 | 312 s | 14 722 $ | 135 s · 4 652 $ |
+
+Die erste Schicht dauert jetzt **viermal so lange** — das ist die Strecke, auf
+der man sich den Bohrer wieder zusammenkauft. Danach zieht die Kurve wieder an,
+weil Relikte multiplikativ stapeln; genau das soll ein Roguelite tun.
+
+## Tages-Challenge — vergleichbar statt vorentschieden
+Die Challenge lief auf dem vollen Meta-Bohrer. Damit gewann nicht der bessere
+Lauf, sondern der weitere Spielstand, und ein fertiger Baum machte jede eigene
+Bestleistung unschlagbar. Sie startet jetzt ebenfalls nackt; Seed, Planet und
+Modifikator bleiben wie gehabt für alle gleich.
+
+Weil sich der Maßstab ändert, wird die Bestenliste beim ersten Start dieser
+Fassung **einmalig geleert** (`chalRescale` im Save) — alte Werte wären auf der
+neuen Skala unerreichbar und würden das Board dauerhaft einfrieren.
+
+## Frachtraum
+Noch früher sah der Expeditionsbogen so aus: Kern 1 nach 29 s, **alle 20
 Relikte nach 64 s**, und die Beute sprang von 2 799 $ auf 24 962 $ in drei
 Sektoren. Ohne Frachtraum-Grenze konnte man jeden Multiplikator gleichzeitig
 besitzen — der Händler hörte auf, eine Entscheidung zu sein.
 
-### Frachtraum
-`RELIC_SLOTS = 6` von 20 Relikten. Ist er voll, wird jeder Kauf zum **Tausch**:
+`RELIC_SLOTS = 6` von 26 Relikten. Ist er voll, wird jeder Kauf zum **Tausch**:
 das Menü fragt, was dafür geht. Damit ist jeder Lauf ein anderer Build, und die
 Entscheidung bleibt bis zur letzten Schicht bestehen.
 
@@ -146,11 +189,11 @@ dass die Wahl endgültig ist; gesperrte Knoten nennen den Blocker beim Namen und
 den Weg zurück (Prestige).
 
 ## Relikt-Synergien
-Acht Paare aus dem 20er-Pool tun etwas, das keine Hälfte allein kann. Bei
+Acht Paare aus dem 26er-Pool tun etwas, das keine Hälfte allein kann. Bei
 `RELIC_SLOTS = 6` passen höchstens drei Paare gleichzeitig, meist weniger — die
 Frachtraum-Frage ist damit „was passt zusammen" statt „was ist am grössten".
 Ein Angebot, das ein Paar vollenden würde, wird beim Händler markiert; ohne den
-Hinweis findet man Kombinationen bei 6 von 20 Plätzen praktisch nie.
+Hinweis findet man Kombinationen bei 6 von 26 Plätzen praktisch nie.
 
 ## Aszension — Splitter als Währung statt als Zahl
 Splitter gaben früher nur `+8 Bohrkraft` und einen Term im Loot-Multiplikator.

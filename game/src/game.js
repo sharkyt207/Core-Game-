@@ -30,21 +30,21 @@ let TK='A', T=THEMES.A;
 const PLANETS=[
  {id:'terra',  name:'TERRA',   unlock:0,    rings:60, hardMul:1.0, heatMul:1.0, valueMul:1.0,
    ground:['#8b909b','#c9cdd4','#5c6069'], core:'#ff8a3d', space:'#150f22', space2:'#0a0713'},
- {id:'magmar', name:'MAGMAR',  unlock:900,  rings:68, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno', lava:0.06,
+ {id:'magmar', name:'MAGMAR',  unlock:1200,  rings:68, hardMul:1.5, heatMul:1.6, valueMul:1.7, gasChance:0.06, bossType:'inferno', lava:0.06,
    ground:['#5a2f26','#c4632f','#361410'], core:'#ffd000', space:'#1c0a08', space2:'#0e0404'},
- {id:'cryonis',name:'CRYONIS', unlock:4200, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost', regrow:9,
+ {id:'cryonis',name:'CRYONIS', unlock:6500, rings:76, hardMul:2.1, heatMul:0.6, valueMul:2.5, brittle:1, bossType:'frost', regrow:9,
    ground:['#7d94b0','#e6f4ff','#4c6076'], core:'#6fdcff', space:'#0a1420', space2:'#050a12'},
- {id:'ferro',  name:'FERRO',   unlock:7500, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05, veins:1,
+ {id:'ferro',  name:'FERRO',   unlock:13000, rings:74, hardMul:1.9, heatMul:1.1, valueMul:2.3, caveChance:0.05, veins:1,
    ground:['#4a3f33','#b8895a','#2a231b'], core:'#ffae42', space:'#140f0a', space2:'#0a0705'},
- {id:'mechon', name:'MECHON',  unlock:13000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech', sentry:0.022,
+ {id:'mechon', name:'MECHON',  unlock:26000, rings:72, hardMul:1.8, heatMul:1.2, valueMul:2.0, gasChance:0.04, caveChance:0.03, bossType:'tech', sentry:0.022,
    ground:['#3a4048','#8792a0','#23272e'], core:'#2de2e6', space:'#0d1016', space2:'#05070b'},
- {id:'abyss',  name:'ABYSS',   unlock:38000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void', dark:1,
+ {id:'abyss',  name:'ABYSS',   unlock:95000, rings:88, hardMul:2.6, heatMul:1.3, valueMul:3.6, gasChance:0.05, caveChance:0.05, bossRings:3, bossType:'void', dark:1,
    ground:['#1c2030','#41537a','#0e1018'], core:'#8a5cff', space:'#05060d', space2:'#020308'},
- {id:'neon',   name:'NEON',    unlock:21000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1, resonance:1,
+ {id:'neon',   name:'NEON',    unlock:48000, rings:76, hardMul:2.2, heatMul:0.9, valueMul:2.8, brittle:1, resonance:1,
    ground:['#241b3a','#4de0ff','#ff4de0'], core:'#ff4de0', space:'#0a0716', space2:'#04020c'},
- {id:'verdant',name:'VERDANT', unlock:70000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive', regrow:6,
+ {id:'verdant',name:'VERDANT', unlock:200000,rings:96, hardMul:2.9, heatMul:1.4, valueMul:4.4, gasChance:0.07, caveChance:0.04, bossRings:3, bossType:'hive', regrow:6,
    ground:['#16301f','#3fd977','#0a1a11'], core:'#8dff5c', space:'#06120b', space2:'#020806'},
- {id:'obscura',name:'OBSCURA', unlock:130000,rings:102, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void', dark:1, lava:0.04,
+ {id:'obscura',name:'OBSCURA', unlock:420000,rings:102, hardMul:3.4, heatMul:1.5, valueMul:5.5, gasChance:0.06, caveChance:0.06, bossRings:4, bossType:'void', dark:1, lava:0.04,
    ground:['#1a1626','#6b4de0','#0c0a14'], core:'#c86bff', space:'#060410', space2:'#020108'},
 ];
 let P=PLANETS[0];
@@ -160,6 +160,12 @@ function loadMeta(){try{const j=JSON.parse(localStorage.getItem(SAVE_KEY));if(j&
   if(!j.cosmetics.owned.length)j.cosmetics.owned=['default'];
   j.cosmetics.equipped=asStr(j.cosmetics.equipped,'default');
   j.tutorialSeen=!!j.tutorialSeen;
+  j.expMode=(j.expMode==='calm'||j.expMode==='rough')?j.expMode:'calm';
+  /* The daily challenge now runs on a bare drill, so every score recorded before
+     this build was set on a different scale. Leaving them would mean a player
+     with a finished skill tree could never beat their own board again — the top
+     ten would be frozen at numbers the new rules cannot reach. Cleared once. */
+  if(!j.chalRescale){j.scores=[];j.challenge={best:0,bestDate:''};j.chalRescale=1;}
   return j;}}catch(e){}
   return{v:2,credits:0,skills:[],unlockedPlanets:['terra'],planet:'terra',lifetime:0,prestige:{cores:0},ascend:{shards:0,perks:{},spent:0},contracts:[],mats:{ferrite:0,cuprite:0,crystal:0,core:0,artifact:0},refine:{},modules:[],slots:[null,null,null],challenge:{best:0,bestDate:''},scores:[],
     settings:{music:true,sfx:true,vibe:true,shake:true,lang:'de',quality:'auto'},stats:{runs:0,bestDepth:0,totalEarned:0},achievements:[],daily:null,
@@ -198,7 +204,7 @@ const L={de:{
   overload:'Überladen', ascendGo:'Aufsteigen', wipeGo:'Endgültig löschen', wipeBackup:'⬆ Erst Save-Code sichern',
   expSave:'⬆ Save exportieren', impSave:'⬇ Save importieren',
   deeper:'Tiefer', pushDeeper:'Tiefer vorstoßen', extractHere:'⏏ Hier extrahieren', outWithLoot:'⏏ Mit der Beute raus',
-  chalStart:'Start'
+  chalStart:'Start', expedGo:'Aufbrechen'
  },en:{
   dropIn:'Drop In', tree:'🌳 Skill Tree', planets:'🪐 Planets', ach:'🏆 Achievements', settings:'⚙ Settings',
   done:'Done', retry:'Retry', menu:'Menu', on:'ON', off:'OFF',
@@ -218,7 +224,7 @@ const L={de:{
   overload:'Overload', ascendGo:'Ascend', wipeGo:'Delete for good', wipeBackup:'⬆ Back up save code first',
   expSave:'⬆ Export save', impSave:'⬇ Import save',
   deeper:'Deeper', pushDeeper:'Push deeper', extractHere:'⏏ Extract here', outWithLoot:'⏏ Out with the haul',
-  chalStart:'Start'
+  chalStart:'Start', expedGo:'Set out'
  }};
 function t(k){const d=L[settings.lang]||L.de;return d[k]!=null?d[k]:(L.de[k]!=null?L.de[k]:k);}
 
@@ -403,30 +409,30 @@ const SKILLS=[
  {id:'drill3',  name:'Bohrkraft III',  ic:'⛏️', cost:520,  req:['blast'],  pos:[-0.6,3], eff:{dp:30}},
  {id:'crit1',   name:'Kritisch',       ic:'🎯', cost:560,  req:['blast'],  pos:[0.6,3],  eff:{crit:0.5}},
  {id:'auto',    name:'Auto-Sammler',   ic:'🧲', cost:640,  req:['magnet1'],pos:[-2.7,3], eff:{auto:1,dm:40}},
- {id:'reactor', name:'Reaktor',        ic:'🔋', cost:720,  req:['fuel2'],  pos:[1.4,3],  eff:{de:80,dr:6}},
+ {id:'reactor', name:'Reaktor',        ic:'🔋', cost:1010,  req:['fuel2'],  pos:[1.4,3],  eff:{de:80,dr:6}},
  {id:'cool2',   name:'Kühlung II',     ic:'❄️', cost:560,  req:['cool1'],  pos:[2.7,3],  eff:{dh:4,dc:8}},
  {id:'magpulse',name:'Magnet-Puls',    ic:'🧲', cost:700,  req:['auto'],   pos:[-3.9,3], eff:{ability:'magpulse',dm:40}},
- {id:'teleport',name:'Teleport',       ic:'🌀', cost:800,  req:['reactor'],pos:[1.9,4],  eff:{ability:'teleport',de:40}},
- {id:'boost',   name:'Boost',          ic:'🚀', cost:900,  req:['drill3'], pos:[-0.6,4], eff:{ability:'boost'}},
- {id:'overload',name:'Overload',       ic:'💥', cost:1100, req:['crit1'],  pos:[0.6,4],  eff:{dp:44,crit:0.4}},
- {id:'drone1',  name:'Drohne',         ic:'🛸', cost:1200, req:['auto'],   pos:[-2.7,4], eff:{drone:1,dv:0.3}},
- {id:'laser',   name:'Laser',          ic:'☄️', cost:1800, req:['boost'],  pos:[-0.6,5], eff:{ability:'laser',dp:20}},
- {id:'droneswarm',name:'Drohnen-Schwarm',ic:'🛸',cost:2000,req:['drone1'], pos:[-2.7,5], eff:{drone:1,dv:0.4,dm:60}},
+ {id:'teleport',name:'Teleport',       ic:'🌀', cost:1120,  req:['reactor'],pos:[1.9,4],  eff:{ability:'teleport',de:40}},
+ {id:'boost',   name:'Boost',          ic:'🚀', cost:1260,  req:['drill3'], pos:[-0.6,4], eff:{ability:'boost'}},
+ {id:'overload',name:'Overload',       ic:'💥', cost:1540, req:['crit1'],  pos:[0.6,4],  eff:{dp:44,crit:0.4}},
+ {id:'drone1',  name:'Drohne',         ic:'🛸', cost:1680, req:['auto'],   pos:[-2.7,4], eff:{drone:1,dv:0.3}},
+ {id:'laser',   name:'Laser',          ic:'☄️', cost:2520, req:['boost'],  pos:[-0.6,5], eff:{ability:'laser',dp:20}},
+ {id:'droneswarm',name:'Drohnen-Schwarm',ic:'🛸',cost:2800,req:['drone1'], pos:[-2.7,5], eff:{drone:1,dv:0.4,dm:60}},
  // --- endgame tiers (visible power) ---
- {id:'chain1',  name:'Kettenreaktion',  ic:'💢', cost:1800, req:['overload'],pos:[0.9,5],  eff:{chain:1}},
- {id:'wide',    name:'Breitbohrer',     ic:'↔️', cost:1500, req:['overload'],pos:[1.9,5],  eff:{wide:1,dp:20}},
- {id:'plasma',  name:'Plasma-Kern',     ic:'🔥', cost:3000, req:['laser'],  pos:[-0.6,6], eff:{dp:60,wide:1,crit:0.6}},
- {id:'chain2',  name:'Kettenreaktion II',ic:'💥',cost:3200, req:['chain1'], pos:[0.9,6],  eff:{chain:1}},
- {id:'dronemine',name:'Kampfdrohnen',   ic:'🛸', cost:2600, req:['droneswarm'],pos:[-2.7,6],eff:{drone:1,dronemine:1,dv:0.4}},
- {id:'apex',    name:'APEX-Reaktor',    ic:'☢️', cost:6000, req:['plasma','chain2','dronemine'], pos:[-0.9,7.3],
+ {id:'chain1',  name:'Kettenreaktion',  ic:'💢', cost:2520, req:['overload'],pos:[0.9,5],  eff:{chain:1}},
+ {id:'wide',    name:'Breitbohrer',     ic:'↔️', cost:2100, req:['overload'],pos:[1.9,5],  eff:{wide:1,dp:20}},
+ {id:'plasma',  name:'Plasma-Kern',     ic:'🔥', cost:5700, req:['laser'],  pos:[-0.6,6], eff:{dp:60,wide:1,crit:0.6}},
+ {id:'chain2',  name:'Kettenreaktion II',ic:'💥',cost:6080, req:['chain1'], pos:[0.9,6],  eff:{chain:1}},
+ {id:'dronemine',name:'Kampfdrohnen',   ic:'🛸', cost:4940, req:['droneswarm'],pos:[-2.7,6],eff:{drone:1,dronemine:1,dv:0.4}},
+ {id:'apex',    name:'APEX-Reaktor',    ic:'☢️', cost:15600, req:['plasma','chain2','dronemine'], pos:[-0.9,7.3],
    eff:{dp:120,ds:80,de:150,dr:8,dv:1.0,crit:0.8,drone:2}},
  // --- endgame branch: boss-tech ---
- {id:'crit2',    name:'Kritisch II',    ic:'🎯', cost:1400, req:['overload'], pos:[1.7,5], eff:{crit:0.6,dp:20}},
- {id:'reactor2', name:'Reaktor II',     ic:'🔋', cost:1600, req:['reactor'],  pos:[2.6,4], eff:{de:120,dr:10}},
- {id:'heatshield',name:'Hitzeschild',   ic:'🛡️', cost:1800, req:['cool2'],    pos:[3.4,4], eff:{heatShield:5,dh:3}},
- {id:'coredrill', name:'Kern-Bohrer',   ic:'💥', cost:3200, req:['plasma'],   pos:[-0.6,7], eff:{bossPow:2,dp:30}},
- {id:'drilllord', name:'Bohr-Meister',  ic:'⛏️', cost:3600, req:['coredrill'],pos:[0.4,7], eff:{dp:60,wide:1}},
- {id:'singularity',name:'Singularität', ic:'🌀', cost:12000,req:['apex','coredrill'], pos:[-0.9,8.4],
+ {id:'crit2',    name:'Kritisch II',    ic:'🎯', cost:1960, req:['overload'], pos:[1.7,5], eff:{crit:0.6,dp:20}},
+ {id:'reactor2', name:'Reaktor II',     ic:'🔋', cost:2240, req:['reactor'],  pos:[2.6,4], eff:{de:120,dr:10}},
+ {id:'heatshield',name:'Hitzeschild',   ic:'🛡️', cost:2520, req:['cool2'],    pos:[3.4,4], eff:{heatShield:5,dh:3}},
+ {id:'coredrill', name:'Kern-Bohrer',   ic:'💥', cost:6080, req:['plasma'],   pos:[-0.6,7], eff:{bossPow:2,dp:30}},
+ {id:'drilllord', name:'Bohr-Meister',  ic:'⛏️', cost:6840, req:['coredrill'],pos:[0.4,7], eff:{dp:60,wide:1}},
+ {id:'singularity',name:'Singularität', ic:'🌀', cost:31200,req:['apex','coredrill'], pos:[-0.9,8.4],
    eff:{dp:220,ds:100,de:200,dv:1.5,crit:1,drone:2,chain:1,bossPow:2}},
  /* --- DOCTRINES: pick exactly one, ever ---
     44 skills with no exclusivity meant the tree was a checklist: given enough
@@ -435,27 +441,27 @@ const SKILLS=[
     commitment. Three doctrines branch off the mid-tree, each cheap enough to
     reach early and each locking the other two out until you prestige. Every one
     of them GIVES something and COSTS something, so none is simply best. */
- {id:'doc_drive', name:'Vortrieb',  ic:'⚔️', cost:1500, req:['drill3'], pos:[-1.6,4.2], excl:'doctrine',
+ {id:'doc_drive', name:'Vortrieb',  ic:'⚔️', cost:2100, req:['drill3'], pos:[-1.6,4.2], excl:'doctrine',
    eff:{dp:70,dh:-2}},
- {id:'doc_hunt',  name:'Beutezug',  ic:'🏹', cost:1500, req:['drill3'], pos:[0,4.6],    excl:'doctrine',
+ {id:'doc_hunt',  name:'Beutezug',  ic:'🏹', cost:2100, req:['drill3'], pos:[0,4.6],    excl:'doctrine',
    eff:{dv:0.7,dp:-14,luck:0.06}},
- {id:'doc_pion',  name:'Pionier',   ic:'🧱', cost:1500, req:['drill3'], pos:[1.6,4.2],  excl:'doctrine',
+ {id:'doc_pion',  name:'Pionier',   ic:'🧱', cost:2100, req:['drill3'], pos:[1.6,4.2],  excl:'doctrine',
    eff:{de:130,dh:4,dc:8,dv:-0.15}},
  // --- expansion: mobility & magnet ---
- {id:'speed3',    name:'Speed III',      ic:'💨', cost:1000, req:['speed2'],   pos:[-1.9,3],  eff:{ds:70}},
- {id:'magnet2',   name:'Magnet II',      ic:'🧲', cost:1400, req:['magpulse'], pos:[-3.9,4],  eff:{dm:130}},
+ {id:'speed3',    name:'Speed III',      ic:'💨', cost:1400, req:['speed2'],   pos:[-1.9,3],  eff:{ds:70}},
+ {id:'magnet2',   name:'Magnet II',      ic:'🧲', cost:1960, req:['magpulse'], pos:[-3.9,4],  eff:{dm:130}},
  // --- expansion: survival / fuel & cooling ---
- {id:'reactor3',  name:'Reaktor III',    ic:'🔋', cost:2600, req:['reactor2'], pos:[2.6,5],   eff:{de:160,dr:12}},
- {id:'fuelcell',  name:'Brennzelle',     ic:'⚗️', cost:3400, req:['reactor3'], pos:[2.6,6],   eff:{fuelOre:1,de:80}},
- {id:'cool3',     name:'Kühlung III',    ic:'❄️', cost:2200, req:['heatshield'],pos:[3.9,5],  eff:{dh:5,dc:10}},
- {id:'freeze',    name:'Cryo-Vent',      ic:'🧊', cost:3000, req:['cool3'],    pos:[3.9,6],   eff:{ability:'freeze',dc:6}},
+ {id:'reactor3',  name:'Reaktor III',    ic:'🔋', cost:4940, req:['reactor2'], pos:[2.6,5],   eff:{de:160,dr:12}},
+ {id:'fuelcell',  name:'Brennzelle',     ic:'⚗️', cost:6460, req:['reactor3'], pos:[2.6,6],   eff:{fuelOre:1,de:80}},
+ {id:'cool3',     name:'Kühlung III',    ic:'❄️', cost:4180, req:['heatshield'],pos:[3.9,5],  eff:{dh:5,dc:10}},
+ {id:'freeze',    name:'Cryo-Vent',      ic:'🧊', cost:5700, req:['cool3'],    pos:[3.9,6],   eff:{ability:'freeze',dc:6}},
  // --- expansion: greed (loot) branch ---
- {id:'luck1',     name:'Glückstreffer',  ic:'🍀', cost:1600, req:['crit2'],    pos:[2.6,6],   eff:{luck:0.09,dv:0.2}},
- {id:'combo',     name:'Kombo-Meister',  ic:'🔗', cost:2000, req:['crit2'],    pos:[1.6,6],   eff:{combo:1,dv:0.3}},
- {id:'greed',     name:'Gier',           ic:'💎', cost:4200, req:['combo'],    pos:[1.6,7],   eff:{dv:1.4}},
+ {id:'luck1',     name:'Glückstreffer',  ic:'🍀', cost:2240, req:['crit2'],    pos:[2.6,6],   eff:{luck:0.09,dv:0.2}},
+ {id:'combo',     name:'Kombo-Meister',  ic:'🔗', cost:2800, req:['crit2'],    pos:[1.6,6],   eff:{combo:1,dv:0.3}},
+ {id:'greed',     name:'Gier',           ic:'💎', cost:10900, req:['combo'],    pos:[1.6,7],   eff:{dv:1.4}},
  // --- expansion: heavy ordnance & elite drones ---
- {id:'nuke',      name:'Kern-Sprengung', ic:'☢️', cost:4000, req:['plasma'],   pos:[-1.9,6.4],eff:{ability:'nuke',dp:40}},
- {id:'drone3',    name:'Drohnen-Elite',  ic:'🛰️', cost:4400, req:['dronemine'],pos:[-3.5,6.6],eff:{drone:2,dronemine:1,dv:0.5}},
+ {id:'nuke',      name:'Kern-Sprengung', ic:'☢️', cost:7600, req:['plasma'],   pos:[-1.9,6.4],eff:{ability:'nuke',dp:40}},
+ {id:'drone3',    name:'Drohnen-Elite',  ic:'🛰️', cost:11400, req:['dronemine'],pos:[-3.5,6.6],eff:{drone:2,dronemine:1,dv:0.5}},
 ];
 const SKILLMAP={};SKILLS.forEach(s=>SKILLMAP[s.id]=s);
 function owned(id){return meta.skills.includes(id);}
@@ -494,9 +500,27 @@ const MODULES=[
  {id:'m_prism', ic:'💎', de:'Wert-Prisma',   en:'Value Prism',  cost:21000, col:'#ffd23f', eff:{dv:0.5}},
 ];
 const MMAP={};MODULES.forEach(m=>MMAP[m.id]=m);
-function stats(){
+/* ---------- bare runs ----------
+ * Expedition and the daily challenge start from nothing. Two different reasons,
+ * one switch. The expedition is a roguelite — rebuilding a drill out of relics
+ * is the entire mode, and it is not a run at all if the finished meta drill
+ * walks in with you. The challenge is a leaderboard, and a leaderboard where a
+ * completed skill tree outscores a better-played run measures nothing.
+ *
+ * The line is STATS, not rules. Everything that makes the drill numerically
+ * stronger is gone: skills, modules, refinery, cores, shards and the three
+ * power perks. What the ascension board changed about the RULES still holds —
+ * cargo slots, four offers instead of three, the better salvage rate, one
+ * Second Wind — because those are read outside stats() and they shape a run
+ * rather than trivialise it. Relics and the challenge modifier apply on top,
+ * since both are earned inside the run itself. */
+let bareRun=false;
+function stats(bare){
+  if(bare===undefined)bare=bareRun;
   let power=30,speed=230,energyMax=260,energyRegen=0,coolRate=0,heatGen=6,magnet=68,valueMul=1,crit=0,drones=0;
   let chain=0,wide=0,dronemine=0,bossPow=0,heatShield=0,luck=0,fuelOre=0,combo=0;const abilities={};
+  if(bare)return{power,speed,energyMax,energyRegen,coolRate,heatGen,magnet,valueMul,crit,drones,chain,wide,
+    dronemine,bossPow,heatShield,luck,fuelOre,combo,abilities,prestigeMult:1,tier:1};
   for(const id of meta.skills){const e=SKILLMAP[id]&&SKILLMAP[id].eff;if(!e)continue;
     power+=e.dp||0;speed+=e.ds||0;energyMax+=e.de||0;energyRegen+=e.dr||0;
     heatGen-=e.dh||0;coolRate+=e.dc||0;magnet+=e.dm||0;valueMul+=e.dv||0;crit+=e.crit||0;chain+=e.chain||0;
@@ -1088,6 +1112,22 @@ function lootMul(){return S.valueMul*P.valueMul*S.prestigeMult*expLoot()*(1+(S.o
  * Reaching the core finishes a Tier. Then you may take the Deep Layer: the world
  * regenerates harder AND richer, you keep every relic, and it never stops. That
  * is the endless mode. */
+/* Two fixed worlds instead of "wherever the planet menu points". The choice is
+ * made in front of the run, so the player knows what they signed up for, and it
+ * is the ONLY difficulty dial the mode has — the tier scaling does the rest.
+ * Terra is the readable one; Magmar hits ~50 % harder and pays ~70 % more, which
+ * is the trade the mode wants a player to weigh before every departure. */
+const EXPED_MODES=[
+  {id:'calm',  planet:'terra',  ic:'🟢', col:'#12d9b0',
+   de:['Leicht','Terra · Härte ×1.0 · Loot ×1.0'], en:['Gentle','Terra · hard ×1.0 · loot ×1.0']},
+  {id:'rough', planet:'magmar', ic:'🔴', col:'#ff6a3d',
+   de:['Etwas schwer','Magmar · Härte ×1.5 · Loot ×1.7'], en:['Rougher','Magmar · hard ×1.5 · loot ×1.7']},
+];
+let expedPick='calm';
+function expedMode(){return EXPED_MODES.find(m=>m.id===expedPick)||EXPED_MODES[0];}
+// Per-mode record, so the briefing can show how deep this world has been taken.
+function noteExpBest(tier){const b=meta.stats.expByMode=meta.stats.expByMode||{};
+  b[expedPick]=Math.max(b[expedPick]||0,tier);}
 const SECTOR_M=12;                 // metres between Safe Zones
 /* The first station sits deeper than the rest. Measured, 12 m of topsoil pays
    about $30 — you would arrive at the trader unable to afford anything, which
@@ -1100,7 +1140,7 @@ const RELIC_PICKS=3;               // offers per station
  * $24,962 in three sectors, because every multiplier in the game was stacked at
  * once. Worse than the numbers: with nothing left to want, the trader stopped
  * being a decision at all.
- * Six slots means you can never hold more than a third of the pool, every run
+ * Six slots means you can never hold more than a quarter of the pool, every run
  * is a different build, and once you are full each purchase costs you something
  * you already rely on. That is the whole mode in one constraint. */
 const RELIC_SLOTS=6;
@@ -1126,6 +1166,18 @@ const RELICS=[
  {id:'r_temper',ic:'🧊', c:200, de:['Vergütet','−35 % Hitze, −15 % Bohrkraft'],    en:['Tempered','-35% heat, -15% power'],      mod:S=>{S.heatGen*=0.65;S.power*=0.85;}},
  {id:'r_prosp', ic:'🔍', c:260, de:['Prospektor','Relikte & Kerne doppelt wert'],  en:['Prospector','Relics & cores worth 2x'],  mod:S=>S.rareMul=(S.rareMul||1)*2},
  {id:'r_dust',  ic:'🪨', c:160, de:['Schürfrecht','Dreifacher Schrottstaub'],      en:['Claim Rights','Triple scrap dust'],      mod:S=>S.dustMul=(S.dustMul||1)*3},
+ /* --- the abilities ---
+  * An expedition now starts with none of them, so these are the picks that
+  * change how a run is PLAYED rather than how big its numbers get. Without them
+  * a bare expedition would be a drill with no verbs — the mode would have traded
+  * its entire toolbox for a difficulty curve. They cost more than a stat relic
+  * because a button you did not have beats another +45 % on one you did. */
+ {id:'r_ablast',ic:'⚡', c:300, de:['Stoßwellen-Kern','Schaltet BLAST frei'],       en:['Shock Core','Unlocks BLAST'],            mod:S=>S.abilities.blast=1},
+ {id:'r_amag',  ic:'🧲', c:290, de:['Puls-Spule','Schaltet PULS frei'],             en:['Pulse Coil','Unlocks PULSE'],            mod:S=>S.abilities.magpulse=1},
+ {id:'r_atp',   ic:'🌀', c:330, de:['Sprung-Anker','Schaltet TP frei'],             en:['Jump Anchor','Unlocks TP'],              mod:S=>S.abilities.teleport=1},
+ {id:'r_aboost',ic:'🚀', c:360, de:['Nachbrenner','Schaltet BOOST frei'],           en:['Afterburner','Unlocks BOOST'],           mod:S=>S.abilities.boost=1},
+ {id:'r_acryo', ic:'🧊', c:400, de:['Cryo-Ventil','Schaltet CRYO frei'],            en:['Cryo Valve','Unlocks CRYO'],             mod:S=>S.abilities.freeze=1},
+ {id:'r_alaser',ic:'☄️', c:440, de:['Strahl-Linse','Schaltet LASER frei'],          en:['Beam Lens','Unlocks LASER'],             mod:S=>S.abilities.laser=1},
 ];
 /* A station used to be an invisible depth trigger: you were drilling ordinary
  * rock and a menu appeared. Now the station depths are real geography — those
@@ -1201,6 +1253,8 @@ function applyRelics(){if(!run.exp)return;
   // synergies land on top of the relics they need, so their maths sees the boosted stats
   for(const y of activeSyn()){if(y.mod)try{y.mod(S);}catch(e){}}}
 function restat(){S=stats();applyRelics();
+  // A relic can hand over a whole ability, so the button bar is part of restat now.
+  updateAbilityButtons();
   /* Track what the player has actually assembled. Done here rather than in
      buyRelic because a SWAP can complete a pair just as well as a purchase, and
      it can also break one — the achievements should only ever count what really
@@ -1226,9 +1280,18 @@ function expHard(){return run.exp?1+(run.exp.tier-1)*0.85:1;}
 function expLoot(){return run.exp?1+(run.exp.tier-1)*0.62:1;}
 // Everything that hits you scales with the layer as well — see below.
 function expThreat(){return run.exp?1+(run.exp.tier-1)*0.40:1;}
-function startRun(){S=stats();
+function startRun(){
+  bareRun=!!(pendingExp||pendingChal);   // must be set BEFORE the first stats() read
+  S=stats();
   run.challenge=!!pendingChal;
   if(pendingChal){setPlanet(chalPlanet);rnd=chalRng();}   // fixed daily seed + planet
+  /* An expedition runs on its OWN world, chosen with the difficulty, not on
+     whatever planet the menu happens to be pointing at. A roguelite whose
+     difficulty silently tracks an unrelated menu selection cannot be read by
+     the player, and it made the mode trivial the moment Terra was selected and
+     brutal the moment Obscura was. meta.planet is deliberately left alone, so
+     the next ordinary run still departs where the player parked. */
+  else if(pendingExp){setPlanet(expedMode().planet);rnd=rngSeed(Date.now()>>>0);chalMod=null;}
   else{setPlanet(meta.planet);rnd=rngSeed(Date.now()>>>0);chalMod=null;}
   pendingChal=false;
   run.active=true;run.depthMax=0;run.haul=0;run.energy=S.energyMax*cmul('fuel');run.heat=0;run.shockCd=0;run.boostT=0;run.boostCd=0;run.laserCd=0;run.magCd=0;run.tpCd=0;run.freezeT=0;run.freezeCd=0;run.nukeCd=0;run.combo=0;run.comboT=0;run.maxCombo=0;run.relicsRun=0;run.guardsRun=0;run.frostT=0;run.event=null;run.eventCd=16;run.matsRun={};run.ovr=0;run.ventT=0;run.ovrOn=false;run.critT=0;run.critMul=1;run.critFx=0;
@@ -1371,7 +1434,7 @@ function gameOver(reason){if(!run.active)return;
     sfx.leg();haptic('epic');
     lootNum(W/2,DRILL_SY-40,settings.lang==='en'?'SECOND WIND':'ZWEITER WIND','#8be9ff',2);
     return;}
-  run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
+  run.active=false;run.paused=false;bareRun=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */
   const saved=Math.round(run.haul*salvageRate()),lost=Math.round(run.haul)-saved;
   meta.credits+=saved;meta.lifetime=(meta.lifetime||0)+saved;meta.stats.totalEarned+=saved;
   /* Expedition progress is credited on death too. It used to be written only in
@@ -1380,7 +1443,7 @@ function gameOver(reason){if(!run.active)return;
      for the players most likely to earn it. Dying deep is the normal end of an
      endless mode; it has to count. */
   if(run.exp){meta.stats.expBest=Math.max(meta.stats.expBest||0,run.exp.tier);
-    meta.stats.expSectors=(meta.stats.expSectors||0)+run.exp.zone;}
+    meta.stats.expSectors=(meta.stats.expSectors||0)+run.exp.zone;noteExpBest(run.exp.tier);}
   for(const k in run.matsRun){const keep=Math.floor(run.matsRun[k]*SALVAGE);if(keep>0)meta.mats[k]=(meta.mats[k]||0)+keep;}
   meta.stats.runs++;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
   updateDaily('depth',run.depthMax);updateDaily('runs',1);updateDaily('loot',saved);
@@ -1392,7 +1455,7 @@ function gameOver(reason){if(!run.active)return;
   document.getElementById('goSaved').textContent=saved;
   document.getElementById('goLost').textContent=lost;
   setTimeout(()=>show('gameoverOver'),480);}
-function extract(){if(!run.active)return;run.active=false;run.paused=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
+function extract(){if(!run.active)return;run.active=false;run.paused=false;bareRun=false;engineSet(0,0);document.body.classList.remove('playing');/* music continues as menu ambience */const g=Math.round(run.haul);
   meta.credits+=g;meta.lifetime=(meta.lifetime||0)+g;
   for(const k in run.matsRun)meta.mats[k]=(meta.mats[k]||0)+run.matsRun[k];   // bank refinery ore on success
   meta.stats.runs++;meta.stats.totalEarned+=g;if(run.depthMax>meta.stats.bestDepth)meta.stats.bestDepth=run.depthMax;if(run.depthMax>(meta.records[meta.planet]||0))meta.records[meta.planet]=run.depthMax;saveMeta();checkAchievements();
@@ -1412,12 +1475,14 @@ function extract(){if(!run.active)return;run.active=false;run.paused=false;engin
       (e.relics.length?' · '+e.relics.map(i=>{const r=relicById(i);return r?r.ic:'';}).join(''):'')+
       (e.spent?'<br><span style="color:#9a90ad">'+(de?'beim Händler gelassen: $':'spent at the trader: $')+e.spent+'</span>':'');
     meta.stats.expBest=Math.max(meta.stats.expBest||0,e.tier);
-    meta.stats.expSectors=(meta.stats.expSectors||0)+e.zone;
+    meta.stats.expSectors=(meta.stats.expSectors||0)+e.zone;noteExpBest(e.tier);
   }else rx.style.display='none';
   show('shopOver');sfx.extract();haptic('epic');}
 
 /* ability buttons appear only once the matching skill is unlocked */
-function updateAbilityButtons(){const a=stats().abilities;
+/* During a run, read the LIVE stats: on an expedition the abilities come from
+   relics, and a fresh stats() call knows nothing about what is in the hold. */
+function updateAbilityButtons(){const a=(run.active?S:stats()).abilities;
   document.getElementById('btnShock').style.display=a.blast?'flex':'none';
   document.getElementById('btnBoost').style.display=a.boost?'flex':'none';
   document.getElementById('btnLaser').style.display=a.laser?'flex':'none';
@@ -1723,7 +1788,9 @@ function applyLang(){
   // The rest of the static markup — menus, modal choices, destructive confirms.
   set('btnModuleDone','done');set('btnRefineDone','done');set('btnContractDone','done');
   set('btnCodexDone','done');set('btnPerkDone','done');
-  set('btnChalDone','back');set('btnDosDone','back');
+  set('btnChalDone','back');set('btnDosDone','back');set('btnExpedDone','back');
+  set('btnExpedGo','expedGo');
+  if(document.getElementById('expedOver').classList.contains('show'))buildExped();
   set('btnTutSkip','skip');set('btnTutNext','next');set('btnCutGo','next');
   set('btnModules','modules');set('btnModules2','modules');
   set('btnRefine','refinery');set('btnRefine2','refinery');
@@ -1888,7 +1955,10 @@ function recordScore(){const score=Math.round(run.depthMax*10+run.haul),today=ne
   if(meta.challenge.bestDate!==today||score>meta.challenge.best){meta.challenge.best=Math.max(meta.challenge.bestDate===today?meta.challenge.best:0,score);meta.challenge.bestDate=today;}
   saveMeta();achQueue.push({ic:'🏁',de:['Challenge-Score',''+score],en:['Challenge score',''+score]});if(!achTimer)nextAch();}
 function buildChallenge(){const de=settings.lang!=='en',s=chalSetup(),today=new Date().toDateString();
-  document.getElementById('chalDesc').innerHTML=(de?'Fester Seed für alle heute · ':'Same seed for everyone today · ')+
+  /* The bare-drill rule is stated here, not discovered on the first dive: a
+     player who walks in with a finished tree and suddenly has none of it would
+     read that as a bug rather than as the point of the mode. */
+  document.getElementById('chalDesc').innerHTML=(de?'Fester Seed für alle · <b style="color:#ff4de0">ohne Skills</b> · ':'Same seed for everyone · <b style="color:#ff4de0">no skills</b> · ')+
     '<b style="color:'+s.planet.core+'">'+s.planet.name+'</b> · <b style="color:#ff4de0">'+(de?s.mod.de:s.mod.en)+'</b>';
   const bt=(meta.challenge.bestDate===today)?meta.challenge.best:0;
   document.getElementById('chalBest').textContent=(de?'Dein Bestwert heute: ':'Your best today: ')+bt;
@@ -1900,6 +1970,32 @@ function buildChallenge(){const de=settings.lang!=='en',s=chalSetup(),today=new 
       '<span class="ps" style="color:#2de2e6">'+(sc.date===today?(de?'heute':'today'):'')+'</span>';
     g.appendChild(row);});}
 function openChallenge(from){backTo=from;hide(from);show('challengeOver');buildChallenge();}
+/* ---------- EXPEDITION BRIEFING ----------
+ * The mode used to launch straight off the menu button, inheriting the planet
+ * from an unrelated screen and the drill from the skill tree. Both are now
+ * stated here before departure: which world, and that you are going in bare. */
+function buildExped(){const de=settings.lang!=='en';
+  document.getElementById('expedSub').innerHTML=de
+    ?'Du startest <b style="color:#ff4de0">ohne jeden Skill</b> — Bohrer, Sprit und Fähigkeiten baust du unterwegs aus Relikten neu auf. Wähle die Welt:'
+    :'You start with <b style="color:#ff4de0">no skills at all</b> — drill, fuel and abilities are rebuilt from relics along the way. Pick the world:';
+  const g=document.getElementById('expedCards');g.innerHTML='';
+  EXPED_MODES.forEach(m=>{
+    const pl=PLANETS.find(p=>p.id===m.planet)||PLANETS[0],sel=expedPick===m.id;
+    const card=document.createElement('button');card.className='pcard'+(sel?' sel':'');
+    const globe='radial-gradient(circle at 68% 72%, '+pl.ground[2]+' 0 7%, transparent 8%),'+
+      'radial-gradient(circle at 44% 62%, '+pl.ground[2]+' 0 4%, transparent 5%),'+
+      'radial-gradient(circle at 28% 24%, '+pl.ground[1]+' 0 9%, transparent 11%),'+
+      'radial-gradient(circle at 34% 30%, '+pl.ground[1]+', '+pl.ground[0]+' 52%, '+pl.ground[2]+' 100%)';
+    const best=(meta.stats.expByMode&&meta.stats.expByMode[m.id])||0;
+    card.innerHTML='<span class="globe" style="background:'+globe+';border:2px solid '+pl.core+';box-shadow:inset -7px -7px 12px rgba(0,0,0,.65),0 0 14px '+pl.core+'66;"></span>'+
+      '<span class="pt"><b>'+m.ic+' '+(de?m.de[0]:m.en[0])+'</b><span>'+(de?m.de[1]:m.en[1])+
+        (best?'<br>'+(de?'Beste Schicht':'Best layer')+': '+best:'')+'</span></span>'+
+      // Same wording as the planet screen — and short enough that the description
+      // beside it keeps its one line instead of wrapping under the globe.
+      '<span class="ps" style="color:'+(sel?'#2de2e6':m.col)+'">'+(sel?'★ '+(de?'AKTIV':'ACTIVE'):(de?'WÄHLEN':'SELECT'))+'</span>';
+    card.onclick=()=>{expedPick=m.id;meta.expMode=m.id;saveMeta();sfx.ui();haptic('sel');buildExped();};
+    g.appendChild(card);});}
+function openExped(from){backTo=from;hide(from);show('expedOver');buildExped();}
 function openSettings(from){backTo=from;hide(from);show('settingsOver');buildSettings();}
 function buildAch(){const g=document.getElementById('achList');g.innerHTML='';
   document.getElementById('achCount').textContent=meta.achievements.length+'/'+ACH.length;
@@ -2195,8 +2291,8 @@ const TUTSTEPS=[
            en:['Going back up is free','Climbing your own shaft costs nothing. Extract with ⏏ and you keep everything. Die, and the salvage drone recovers just 40%.']},
  {ic:'🌳', de:['Aufrüsten','Beim Extrahieren wird Loot zu Cash. Kauf Skills im Baum, bau Module & Refinerie-Boni. Jedes Upgrade verändert, wie du gräbst.'],
            en:['Upgrade','Extracting turns loot into cash. Buy skills in the tree, craft modules & refinery bonuses. Every upgrade changes how you dig.']},
- {ic:'🧭', gate:'exped', de:['Expedition','Der zweite Modus: Du tauchst durch Sektoren. Alle paar Meter wartet eine Station — Tank voll, Bohrer kalt, und ein Händler mit Relikten, die es im Baum nicht gibt. Bezahlt wird mit deiner Beute, also: mitnehmen oder tiefer gehen?'],
-           en:['Expedition','The second mode: you dive through sectors. Every few metres a station waits — full tank, cold drill, and a trader selling relics the tree never offers. You pay with your haul, so: bank it or go deeper?']},
+ {ic:'🧭', gate:'exped', de:['Expedition','Der zweite Modus, und er lässt deinen Baum draußen: Du startest mit dem nackten Anfängerbohrer, egal wie weit du sonst bist. Alle paar Meter wartet eine Station — Tank voll, Bohrer kalt, und ein Händler mit Relikten, die es im Baum nicht gibt. Daraus baust du den Bohrer für diesen Lauf. Vorher wählst du die Welt: leicht oder etwas schwer.'],
+           en:['Expedition','The second mode, and it leaves your tree at the door: you start on the bare beginner drill no matter how far along you are. Every few metres a station waits — full tank, cold drill, and a trader selling relics the tree never offers. That is what you build this run out of. You pick the world first: gentle or rougher.']},
  {ic:'🪐', de:['Dein Ziel','Bohr tiefer durch 9 Welten bis zum glühenden Kern — überlebe Bosse, Wetter und Kreaturen und werde übermächtig. Am Kern wartet die nächste Schicht: härter, reicher, endlos.'],
            en:['Your Goal','Drill deeper through 9 worlds to the molten core — survive bosses, weather and creatures. At the core the next layer waits: harder, richer, endless.']},
 ];
@@ -3254,7 +3350,9 @@ document.getElementById('btnPrestige').onclick=()=>{sfx.ui();const g=prestigeGai
 document.getElementById('btnRetry').onclick=()=>{sfx.ui();startRun();};
 document.getElementById('btnGoMenu').onclick=()=>{sfx.ui();hide('gameoverOver');show('titleOver');refreshMenu();};
 // --- expedition ---
-document.getElementById('btnExpedition').onclick=()=>{sfx.ui();pendingExp=true;startRun();};
+document.getElementById('btnExpedition').onclick=()=>{sfx.ui();openExped('titleOver');};
+document.getElementById('btnExpedDone').onclick=()=>{sfx.back();hide('expedOver');show(backTo||'titleOver');};
+document.getElementById('btnExpedGo').onclick=()=>{sfx.ui();hide('expedOver');pendingExp=true;startRun();};
 document.getElementById('btnDosDone').onclick=()=>{sfx.back();hide('dossierOver');show('planetOver');};
 document.getElementById('btnZoneGo').onclick=leaveZone;
 document.getElementById('btnZoneOut').onclick=()=>{hide('zoneOver');extract();};
@@ -3307,6 +3405,7 @@ document.getElementById('btnAscendGo').onclick=()=>{
  * Only the bare title screen returns false — the single place where the shell is
  * allowed to turn Back into "leave the app". */
 const BACK_BTN={
+  expedOver:'btnExpedDone',
   settingsOver:'btnSettingsDone', achOver:'btnAchDone',      contractOver:'btnContractDone',
   refineOver:'btnRefineDone',     moduleOver:'btnModuleDone', challengeOver:'btnChalDone',
   codexOver:'btnCodexDone',       skinOver:'btnSkinDone',     treeOver:'btnTreeDone',
@@ -3325,6 +3424,7 @@ window.__cbBack=function(){
 document.getElementById('btnHelp').onclick=()=>{sfx.ui();openTut('titleOver');};
 document.getElementById('btnTutNext').onclick=()=>{sfx.ui();if(tutIndex>=TUTSTEPS.length-1)finishTut();else{tutIndex++;renderTut();}};
 document.getElementById('btnTutSkip').onclick=()=>{sfx.ui();finishTut();};
+expedPick=meta.expMode||'calm';   // the briefing reopens on the world you last chose
 updateAbilityButtons();
 applyQuality();
 applyLang();
