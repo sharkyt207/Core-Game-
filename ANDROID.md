@@ -219,7 +219,7 @@ bringen:
 
 ### Schritt 4.4: Preis festlegen
 **Monetarisierung ▸ Preise**
-→ **1,99 €** setzen → Google rechnet die anderen Währungen automatisch um.
+→ **0,99 €** setzen → Google rechnet die anderen Währungen automatisch um.
 
 ### Schritt 4.5: Veröffentlichen
 1. **Produktion ▸ Neuen Release erstellen**

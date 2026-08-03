@@ -1513,16 +1513,34 @@ function killPart(i){const p=parts[i];parts[i]=parts[parts.length-1];parts.pop()
  * exactly where the player is looking. Each new label is nudged clear of the
  * ones already there: a few pixels of separation is the difference between
  * "116 damage and +$69" and a golden blur. */
-function slotFor(x,y,h){
+/* How much room a label actually takes, expressed in the same units its
+   position is stored in. This conversion is the whole point: labels are placed
+   in world units but drawn at d.x*S1 with a font measured in screen pixels, so
+   a 19 px "+$200" — about 57 px wide — needs 57*PIX units of clearance. The
+   first version compared world distances against the raw screen constants 34
+   and h, i.e. it reserved less than half the space the text occupies, which is
+   why wide loot values still merged into a golden smear. */
+function labelBox(txt,font){
+  const chars=(''+txt).length;
+  // monospace advance is ~0.6em; the pop scale on spawn is brief, so the base
+  // size plus a small margin is the honest footprint.
+  return[chars*font*0.6*PIX+6,font*PIX];}
+function labelFont(d){return d.crit?14:d.loot?11+d.big*4:9;}
+function slotFor(x,y,txt,font){
+  const[w,h]=labelBox(txt,font);
   const near=(ty)=>{
     /* Check every live label, not just the young ones. An earlier version skipped
        anything older than 0.35 s on the assumption it had drifted clear — but at
        26 px/s that is nine pixels, still a direct collision. The list is capped
        at 40, so scanning all of it costs nothing. */
-    for(const d of dmgnums)if(Math.abs(d.x-x)<34&&Math.abs(d.y-ty)<h)return d;
+    for(const d of dmgnums){const[dw,dh]=labelBox(d.v,labelFont(d));
+      if(Math.abs(d.x-x)<(w+dw)/2&&Math.abs(d.y-ty)<(h+dh)/2)return d;}
     return null;};
   let ty=y;
-  for(let pass=0;pass<8;pass++){if(!near(ty))return ty;ty-=h;}
+  /* Five rows of clearance is already a fifth of the screen; stacking higher
+     walks the numbers into the HUD, so past that the oldest label in the way
+     gives up its slot. */
+  for(let pass=0;pass<5;pass++){if(!near(ty))return ty;ty-=h;}
   /* The column is saturated. Bailing out here — which the first version did —
      silently returns a slot that still overlaps, which is exactly the smear this
      function exists to prevent. Crits fire every 0.26 s and ore lands whenever it
@@ -1532,12 +1550,12 @@ function slotFor(x,y,h){
   for(let v=near(ty);v;v=near(ty)){const i=dmgnums.indexOf(v);if(i<0)break;dmgnums.splice(i,1);}
   return ty;}
 function dmgNum(x,y,v,color,crit){if(dmgnums.length>40)dmgnums.shift();
-  const px=x+(rnd()-0.5)*10;
-  dmgnums.push({x:px,y:slotFor(px,y,crit?15:11),v:Math.round(v*10)/10,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
+  const px=x+(rnd()-0.5)*10,txt=Math.round(v*10)/10;
+  dmgnums.push({x:px,y:slotFor(px,y,txt,crit?14:9),v:txt,age:0,life:crit?0.95:0.7,color,crit:!!crit});}
 // Loot payout text. `big` 0/1/2 = common / rare / legendary: rarer ore rises
 // slower, lives longer and is set bigger, so value reads at a glance.
 function lootNum(x,y,txt,color,big){if(dmgnums.length>40)dmgnums.shift();
-  dmgnums.push({x,y:slotFor(x,y,13+(big||0)*4),v:txt,age:0,life:0.85+0.35*big,color,loot:true,big:big||0});}
+  dmgnums.push({x,y:slotFor(x,y,txt,11+(big||0)*4),v:txt,age:0,life:0.85+0.35*big,color,loot:true,big:big||0});}
 
 /* ===================== MINING ===================== */
 function collectRes(id,rad,ang){const r=RES[id];drops.push({rad,ang,id,got:false,t:0});

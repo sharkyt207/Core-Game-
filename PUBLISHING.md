@@ -1,6 +1,6 @@
 # COREBREAKER veröffentlichen — Schritt für Schritt
 
-Ziel: das Spiel für **1,99 €** im App Store und/oder Google Play verkaufen.
+Ziel: das Spiel für **0,99 €** im App Store und/oder Google Play verkaufen.
 
 > **Was du dafür zwingend brauchst:** Für iOS einen **Mac mit Xcode** — Apple lässt
 > Builds nur dort signieren. Für Android reicht **Android Studio** auf Mac, Windows
@@ -34,7 +34,11 @@ Ziel: das Spiel für **1,99 €** im App Store und/oder Google Play verkaufen.
 | Prüfdauer | meist 1–3 Tage | meist einige Stunden bis 2 Tage |
 | Einnahmen | 85 % (unter 1 Mio $/Jahr im Small Business Program, sonst 70 %) | 85 % (unter 1 Mio $/Jahr, sonst 70 %) |
 
-Bei 1,99 € bleiben dir also grob **1,40–1,70 €** pro Verkauf (nach Store-Anteil und MwSt.).
+Bei 0,99 € bleiben dir grob **0,70 €** pro Verkauf: Der Preis enthält 19 % MwSt.
+(macht 0,83 € netto), davon behält der Store 15 %. Bei 70 % Store-Anteil wären es
+noch **0,58 €**.
+
+> Zum Einordnen: Damit sich das 25-$-Konto rechnet, brauchst du rund **35 Verkäufe**.
 
 > **Empfehlung:** Fang mit **Google Play** an. 25 € statt 99 €/Jahr, kein Mac nötig,
 > schnellere Prüfung. Wenn es dort läuft, lohnt sich iOS.
@@ -114,7 +118,7 @@ Alle Texte stehen fertig in `game/store/STORE_LISTING.md`.
 - **Data safety:** überall **„Nein, es werden keine Daten erfasst"** — das stimmt.
 - **Content rating:** Fragebogen ausfüllen → ergibt PEGI 3 / „Jeder".
 - **Zielgruppe:** keine Kinder-Kategorie wählen (sonst gelten strengere Regeln).
-- **Preis:** Land für Land oder global **1,99 €** setzen.
+- **Preis:** Land für Land oder global **0,99 €** setzen.
 
 ### A5. Einreichen
 **Production ▸ Create new release** → `.aab` hochladen → Review starten.
@@ -152,7 +156,7 @@ In Xcode:
 - **Datenschutz-URL:** deine URL aus Schritt 0.1
 - **App Privacy:** **„Data Not Collected"** auswählen
 - **Altersfreigabe:** Fragebogen → ergibt 4+
-- **Preis:** Tier für 1,99 €
+- **Preis:** Tier für 0,99 €
 
 ### B4. Einreichen
 **Add for Review** → einreichen. Bei Rückfragen antwortet Apple im Review-Bereich.

@@ -1,9 +1,9 @@
 # COREBREAKER — Store-Listing (App Store & Google Play)
 
-Fertige Texte & Metadaten für die Veröffentlichung als Bezahl-App (**1,99 €**).
+Fertige Texte & Metadaten für die Veröffentlichung als Bezahl-App (**0,99 €**).
 Alle Felder halten die Zeichenlimits der Stores ein. Zweisprachig: **DE (primär)** + **EN**.
 
-- **Preis:** 1,99 € / $1.99 (Einmalkauf, keine Werbung, keine In-App-Käufe)
+- **Preis:** 0,99 € / $0.99 (Einmalkauf, keine Werbung, keine In-App-Käufe)
 - **Kategorie:** Spiele → Arcade (sekundär: Abenteuer)
 - **Altersfreigabe:** 4+ / PEGI 3 / „Jeder" (keine bedenklichen Inhalte)
 - **Ausrichtung:** Hochformat, Ein-Hand-/Touch-Steuerung

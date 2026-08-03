@@ -114,7 +114,7 @@ Alle Texte, Icons und Screenshots liegen fertig in **`store/`**:
 - `store/icons/` — Icon-Konzepte als SVG + 1024/512 PNG
 - `store/screenshots/` — 12 echte Aufnahmen in 1290×2796 (App Store 6.7")
 
-**Preis:** 1,99 € / $1.99 · **Kategorie:** Spiele → Arcade · **Freigabe:** 4+ / PEGI 3
+**Preis:** 0,99 € / $0.99 · **Kategorie:** Spiele → Arcade · **Freigabe:** 4+ / PEGI 3
 · keine Werbung, keine In-App-Käufe, voll offline spielbar.
 
 ---
